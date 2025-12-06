@@ -31,10 +31,12 @@ class SoundManager {
                 if (AudioContext) {
                     this.audioContext = new AudioContext();
                     console.log('AudioContext created, state:', this.audioContext.state);
+                    if (window.debugLog) window.debugLog('🎵 AudioContext created, state: ' + this.audioContext.state);
                 }
             }
         } catch (e) {
             console.warn('AudioContext not available:', e);
+            if (window.debugLog) window.debugLog('🎵 AudioContext error: ' + e.message);
         }
     }
 
