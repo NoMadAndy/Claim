@@ -394,6 +394,13 @@ function hideLoginModal() {
 // Main App Initialization
 async function initializeApp() {
     try {
+        // Initialize debug
+        if (window.debugLog) {
+            window.debugLog('🎮 App initializing...');
+            window.debugLog('🎵 SoundManager: ' + (soundManager ? 'OK' : 'FAIL'));
+            window.debugLog('📱 AudioContext: ' + (soundManager?.audioContext ? soundManager.audioContext.state : 'null'));
+        }
+        
         // Fetch current user
         const response = await apiRequest('/auth/me');
         currentUser = response;

@@ -203,20 +203,24 @@
     ">🔼</button>
     
     <script>
-        // Global debug logger
-        const debugLogs = [];
+        // Global debug logger - MUST BE FIRST
+        const debugLogs = ['Debug system initialized'];
         const debugWrapper = document.getElementById('debug-wrapper');
         const debugConsole = document.getElementById('debug-console');
         const toggleBtn = document.getElementById('toggle-debug');
         let debugOpen = false;
         
         window.debugLog = function(msg) {
-            debugLogs.push('[' + new Date().toLocaleTimeString() + '] ' + msg);
-            if (debugLogs.length > 25) debugLogs.shift();
+            const timestamp = new Date().toLocaleTimeString();
+            debugLogs.push('[' + timestamp + '] ' + msg);
+            if (debugLogs.length > 30) debugLogs.shift();
             debugConsole.textContent = debugLogs.join('\n');
-            if (debugOpen) {
-                debugConsole.scrollTop = debugConsole.scrollHeight;
-            }
+            // Auto scroll
+            setTimeout(() => {
+                if (debugConsole && debugOpen) {
+                    debugConsole.scrollTop = debugConsole.scrollHeight;
+                }
+            }, 0);
         };
         
         toggleBtn.addEventListener('click', function(e) {
@@ -226,21 +230,8 @@
             debugWrapper.style.display = debugOpen ? 'block' : 'none';
             toggleBtn.textContent = debugOpen ? '✕' : '🔼';
             toggleBtn.style.background = debugOpen ? '#ff3333' : '#0f0';
-            console.log('DEBUG TOGGLE:', debugOpen);
+            if (window.debugLog) window.debugLog('DEBUG TOGGLE: ' + debugOpen);
         });
-        
-        // Hijack console.log for debugging
-        const originalLog = console.log;
-        console.log = function(...args) {
-            originalLog.apply(console, args);
-            const msg = args.join(' ');
-            if (msg.includes('🔊') || msg.includes('📳') || msg.includes('✓') || msg.includes('AudioContext') || msg.includes('resume') || msg.includes('playSound')) {
-                window.debugLog(msg);
-            }
-        };
-        
-        // Initial log
-        window.debugLog('Debug console ready');
     </script>
     
     <!-- Notification Container -->
