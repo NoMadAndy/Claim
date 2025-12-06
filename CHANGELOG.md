@@ -1,5 +1,11 @@
 # Changelog
 
+## 2025-12-06 19:42:47
+**Files:** 2fileschanged,26insertions(+),6deletions(-)
+**Modified:**
+- `app/main.py`
+- `frontend/index.html`
+
 ## 2025-12-06 19:40:48
 **Files:** 1filechanged,2insertions(+),2deletions(-)
 **Modified:**

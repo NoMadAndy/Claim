@@ -93,7 +93,12 @@ async def serve_frontend():
     index_path = os.path.join(frontend_path, "index.html")
     if os.path.exists(index_path):
         with open(index_path, "r", encoding="utf-8") as f:
-            return HTMLResponse(content=f.read())
+            # Return with no-cache header to always get latest HTML
+            response = HTMLResponse(content=f.read())
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+            return response
     return HTMLResponse(content="<h1>Claim GPS Game</h1><p>Frontend not found</p>")
 
 # Serve static files (CSS, JS)
@@ -103,8 +108,23 @@ async def serve_css():
     css_path = os.path.join(frontend_path, "styles.css")
     if os.path.exists(css_path):
         with open(css_path, "r", encoding="utf-8") as f:
-            return Response(content=f.read(), media_type="text/css")
+            # CSS can be cached longer since we use cache busters
+            response = Response(content=f.read(), media_type="text/css")
+            response.headers["Cache-Control"] = "public, max-age=3600"
+            return response
     return Response(content="/* CSS not found */", media_type="text/css", status_code=404)
+
+@app.get("/app.js")
+async def serve_js():
+    """Serve JavaScript file"""
+    js_path = os.path.join(frontend_path, "app.js")
+    if os.path.exists(js_path):
+        with open(js_path, "r", encoding="utf-8") as f:
+            # JS can be cached longer since we use cache busters
+            response = Response(content=f.read(), media_type="application/javascript")
+            response.headers["Cache-Control"] = "public, max-age=3600"
+            return response
+    return Response(content="/* JS not found */", media_type="application/javascript", status_code=404)
 
 @app.get("/favicon.svg")
 async def serve_favicon():
