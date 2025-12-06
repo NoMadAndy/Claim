@@ -314,103 +314,55 @@
                 unlockLog('🎵 Unlock button pressed (' + e.type + ')');
                 unlockLog('🔹 Checkpoint 1: Button handler started');
 
-                // Wait briefly for soundManager
-                let tries = 0;
-                while (!window.soundManager && tries < 10) {
-                    await new Promise(r => setTimeout(r, 50));
-                    tries++;
-                }
-                unlockLog('🔹 Checkpoint 2: soundManager ready');
-
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 if (!AudioContext) {
                     unlockLog('✗ No AudioContext support', 'ERROR');
                     return;
                 }
-                unlockLog('🔹 Checkpoint 3: AudioContext available');
+                unlockLog('🔹 Checkpoint 2: AudioContext available');
 
                 try {
-                    unlockLog('🔹 Checkpoint 4: Entering try block');
+                    unlockLog('🔹 Checkpoint 3: Entering try block');
                     
-                    // Prefer reusing existing context; avoid closing to prevent device errors
-                    let ctx = window.soundManager ? window.soundManager.audioContext : null;
-                    try {
-                        if (!ctx || ctx.state === 'closed') {
-                            ctx = new AudioContext({ latencyHint: 'interactive' });
-                            unlockLog('🎵 Created new context, state: ' + ctx.state);
-                        } else {
-                            unlockLog('🎵 Reusing existing context, state: ' + ctx.state);
-                        }
-                    } catch (createErr) {
-                        unlockLog('✗ AudioContext create error: ' + createErr.message, 'ERROR');
-                        throw createErr;
-                    }
+                    // Create fresh context immediately
+                    let ctx = new AudioContext({ latencyHint: 'interactive' });
+                    unlockLog('🎵 Created new context, state: ' + ctx.state);
 
-                    const primeContext = (context) => {
-                        // Play a 1-sample silent buffer to fully unlock on iOS
-                        const buffer = context.createBuffer(1, 1, context.sampleRate);
-                        const source = context.createBufferSource();
-                        source.buffer = buffer;
-                        source.connect(context.destination);
-                        source.start(0);
-                    };
+                    // IMMEDIATELY play a real sound within the gesture to unlock iOS
+                    const now = ctx.currentTime;
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    
+                    // Silent/barely-audible unlock tone
+                    gain.gain.setValueAtTime(0.0001, now);
+                    gain.gain.exponentialRampToValueAtTime(0.00001, now + 0.05);
+                    osc.frequency.value = 440;
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                    unlockLog('🎵 Immediate tone played (within gesture)');
 
-                    if (window.soundManager) {
-                        window.soundManager.audioContext = ctx;
-                        window.soundManager.audioInitialized = true;
-                        window.soundManager.contextResumed = false;
-                    }
-
-                    let resumeError = null;
-                    unlockLog('🎵 State before resume: ' + ctx.state);
+                    // Now try resume
+                    unlockLog('🎵 Attempting resume...');
                     try {
                         await ctx.resume();
-                        unlockLog('🎵 Resume requested');
+                        unlockLog('🎵 Resume successful');
                     } catch (err) {
-                        resumeError = err;
                         unlockLog('✗ Resume failed: ' + err.message, 'ERROR');
                     }
 
-                    // Prime immediately after resume attempt
-                    try {
-                        primeContext(ctx);
-                        unlockLog('🎵 Prime buffer played');
-                        setTimeout(() => {
-                            try {
-                                primeContext(ctx);
-                                unlockLog('🎵 Prime buffer played (delayed)');
-                            } catch (e4) {
-                                unlockLog('⚠ Delayed prime failed: ' + e4.message, 'WARN');
-                            }
-                        }, 60);
-                    } catch (e3) {
-                        unlockLog('⚠ Prime failed: ' + e3.message, 'WARN');
+                    // Store context
+                    if (window.soundManager) {
+                        window.soundManager.audioContext = ctx;
+                        window.soundManager.audioInitialized = true;
+                        window.soundManager.contextResumed = true;
                     }
 
-                    let finalState = ctx.state;
+                    const finalState = ctx.state;
                     unlockLog('🎵 Final state: ' + finalState);
 
-                    // If still suspended and resume failed, try a fresh context once
-                    if (finalState !== 'running' && resumeError) {
-                        unlockLog('⚠ Retrying with fresh context');
-                        try {
-                            ctx = new AudioContext({ latencyHint: 'interactive' });
-                            if (window.soundManager) {
-                                window.soundManager.audioContext = ctx;
-                                window.soundManager.audioInitialized = true;
-                            }
-                            await ctx.resume();
-                            primeContext(ctx);
-                            finalState = ctx.state;
-                            unlockLog('🎵 Retry final state: ' + finalState);
-                        } catch (e4) {
-                            unlockLog('✗ Retry failed: ' + e4.message, 'ERROR');
-                        }
-                    }
-
                     if (finalState === 'running' && window.soundManager) {
-                        window.soundManager.contextResumed = true;
-                        window.soundManager.playUnlockTone();
                         unlockLog('✓ Audio READY');
                         enableAudioBtn.textContent = '✅ Ready';
                         enableAudioBtn.style.background = '#00ff00';
@@ -419,7 +371,7 @@
                             enableAudioBtn.style.background = '#ffcc00';
                         }, 2000);
                     } else {
-                        unlockLog('⚠ Still not running', 'WARN');
+                        unlockLog('⚠ Still suspended', 'WARN');
                     }
                 } catch (err) {
                     unlockLog('✗ Error: ' + err.message, 'ERROR');
