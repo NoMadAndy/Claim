@@ -116,8 +116,11 @@ class SoundManager {
         console.log(msg);
         if (window.debugLog) window.debugLog(msg);
 
-        // Ensure AudioContext exists and is running
-        await this.ensureContext(true);
+        // Check if AudioContext exists and is running (no auto-resume on iOS)
+        if (!this.audioContext) {
+            if (window.debugLog) window.debugLog('🔊 No AudioContext - press Unlock first!');
+            return;
+        }
         
         // Always try vibration as fallback
         if (!this.soundsEnabled) {
