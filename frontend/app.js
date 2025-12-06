@@ -23,42 +23,39 @@ class SoundManager {
     }
 
     setupGlobalListeners() {
-        // Setup global listeners for auto-unlock on ANY user interaction
-        // This ensures audio context is unlocked before any sound playback attempt
+        // Setup global listeners for aggressive auto-unlock on ANY user interaction
+        // iOS requires multiple unlock attempts, so we trigger on EVERY click/touch
         const unlockAudio = () => {
-            if (window.soundManager?.unlocked) return; // Already unlocked
-            
             console.log('🎵 Auto-unlock triggered by user interaction');
             if (window.debugLog) window.debugLog('🎵 Auto-unlock triggered by user interaction');
-            
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            const ctx = new AudioContext({ latencyHint: 'interactive' });
-            
-            // Play 3 quick beeps
-            for (let i = 0; i < 3; i++) {
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.frequency.value = 440 + (i * 100); // 440Hz, 540Hz, 640Hz
-                gain.gain.setValueAtTime(0.1, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.03);
-                osc.start(ctx.currentTime + (i * 0.1));
-                osc.stop(ctx.currentTime + (i * 0.1) + 0.03);
-            }
-            
-            ctx.resume().catch(() => {});
-            window.soundManager.setUnlocked(ctx);
-            serverLog('🎵 Auto-unlock triggered by user interaction');
-            
-            // Remove listeners after first unlock
-            document.removeEventListener('click', unlockAudio);
-            document.removeEventListener('touchstart', unlockAudio);
+            this.performUnlock();
         };
         
-        // Listen for first user interaction (touch or click)
-        document.addEventListener('click', unlockAudio, { once: false });
-        document.addEventListener('touchstart', unlockAudio, { once: false });
+        // Listen for EVERY user interaction (not just first)
+        document.addEventListener('click', unlockAudio, { passive: true });
+        document.addEventListener('touchstart', unlockAudio, { passive: true });
+    }
+
+    performUnlock() {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AudioContext({ latencyHint: 'interactive' });
+        
+        // Play 3 quick beeps
+        for (let i = 0; i < 3; i++) {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = 440 + (i * 100); // 440Hz, 540Hz, 640Hz
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.03);
+            osc.start(ctx.currentTime + (i * 0.1));
+            osc.stop(ctx.currentTime + (i * 0.1) + 0.03);
+        }
+        
+        ctx.resume().catch(() => {});
+        this.setUnlocked(ctx);
+        serverLog('🎵 Auto-unlock performed');
     }
 
     // Called by unlock button to mark audio as unlocked
