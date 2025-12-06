@@ -20,12 +20,10 @@ async def start_track(
 ):
     """Start a new track"""
     # End any existing active tracks for this user
-    active_tracks = db.query(Track).filter(
-        Track.user_id == current_user.id,
-        Track.is_active == True
-    ).all()
-    
-    for active_track in active_tracks:
+    while True:
+        active_track = tracking_service.get_active_track(db, current_user.id)
+        if not active_track:
+            break
         tracking_service.end_track(db, active_track.id)
         print(f"Auto-ended old track {active_track.id} for user {current_user.id}")
     
