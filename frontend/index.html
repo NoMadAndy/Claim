@@ -328,16 +328,21 @@
                     const playTone = () => {
                         try {
                             const now = ctx.currentTime;
-                            const osc = ctx.createOscillator();
-                            const gain = ctx.createGain();
-                            osc.connect(gain);
-                            gain.connect(ctx.destination);
                             
-                            gain.gain.setValueAtTime(0.0001, now);
-                            gain.gain.exponentialRampToValueAtTime(0.00001, now + 0.05);
-                            osc.frequency.value = 440;
-                            osc.start(now);
-                            osc.stop(now + 0.05);
+                            // Play 3 quick beeps to ensure iOS really unlocks audio
+                            for (let i = 0; i < 3; i++) {
+                                const osc = ctx.createOscillator();
+                                const gain = ctx.createGain();
+                                osc.connect(gain);
+                                gain.connect(ctx.destination);
+                                
+                                const startTime = now + i * 0.1;
+                                gain.gain.setValueAtTime(0.0001, startTime);
+                                gain.gain.exponentialRampToValueAtTime(0.00001, startTime + 0.03);
+                                osc.frequency.value = 440 + (i * 100);
+                                osc.start(startTime);
+                                osc.stop(startTime + 0.03);
+                            }
                             return true;
                         } catch (err) {
                             unlockLog('⚠ Tone play error: ' + err.message, 'WARN');
