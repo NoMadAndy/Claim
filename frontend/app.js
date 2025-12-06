@@ -129,9 +129,10 @@ class SoundManager {
         console.log(msg);
         if (window.debugLog) window.debugLog(msg);
 
-        // Check if AudioContext exists and is running (no auto-resume on iOS)
-        if (!this.audioContext) {
-            if (window.debugLog) window.debugLog('🔊 No AudioContext - press Unlock first!');
+        // Check if unlocked and AudioContext exists
+        if (!this.unlocked || !this.audioContext) {
+            if (window.debugLog) window.debugLog('🔊 Not unlocked yet - press Unlock first!');
+            this.playHaptic([30]);
             return;
         }
         
@@ -153,13 +154,6 @@ class SoundManager {
                     this.playHaptic([200]);
                     break;
             }
-            return;
-        }
-
-        if (!this.audioContext) {
-            console.log('🔊 AudioContext not initialized');
-            if (window.debugLog) window.debugLog('🔊 AudioContext not initialized');
-            this.playHaptic([30]);
             return;
         }
 
@@ -221,6 +215,7 @@ class SoundManager {
             }
         } catch (e) {
             console.warn('Sound playback failed:', e);
+            if (window.debugLog) window.debugLog('🔊 Playback error: ' + e.message);
             this.playHaptic([30]);
         }
     }
