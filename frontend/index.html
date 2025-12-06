@@ -162,26 +162,28 @@
     </div>
     
     <!-- Debug Console (visible overlay) -->
-    <div id="debug-console" style="
+    <div id="debug-wrapper" style="
         position: fixed;
-        top: 140px;
+        top: 125px;
         left: 0;
         right: 0;
-        background: rgba(0,0,0,0.95);
-        color: #0f0;
-        font-family: monospace;
-        font-size: 11px;
-        padding: 40px 10px 10px 10px;
-        border-bottom: 2px solid #0f0;
-        border-radius: 0;
-        max-height: 220px;
-        overflow-y: auto;
         z-index: 10000;
-        white-space: pre-wrap;
-        word-break: break-all;
-        margin-top: 0;
         display: none;
-    "></div>
+    ">
+        <div id="debug-console" style="
+            background: rgba(0,0,0,0.98);
+            color: #0f0;
+            font-family: monospace;
+            font-size: 11px;
+            padding: 10px;
+            border-bottom: 2px solid #0f0;
+            max-height: 250px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            line-height: 1.4;
+        ">Debug logs appear here...</div>
+    </div>
     
     <button id="toggle-debug" style="
         position: fixed;
@@ -189,47 +191,56 @@
         right: 10px;
         background: #0f0;
         color: black;
-        border: none;
-        padding: 8px 12px;
+        border: 2px solid #0f0;
+        padding: 8px 14px;
         border-radius: 4px;
         font-weight: bold;
         z-index: 9999;
         cursor: pointer;
-        font-size: 14px;
-        width: 60px;
+        font-size: 16px;
+        width: auto;
+        min-width: 50px;
     ">🔼</button>
     
     <script>
         // Global debug logger
         const debugLogs = [];
+        const debugWrapper = document.getElementById('debug-wrapper');
         const debugConsole = document.getElementById('debug-console');
         const toggleBtn = document.getElementById('toggle-debug');
         let debugOpen = false;
         
         window.debugLog = function(msg) {
             debugLogs.push('[' + new Date().toLocaleTimeString() + '] ' + msg);
-            if (debugLogs.length > 20) debugLogs.shift();
+            if (debugLogs.length > 25) debugLogs.shift();
             debugConsole.textContent = debugLogs.join('\n');
+            if (debugOpen) {
+                debugConsole.scrollTop = debugConsole.scrollHeight;
+            }
         };
         
         toggleBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
             debugOpen = !debugOpen;
-            debugConsole.style.display = debugOpen ? 'block' : 'none';
+            debugWrapper.style.display = debugOpen ? 'block' : 'none';
             toggleBtn.textContent = debugOpen ? '✕' : '🔼';
-            toggleBtn.style.background = debugOpen ? '#f00' : '#0f0';
-            debugConsole.scrollTop = debugConsole.scrollHeight;
+            toggleBtn.style.background = debugOpen ? '#ff3333' : '#0f0';
+            console.log('DEBUG TOGGLE:', debugOpen);
         });
         
         // Hijack console.log for debugging
         const originalLog = console.log;
         console.log = function(...args) {
             originalLog.apply(console, args);
-            if (args[0] && (args[0].includes('🔊') || args[0].includes('📳') || args[0].includes('✓') || args[0].includes('AudioContext'))) {
-                window.debugLog(args.join(' '));
+            const msg = args.join(' ');
+            if (msg.includes('🔊') || msg.includes('📳') || msg.includes('✓') || msg.includes('AudioContext') || msg.includes('resume') || msg.includes('playSound')) {
+                window.debugLog(msg);
             }
         };
+        
+        // Initial log
+        window.debugLog('Debug console ready');
     </script>
     
     <!-- Notification Container -->
