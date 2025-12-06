@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    container_name: claim-db
+    environment:
+      POSTGRES_USER: claim_user
+      POSTGRES_PASSWORD: claim_password
+      POSTGRES_DB: claim_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U claim_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    container_name: claim-app
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/workspace:cached
+    working_dir: /workspace
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      DATABASE_URL: postgresql://claim_user:claim_password@db:5432/claim_db
+      SECRET_KEY: your-secret-key-change-in-production
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 10080
+
+volumes:
+  postgres_data:

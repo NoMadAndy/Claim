@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Background Circle -->
+  <circle cx="32" cy="32" r="32" fill="#667eea"/>
+  
+  <!-- Map/Location Pin -->
+  <path d="M32 12 C24 12, 18 18, 18 28 C18 40, 32 52, 32 52 C32 52, 46 40, 46 28 C46 18, 40 12, 32 12 Z" fill="#22c55e" stroke="#ffffff" stroke-width="2"/>
+  
+  <!-- Inner Circle (Claim Point) -->
+  <circle cx="32" cy="28" r="6" fill="#ffffff"/>
+  
+  <!-- GPS Signal Rings -->
+  <circle cx="32" cy="32" r="18" fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.6"/>
+  <circle cx="32" cy="32" r="24" fill="none" stroke="#ffffff" stroke-width="1" opacity="0.3"/>
+</svg>

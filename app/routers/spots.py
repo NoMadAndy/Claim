@@ -1,0 +1,133 @@
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+from geoalchemy2.functions import ST_X, ST_Y
+from app.database import get_db
+from app.schemas import SpotCreate, SpotResponse
+from app.services import spot_service
+from app.routers.auth import get_current_user
+from app.models import User, UserRole, Spot
+
+router = APIRouter(prefix="/api/spots", tags=["spots"])
+
+
+@router.post("/", response_model=SpotResponse, status_code=status.HTTP_201_CREATED)
+async def create_spot(
+    spot_data: SpotCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new spot (Creator/Admin only)"""
+    if current_user.role not in [UserRole.CREATOR, UserRole.ADMIN]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only creators and admins can create spots"
+        )
+    
+    spot = spot_service.create_spot(db, spot_data, current_user)
+    
+    # Extract coordinates for response
+    lat = db.execute(func.ST_Y(spot.location)).scalar()
+    lon = db.execute(func.ST_X(spot.location)).scalar()
+    
+    return SpotResponse(
+        id=spot.id,
+        name=spot.name,
+        description=spot.description,
+        latitude=lat,
+        longitude=lon,
+        is_permanent=spot.is_permanent,
+        is_loot=spot.is_loot,
+        created_at=spot.created_at,
+        creator_id=spot.creator_id
+    )
+
+
+@router.get("/nearby", response_model=List[SpotResponse])
+async def get_nearby_spots(
+    latitude: float = Query(..., ge=-90, le=90),
+    longitude: float = Query(..., ge=-180, le=180),
+    radius: float = Query(1000, ge=0, le=10000),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get spots within radius of a location"""
+    spots_with_distance = spot_service.get_spots_in_radius(db, latitude, longitude, radius)
+    
+    result = []
+    for spot, distance in spots_with_distance:
+        lat = db.execute(func.ST_Y(spot.location)).scalar()
+        lon = db.execute(func.ST_X(spot.location)).scalar()
+        
+        result.append(SpotResponse(
+            id=spot.id,
+            name=spot.name,
+            description=spot.description,
+            latitude=lat,
+            longitude=lon,
+            is_permanent=spot.is_permanent,
+            is_loot=spot.is_loot,
+            created_at=spot.created_at,
+            creator_id=spot.creator_id,
+            loot_expires_at=spot.loot_expires_at,
+            loot_xp=spot.loot_xp
+        ))
+    
+    return result
+
+
+@router.get("/{spot_id}", response_model=SpotResponse)
+async def get_spot(
+    spot_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get spot by ID"""
+    spot = spot_service.get_spot_by_id(db, spot_id)
+    if not spot:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Spot not found"
+        )
+    
+    lat = db.execute(func.ST_Y(spot.location)).scalar()
+    lon = db.execute(func.ST_X(spot.location)).scalar()
+    
+    return SpotResponse(
+        id=spot.id,
+        name=spot.name,
+        description=spot.description,
+        latitude=lat,
+        longitude=lon,
+        is_permanent=spot.is_permanent,
+        is_loot=spot.is_loot,
+        created_at=spot.created_at,
+        creator_id=spot.creator_id,
+        loot_expires_at=spot.loot_expires_at,
+        loot_xp=spot.loot_xp
+    )
+
+
+@router.delete("/{spot_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_spot(
+    spot_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a spot (Admin only or creator)"""
+    spot = spot_service.get_spot_by_id(db, spot_id)
+    if not spot:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Spot not found"
+        )
+    
+    if current_user.role != UserRole.ADMIN and spot.creator_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to delete this spot"
+        )
+    
+    spot_service.delete_spot(db, spot_id)
+    return None

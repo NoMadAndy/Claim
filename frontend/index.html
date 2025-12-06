@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Claim - GPS Game</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.css" />
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Stats Bar (Top) -->
+    <div id="stats-bar" class="stats-bar">
+        <div class="stats-content">
+            <div class="stat-item">
+                <span class="stat-label">Level</span>
+                <span class="stat-value" id="level">1</span>
+            </div>
+            <div class="stat-item xp-container">
+                <span class="stat-label">XP</span>
+                <div class="xp-bar">
+                    <div class="xp-fill" id="xp-fill"></div>
+                    <span class="xp-text" id="xp-text">0/100</span>
+                </div>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Claims</span>
+                <span class="stat-value" id="claims">0</span>
+            </div>
+        </div>
+        <button class="stats-toggle" id="stats-toggle">▼</button>
+    </div>
+    
+    <!-- Detailed Stats Panel (Collapsible) -->
+    <div id="stats-detail" class="stats-detail hidden">
+        <div class="detail-row">
+            <span>Total Logs:</span>
+            <span id="total-logs">0</span>
+        </div>
+        <div class="detail-row">
+            <span>Spots Claimed:</span>
+            <span id="spots-claimed">0</span>
+        </div>
+        <div class="detail-row">
+            <span>Active Tracks:</span>
+            <span id="active-tracks">0</span>
+        </div>
+        <div class="detail-row">
+            <span>Inventory:</span>
+            <span id="inventory-count">0</span>
+        </div>
+    </div>
+    
+    <!-- Map Container -->
+    <div id="map"></div>
+    
+    <!-- Action Bar (Bottom) -->
+    <div class="action-bar">
+        <button class="action-btn" id="btn-tracking" title="Toggle Tracking">
+            <span class="btn-icon">📍</span>
+            <span class="btn-label">Track</span>
+        </button>
+        <button class="action-btn" id="btn-follow" title="Follow GPS">
+            <span class="btn-icon">🎯</span>
+            <span class="btn-label">Follow</span>
+        </button>
+        <button class="action-btn" id="btn-compass" title="Enable Compass">
+            <span class="btn-icon">🧭</span>
+            <span class="btn-label">Compass</span>
+        </button>
+        <button class="action-btn" id="btn-center" title="Center Map">
+            <span class="btn-icon">⊙</span>
+            <span class="btn-label">Center</span>
+        </button>
+        <button class="action-btn" id="btn-heatmap" title="Toggle Heatmap">
+            <span class="btn-icon">🔥</span>
+            <span class="btn-label">Heat</span>
+        </button>
+        <button class="action-btn" id="btn-layers" title="Map Layers">
+            <span class="btn-icon">🗺️</span>
+            <span class="btn-label">Layers</span>
+        </button>
+    </div>
+    
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal">
+        <div class="modal-content">
+            <h2>Claim GPS Game</h2>
+            <div id="login-form" class="form-section">
+                <h3>Login</h3>
+                <input type="text" id="login-username" placeholder="Username" autocomplete="username">
+                <input type="password" id="login-password" placeholder="Password" autocomplete="current-password">
+                <button id="btn-login">Login</button>
+                <p>Don't have an account? <a href="#" id="show-register">Register</a></p>
+            </div>
+            <div id="register-form" class="form-section hidden">
+                <h3>Register</h3>
+                <input type="text" id="register-username" placeholder="Username" autocomplete="username">
+                <input type="email" id="register-email" placeholder="Email" autocomplete="email">
+                <input type="password" id="register-password" placeholder="Password" autocomplete="new-password">
+                <button id="btn-register">Register</button>
+                <p>Already have an account? <a href="#" id="show-login">Login</a></p>
+            </div>
+            <div id="auth-message" class="message"></div>
+        </div>
+    </div>
+    
+    <!-- Notification Container -->
+    <div id="notifications" class="notifications"></div>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    
+    <!-- Custom JS -->
+    <script src="app.js"></script>
+</body>
+</html>
