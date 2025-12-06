@@ -271,7 +271,12 @@ document.addEventListener('DOMContentLoaded', init);
 
 function init() {
     // Check for existing auth
-    authToken = localStorage.getItem('claim_token');
+    try {
+        authToken = localStorage.getItem('claim_token');
+    } catch (e) {
+        console.warn('Storage blocked:', e);
+        authToken = null;
+    }
     
     if (!authToken) {
         showLoginModal();
@@ -286,17 +291,21 @@ function init() {
 
 function setupEventListeners() {
     // Auth buttons
-    document.getElementById('btn-login').addEventListener('click', handleLogin);
-    document.getElementById('btn-register').addEventListener('click', handleRegister);
-    document.getElementById('show-register').addEventListener('click', (e) => {
+    const btnLogin = document.getElementById('btn-login');
+    if (btnLogin) btnLogin.addEventListener('click', handleLogin);
+    const btnRegister = document.getElementById('btn-register');
+    if (btnRegister) btnRegister.addEventListener('click', handleRegister);
+    const showRegister = document.getElementById('show-register');
+    if (showRegister) showRegister.addEventListener('click', (e) => {
         e.preventDefault();
-        document.getElementById('login-form').classList.add('hidden');
-        document.getElementById('register-form').classList.remove('hidden');
+        document.getElementById('login-form')?.classList.add('hidden');
+        document.getElementById('register-form')?.classList.remove('hidden');
     });
-    document.getElementById('show-login').addEventListener('click', (e) => {
+    const showLogin = document.getElementById('show-login');
+    if (showLogin) showLogin.addEventListener('click', (e) => {
         e.preventDefault();
-        document.getElementById('register-form').classList.add('hidden');
-        document.getElementById('login-form').classList.remove('hidden');
+        document.getElementById('register-form')?.classList.add('hidden');
+        document.getElementById('login-form')?.classList.remove('hidden');
     });
     
     // Logout button
@@ -306,21 +315,21 @@ function setupEventListeners() {
     }
     
     // Action buttons
-    document.getElementById('btn-tracking').addEventListener('click', toggleTracking);
-    document.getElementById('btn-follow').addEventListener('click', toggleFollow);
-    document.getElementById('btn-compass').addEventListener('click', toggleCompass);
-    document.getElementById('btn-layers').addEventListener('click', showLayerMenu);
-    document.getElementById('btn-create-spot').addEventListener('click', toggleSpotCreationMode);
-    document.getElementById('btn-wakelock').addEventListener('click', toggleWakeLock);
-    document.getElementById('btn-settings').addEventListener('click', showSettings);
+    document.getElementById('btn-tracking')?.addEventListener('click', toggleTracking);
+    document.getElementById('btn-follow')?.addEventListener('click', toggleFollow);
+    document.getElementById('btn-compass')?.addEventListener('click', toggleCompass);
+    document.getElementById('btn-layers')?.addEventListener('click', showLayerMenu);
+    document.getElementById('btn-create-spot')?.addEventListener('click', toggleSpotCreationMode);
+    document.getElementById('btn-wakelock')?.addEventListener('click', toggleWakeLock);
+    document.getElementById('btn-settings')?.addEventListener('click', showSettings);
     
     // Settings modal
-    document.getElementById('btn-close-settings').addEventListener('click', closeSettings);
-    document.getElementById('setting-sound-toggle').addEventListener('change', toggleSound);
-    document.getElementById('setting-volume-slider').addEventListener('input', changeVolume);
+    document.getElementById('btn-close-settings')?.addEventListener('click', closeSettings);
+    document.getElementById('setting-sound-toggle')?.addEventListener('change', toggleSound);
+    document.getElementById('setting-volume-slider')?.addEventListener('input', changeVolume);
     
     // Stats toggle
-    document.getElementById('stats-toggle').addEventListener('click', toggleStatsDetail);
+    document.getElementById('stats-toggle')?.addEventListener('click', toggleStatsDetail);
 }
 
 // Authentication
