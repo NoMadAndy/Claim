@@ -312,56 +312,52 @@
                 e.preventDefault();
                 e.stopPropagation();
                 unlockLog('🎵 Unlock button pressed (' + e.type + ')');
-                unlockLog('🔹 Checkpoint 1: Button handler started');
 
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 if (!AudioContext) {
                     unlockLog('✗ No AudioContext support', 'ERROR');
                     return;
                 }
-                unlockLog('🔹 Checkpoint 2: AudioContext available');
 
                 try {
-                    unlockLog('🔹 Checkpoint 3: Entering try block');
-                    
-                    // Create fresh context immediately
+                    // Create fresh context
                     let ctx = new AudioContext({ latencyHint: 'interactive' });
-                    unlockLog('🎵 Created new context, state: ' + ctx.state);
+                    unlockLog('🎵 AudioContext created, state: ' + ctx.state);
 
-                    // IMMEDIATELY play a real sound within the gesture to unlock iOS
-                    const now = ctx.currentTime;
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    osc.connect(gain);
-                    gain.connect(ctx.destination);
-                    
-                    // Silent/barely-audible unlock tone
-                    gain.gain.setValueAtTime(0.0001, now);
-                    gain.gain.exponentialRampToValueAtTime(0.00001, now + 0.05);
-                    osc.frequency.value = 440;
-                    osc.start(now);
-                    osc.stop(now + 0.05);
-                    unlockLog('🎵 Immediate tone played (within gesture)');
+                    // Play unlock tone immediately (this triggers audio on iOS)
+                    const playTone = () => {
+                        try {
+                            const now = ctx.currentTime;
+                            const osc = ctx.createOscillator();
+                            const gain = ctx.createGain();
+                            osc.connect(gain);
+                            gain.connect(ctx.destination);
+                            
+                            gain.gain.setValueAtTime(0.0001, now);
+                            gain.gain.exponentialRampToValueAtTime(0.00001, now + 0.05);
+                            osc.frequency.value = 440;
+                            osc.start(now);
+                            osc.stop(now + 0.05);
+                            return true;
+                        } catch (err) {
+                            unlockLog('⚠ Tone play error: ' + err.message, 'WARN');
+                            return false;
+                        }
+                    };
 
-                    // Now try resume with explicit timeout
-                    unlockLog('🎵 Attempting resume...');
-                    let resumeSuccess = false;
-                    try {
-                        // Create a promise that rejects after 3 seconds
-                        const resumePromise = ctx.resume();
-                        const timeoutPromise = new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error('Resume timeout')), 3000)
-                        );
-                        
-                        await Promise.race([resumePromise, timeoutPromise]);
-                        resumeSuccess = true;
-                        unlockLog('🎵 Resume successful');
-                    } catch (err) {
-                        unlockLog('✗ Resume error: ' + err.message, 'ERROR');
+                    if (playTone()) {
+                        unlockLog('🎵 Tone played');
                     }
 
-                    unlockLog('🎵 Resume result: ' + (resumeSuccess ? 'success' : 'failed'));
-                    unlockLog('🎵 Context state after resume: ' + ctx.state);
+                    // Try resume but don't wait forever
+                    unlockLog('🎵 Attempting resume...');
+                    try {
+                        ctx.resume().catch(err => {
+                            unlockLog('⚠ Resume rejected: ' + err.message, 'WARN');
+                        });
+                    } catch (err) {
+                        unlockLog('⚠ Resume threw: ' + err.message, 'WARN');
+                    }
 
                     // Store context
                     if (window.soundManager) {
@@ -370,25 +366,16 @@
                         window.soundManager.contextResumed = true;
                     }
 
-                    const finalState = ctx.state;
-                    unlockLog('🎵 Final state: ' + finalState);
-
-                    if (finalState === 'running' && window.soundManager) {
-                        unlockLog('✓ Audio READY');
-                        enableAudioBtn.textContent = '✅ Ready';
-                        enableAudioBtn.style.background = '#00ff00';
-                        setTimeout(() => {
-                            enableAudioBtn.textContent = '🔊 Unlock';
-                            enableAudioBtn.style.background = '#ffcc00';
-                        }, 2000);
-                    } else {
-                        unlockLog('⚠ Still suspended', 'WARN');
-                    }
+                    unlockLog('✓ Audio unlocked (context ready for playback)');
+                    enableAudioBtn.textContent = '✅ Ready';
+                    enableAudioBtn.style.background = '#00ff00';
+                    setTimeout(() => {
+                        enableAudioBtn.textContent = '🔊 Unlock';
+                        enableAudioBtn.style.background = '#ffcc00';
+                    }, 2000);
                 } catch (err) {
                     unlockLog('✗ Error: ' + err.message, 'ERROR');
-                    unlockLog('✗ Stack: ' + err.stack, 'ERROR');
                 }
-                unlockLog('🔹 Checkpoint 9: handleUnlock complete');
             };
 
             // Inline fallback for cases where addEventListener is skipped by the browser.
