@@ -43,11 +43,14 @@ class SoundManager {
         
         if (this.audioContext.state === 'suspended') {
             this.resumeAttempts++;
+            if (window.debugLog) window.debugLog('⏸️ Resume attempt #' + this.resumeAttempts);
             this.audioContext.resume().then(() => {
                 this.contextResumed = true;
                 console.log('✓ AudioContext resumed (attempt', this.resumeAttempts + ')');
+                if (window.debugLog) window.debugLog('✓ AudioContext resumed #' + this.resumeAttempts);
             }).catch(err => {
                 console.warn('Resume failed:', err);
+                if (window.debugLog) window.debugLog('✗ Resume failed: ' + err.message);
             });
         } else if (this.audioContext.state === 'running') {
             this.contextResumed = true;
@@ -60,20 +63,26 @@ class SoundManager {
             if (navigator.vibrate) {
                 const result = navigator.vibrate(pattern);
                 console.log('📳 Haptic triggered:', pattern, 'result:', result);
+                if (window.debugLog) window.debugLog('📳 Haptic: ' + JSON.stringify(pattern) + ' result: ' + result);
             } else {
                 console.log('📳 Vibration API not available');
+                if (window.debugLog) window.debugLog('📳 Vibration API not available');
             }
         } catch (e) {
             console.log('📳 Haptic error:', e);
+            if (window.debugLog) window.debugLog('📳 Haptic error: ' + e.message);
         }
     }
 
     playSound(type) {
-        console.log('🔊 playSound called:', type, 'soundsEnabled:', this.soundsEnabled, 'volume:', this.volume);
+        const msg = '🔊 playSound: ' + type + ' enabled:' + this.soundsEnabled + ' vol:' + this.volume;
+        console.log(msg);
+        if (window.debugLog) window.debugLog(msg);
         
         // Always try vibration as fallback
         if (!this.soundsEnabled) {
             console.log('🔊 Sound disabled - using haptics only');
+            if (window.debugLog) window.debugLog('🔊 Sound disabled - haptics only');
             switch (type) {
                 case 'log':
                     this.playHaptic([30, 30, 30]);
@@ -93,15 +102,19 @@ class SoundManager {
 
         if (!this.audioContext) {
             console.log('🔊 AudioContext not initialized');
+            if (window.debugLog) window.debugLog('🔊 AudioContext not initialized');
             this.playHaptic([30]);
             return;
         }
 
-        console.log('🔊 AudioContext state:', this.audioContext.state);
+        const ctxState = this.audioContext.state;
+        console.log('🔊 AudioContext state:', ctxState);
+        if (window.debugLog) window.debugLog('🔊 AudioContext state: ' + ctxState);
 
         // Always try to resume
         if (this.audioContext.state !== 'running') {
             console.log('🔊 Attempting to resume AudioContext...');
+            if (window.debugLog) window.debugLog('🔊 Attempting resume...');
             this.resumeContext();
         }
 
@@ -109,6 +122,7 @@ class SoundManager {
             // If context still not running, use haptics
             if (this.audioContext.state !== 'running') {
                 console.log('🔊 AudioContext still suspended - using haptics');
+                if (window.debugLog) window.debugLog('🔊 Still suspended - haptics');
                 this.playHaptic([30]);
                 return;
             }
