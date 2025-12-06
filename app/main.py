@@ -135,15 +135,6 @@ async def serve_favicon():
             return Response(content=f.read(), media_type="image/svg+xml")
     return Response(content="", media_type="image/svg+xml", status_code=404)
 
-@app.get("/app.js")
-async def serve_js():
-    """Serve JavaScript file"""
-    js_path = os.path.join(frontend_path, "app.js")
-    if os.path.exists(js_path):
-        with open(js_path, "r", encoding="utf-8") as f:
-            return Response(content=f.read(), media_type="application/javascript")
-    return Response(content="// JS not found", media_type="application/javascript", status_code=404)
-
 
 # Health check endpoint
 @app.get("/api/health")
