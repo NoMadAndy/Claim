@@ -231,10 +231,11 @@
         font-weight: bold;
         z-index: 12000;
         cursor: pointer;
+        pointer-events: auto;
         font-size: 14px;
         width: auto;
         min-width: 90px;
-    ">🔊 Unlock</button>
+    " onclick="window.handleUnlockButton && window.handleUnlockButton(event)">🔊 Unlock</button>
 
     <!-- Notification Container -->
     <div id="notifications" class="notifications"></div>
