@@ -277,10 +277,10 @@
             // Enable button immediately (no waiting for soundManager)
             enableAudioBtn.disabled = false;
 
-            enableAudioBtn.addEventListener('click', async function(e) {
+            const handleUnlock = async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                window.debugLog('🎵 Unlock button pressed');
+                window.debugLog('🎵 Unlock button pressed (' + e.type + ')');
 
                 // Wait briefly for soundManager
                 let tries = 0;
@@ -342,7 +342,11 @@
                 } catch (err) {
                     window.debugLog('✗ Error: ' + err.message);
                 }
-            });
+            };
+
+            enableAudioBtn.addEventListener('click', handleUnlock, { passive: false });
+            enableAudioBtn.addEventListener('touchstart', handleUnlock, { passive: false });
+            enableAudioBtn.addEventListener('pointerdown', handleUnlock, { passive: false });
         });
     </script>
 
