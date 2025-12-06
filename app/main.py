@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse, Response
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
 import os
+from datetime import datetime
 
 from app.database import get_db
 from app.routers import auth, spots, logs, claims, tracks, items
