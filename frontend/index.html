@@ -265,6 +265,13 @@
                 }, 0);
             };
 
+            // Mirror logs to console for easy copy/paste.
+            const logBoth = (msg) => {
+                if (window.debugLog) window.debugLog(msg);
+                console.log(msg);
+            };
+            window.logBoth = logBoth;
+
             toggleBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -281,7 +288,7 @@
             const handleUnlock = async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                window.debugLog('🎵 Unlock button pressed (' + e.type + ')');
+                logBoth('🎵 Unlock button pressed (' + e.type + ')');
 
                 // Wait briefly for soundManager
                 let tries = 0;
@@ -299,7 +306,7 @@
                 try {
                     const AudioContext = window.AudioContext || window.webkitAudioContext;
                     if (!AudioContext) {
-                        window.debugLog('✗ No AudioContext support');
+                        logBoth('✗ No AudioContext support');
                         return;
                     }
 
@@ -307,9 +314,9 @@
                     let ctx = window.soundManager ? window.soundManager.audioContext : null;
                     if (!ctx || ctx.state === 'closed') {
                         ctx = new AudioContext({ latencyHint: 'interactive' });
-                        window.debugLog('🎵 Created new context, state: ' + ctx.state);
+                        logBoth('🎵 Created new context, state: ' + ctx.state);
                     } else {
-                        window.debugLog('🎵 Reusing existing context, state: ' + ctx.state);
+                        logBoth('🎵 Reusing existing context, state: ' + ctx.state);
                     }
 
                     const primeContext = (context) => {
@@ -330,26 +337,26 @@
                     let resumeError = null;
                     try {
                         await ctx.resume();
-                        window.debugLog('🎵 Resume requested');
+                        logBoth('🎵 Resume requested');
                     } catch (err) {
                         resumeError = err;
-                        window.debugLog('✗ Resume failed: ' + err.message);
+                        logBoth('✗ Resume failed: ' + err.message);
                     }
 
                     // Prime immediately after resume attempt
                     try {
                         primeContext(ctx);
-                        window.debugLog('🎵 Prime buffer played');
+                        logBoth('🎵 Prime buffer played');
                     } catch (e3) {
-                        window.debugLog('⚠ Prime failed: ' + e3.message);
+                        logBoth('⚠ Prime failed: ' + e3.message);
                     }
 
                     let finalState = ctx.state;
-                    window.debugLog('🎵 Final state: ' + finalState);
+                    logBoth('🎵 Final state: ' + finalState);
 
                     // If still suspended and resume failed, try a fresh context once
                     if (finalState !== 'running' && resumeError) {
-                        window.debugLog('⚠ Retrying with fresh context');
+                        logBoth('⚠ Retrying with fresh context');
                         try {
                             ctx = new AudioContext({ latencyHint: 'interactive' });
                             if (window.soundManager) {
@@ -359,16 +366,16 @@
                             await ctx.resume();
                             primeContext(ctx);
                             finalState = ctx.state;
-                            window.debugLog('🎵 Retry final state: ' + finalState);
+                            logBoth('🎵 Retry final state: ' + finalState);
                         } catch (e4) {
-                            window.debugLog('✗ Retry failed: ' + e4.message);
+                            logBoth('✗ Retry failed: ' + e4.message);
                         }
                     }
 
                     if (finalState === 'running' && window.soundManager) {
                         window.soundManager.contextResumed = true;
                         window.soundManager.playUnlockTone();
-                        window.debugLog('✓ Audio READY');
+                        logBoth('✓ Audio READY');
                         enableAudioBtn.textContent = '✅ Ready';
                         enableAudioBtn.style.background = '#00ff00';
                         setTimeout(() => {
@@ -376,10 +383,10 @@
                             enableAudioBtn.style.background = '#ffcc00';
                         }, 2000);
                     } else {
-                        window.debugLog('⚠ Still not running');
+                        logBoth('⚠ Still not running');
                     }
                 } catch (err) {
-                    window.debugLog('✗ Error: ' + err.message);
+                    logBoth('✗ Error: ' + err.message);
                 }
             };
 
