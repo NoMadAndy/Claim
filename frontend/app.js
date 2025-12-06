@@ -173,6 +173,9 @@ async function initializeApp() {
         document.getElementById('btn-tracking').classList.add('active');
         document.getElementById('btn-follow').classList.add('active');
         
+        // Start recording a track immediately
+        startTrack();
+        
         // Connect WebSocket
         connectWebSocket();
         
