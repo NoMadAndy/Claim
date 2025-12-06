@@ -15,8 +15,8 @@ class SoundManager {
         this.resumeAttempts = 0;
         this.setupGlobalListeners();
         // Version tag for debugging
-        if (window.debugLog) window.debugLog('SoundManager init v1765054600');
-        console.log('SoundManager init v1765054600');
+        if (window.debugLog) window.debugLog('SoundManager init v1765054900');
+        console.log('SoundManager init v1765054900');
         // Do NOT auto-create AudioContext on load (iOS blocks it). Create lazily on first gesture or play.
         // Do NOT setup global listeners - only manual unlock button
     }
@@ -158,14 +158,7 @@ class SoundManager {
         if (window.debugLog) window.debugLog('🔊 AudioContext state: ' + ctxState);
 
         try {
-            // Check if context is running
-            if (this.audioContext.state !== 'running') {
-                console.log('🔊 AudioContext suspended - press Unlock button!');
-                if (window.debugLog) window.debugLog('🔊 Suspended - press Unlock button!');
-                this.playHaptic([30]);
-                return;
-            }
-
+            // Try to play sound regardless of state (iOS may report suspended but audio works)
             const now = this.audioContext.currentTime;
             const osc = this.audioContext.createOscillator();
             const gain = this.audioContext.createGain();
