@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request, Depends, WebSocket
+from fastapi import Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
 from sqlalchemy.orm import Session
@@ -74,6 +75,16 @@ app.include_router(logs.router)
 app.include_router(claims.router)
 app.include_router(tracks.router)
 app.include_router(items.router)
+
+
+# Lightweight client log sink for debugging (stdout only, no auth)
+@app.post("/api/client-log")
+async def client_log(payload: dict = Body(...)):
+    msg = payload.get("msg", "")
+    level = payload.get("level", "INFO")
+    if msg:
+        print(f"CLIENTLOG [{level}] {msg}")
+    return {"ok": True}
 
 
 # WebSocket endpoint
