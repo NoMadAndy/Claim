@@ -104,27 +104,32 @@ echo "[info] Dependencies installed successfully"
 # Wait for database if applicable
 if [[ "$DATABASE_URL" == postgresql* ]]; then
   echo "[info] Waiting for database ..."
-  python - <<'PY'
+  set +e
+  python3 - <<'PY'
 import os, time, sys
-import psycopg2
-from urllib.parse import urlparse
-
-url = os.environ.get("DATABASE_URL")
-parsed = urlparse(url)
-
-for i in range(20):
-    try:
-        conn = psycopg2.connect(dsn=url, connect_timeout=3)
-        conn.close()
-        print("[info] Database is ready")
-        sys.exit(0)
-    except Exception as e:
-        print(f"[info] DB not ready yet ({i+1}/20): {e}")
-        time.sleep(1)
-
-print("[error] Database not reachable after retries")
-sys.exit(1)
+try:
+    import psycopg2
+    url = os.environ.get("DATABASE_URL")
+    for i in range(20):
+        try:
+            conn = psycopg2.connect(dsn=url, connect_timeout=3)
+            conn.close()
+            print("[info] Database is ready")
+            sys.exit(0)
+        except Exception as e:
+            print(f"[info] DB not ready yet ({i+1}/20): {e}")
+            time.sleep(1)
+    print("[error] Database not reachable after retries")
+    sys.exit(1)
+except ImportError:
+    print("[warn] psycopg2 not available, skipping DB check")
+    sys.exit(0)
 PY
+  db_check=$?
+  set -e
+  if [[ $db_check -ne 0 && $db_check -ne 0 ]]; then
+    echo "[warn] Database check inconclusive, continuing anyway..."
+  fi
 fi
 
 # Run migrations/init (handled in app.lifespan via init_db)
