@@ -16,8 +16,8 @@ class SoundManager {
         this.unlocked = false; // NEW: Track if unlock button was pressed
         this.setupGlobalListeners();
         // Version tag for debugging
-        if (window.debugLog) window.debugLog('SoundManager init v1765056600');
-        console.log('SoundManager init v1765056600');
+        if (window.debugLog) window.debugLog('SoundManager init v1765057000');
+        console.log('SoundManager init v1765057000');
         // Do NOT auto-create AudioContext on load (iOS blocks it). Create lazily on first gesture or play.
         // Do NOT setup global listeners - only manual unlock button
     }
@@ -493,6 +493,11 @@ async function initializeApp() {
             window.debugLog('🎮 App initializing...');
             window.debugLog('🎵 SoundManager: ' + (soundManager ? 'OK' : 'FAIL'));
             window.debugLog('📱 AudioContext: ' + (soundManager?.audioContext ? soundManager.audioContext.state : 'null'));
+        }
+        
+        // Auto-unlock audio on iOS (workaround for audio device lock)
+        if (soundManager) {
+            await soundManager.autoUnlockOnLoad();
         }
         
         // Fetch current user
