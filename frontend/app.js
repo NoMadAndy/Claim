@@ -1205,8 +1205,8 @@ async function loadAllTracks() {
 
 async function loadTrackPoints(trackId) {
     try {
-        const points = await apiRequest(`/tracks/${trackId}/points`);
-        return points.map(p => [p.latitude, p.longitude]);
+        const track = await apiRequest(`/tracks/${trackId}`);
+        return track.points.map(p => [p.latitude, p.longitude]);
     } catch (error) {
         console.error('Failed to load track points:', error);
         return [];
