@@ -272,11 +272,11 @@
             };
             window.logBoth = logBoth;
 
-            // Throttled server log sender to surface client debug in server console
+            // Server log sender to mirror key events; rate-limited per 200ms
             let lastServerLogTs = 0;
             window.serverLog = (msg, level = 'INFO') => {
                 const now = Date.now();
-                if (now - lastServerLogTs < 500) return; // throttle to avoid spam
+                if (now - lastServerLogTs < 200) return; // light throttle
                 lastServerLogTs = now;
                 try {
                     const body = JSON.stringify({ msg, level });
@@ -293,6 +293,12 @@
                 } catch (e) {
                     console.warn('serverLog failed', e);
                 }
+            };
+
+            // Helper to always log to both and server in one call
+            window.unlockLog = (msg, level = 'INFO') => {
+                logBoth(msg);
+                serverLog(msg, level);
             };
 
             toggleBtn.addEventListener('click', function(e) {
