@@ -90,6 +90,12 @@ class SoundManager {
         const msg = '🔊 playSound: ' + type + ' enabled:' + this.soundsEnabled + ' vol:' + this.volume;
         console.log(msg);
         if (window.debugLog) window.debugLog(msg);
+
+        // Ensure AudioContext exists (created lazily on first gesture)
+        if (!this.audioContext) {
+            this.initAudioContext(true);
+            if (window.debugLog) window.debugLog('🎵 initAudioContext invoked from playSound');
+        }
         
         // Always try vibration as fallback
         if (!this.soundsEnabled) {
