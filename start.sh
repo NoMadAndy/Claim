@@ -85,20 +85,8 @@ source "$VENV_DIR/bin/activate"
 
 # Upgrade pip & install deps (use --break-system-packages on Debian-based systems)
 echo "[info] Installing dependencies..."
-if ! pip install --upgrade pip >/dev/null 2>&1; then
-  echo "[info] Retrying pip upgrade with --break-system-packages..."
-  pip install --upgrade pip --break-system-packages >/dev/null 2>&1
-fi
-
-if ! pip install -r "$REQ_FILE" >/dev/null 2>&1; then
-  echo "[info] Retrying pip install with --break-system-packages..."
-  pip install -r "$REQ_FILE" --break-system-packages >/dev/null 2>&1
-fi
-
-if ! python -c "import uvicorn" 2>/dev/null; then
-  echo "[error] Failed to install dependencies. Check pip output above." >&2
-  exit 1
-fi
+pip install --upgrade pip --break-system-packages >/dev/null 2>&1 || true
+pip install -r "$REQ_FILE" --break-system-packages
 echo "[info] Dependencies installed successfully"
 
 # Wait for database if applicable
