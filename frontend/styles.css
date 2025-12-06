@@ -364,13 +364,20 @@ body {
 }
 
 /* Leaflet Marker Customization */
-.player-marker {
-    background: #667eea;
-    border: 3px solid white;
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+.player-marker-container {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 28px !important;
+    height: 28px !important;
+    position: relative !important;
+}
+
+.player-marker-container svg {
+    filter: drop-shadow(0 2px 4px rgba(102, 126, 234, 0.3));
+    transform-origin: center;
+    width: 100% !important;
+    height: 100% !important;
 }
 
 .spot-marker {
@@ -419,4 +426,70 @@ body {
     .stat-value {
         font-size: 16px;
     }
+}
+
+/* Layer Menu */
+.layer-menu {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    max-width: 300px;
+    width: 90%;
+}
+
+.layer-menu h3 {
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 18px;
+}
+
+.layer-menu h4 {
+    margin: 10px 0 8px 0;
+    color: #666;
+    font-size: 14px;
+}
+
+.layer-section {
+    margin-bottom: 15px;
+}
+
+.layer-menu label {
+    display: block;
+    padding: 8px 10px;
+    margin: 4px 0;
+    background: #f5f5f5;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.layer-menu label:hover {
+    background: #e0e0e0;
+}
+
+.layer-menu input {
+    margin-right: 8px;
+}
+
+.layer-menu button {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.layer-menu button:hover {
+    background: #5568d3;
 }

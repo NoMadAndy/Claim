@@ -1,5 +1,20 @@
 # Changelog
 
+## 2025-12-06 04:42:30
+**Files:** 11fileschanged,646insertions(+),74deletions(-)
+**Modified:**
+- `README.md`
+- `app/__pycache__/main.cpython-312.pyc`
+- `app/services/__pycache__/auth_service.cpython-312.pyc`
+- `app/services/__pycache__/log_service.cpython-312.pyc`
+- `app/services/__pycache__/spot_service.cpython-312.pyc`
+- `app/services/__pycache__/tracking_service.cpython-312.pyc`
+- `app/ws/__pycache__/handlers.cpython-312.pyc`
+- `frontend/app.js`
+- `frontend/index.html`
+- `frontend/styles.css`
+- `tools/auto_sync.sh`
+
 2025-12-06 02:52
 Init
 

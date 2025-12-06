@@ -14,10 +14,14 @@ let authToken = null;
 let ws = null;
 let currentUser = null;
 let activeTrackId = null;
+let wakeLock = null;
+let wakeLockEnabled = false; // Initial aus
 
 // Map markers storage
 const spotMarkers = new Map();
 const playerMarkers = new Map();
+const trackLayers = new Map(); // Store track polylines
+let activeTrackPoints = []; // Current track points for live drawing
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', init);
@@ -56,9 +60,9 @@ function setupEventListeners() {
     document.getElementById('btn-tracking').addEventListener('click', toggleTracking);
     document.getElementById('btn-follow').addEventListener('click', toggleFollow);
     document.getElementById('btn-compass').addEventListener('click', toggleCompass);
-    document.getElementById('btn-center').addEventListener('click', centerMap);
-    document.getElementById('btn-heatmap').addEventListener('click', toggleHeatmap);
     document.getElementById('btn-layers').addEventListener('click', showLayerMenu);
+    document.getElementById('btn-create-spot').addEventListener('click', toggleSpotCreationMode);
+    document.getElementById('btn-wakelock').addEventListener('click', toggleWakeLock);
     
     // Stats toggle
     document.getElementById('stats-toggle').addEventListener('click', toggleStatsDetail);
@@ -182,15 +186,16 @@ async function initializeApp() {
 
 // Map Initialization
 function initMap() {
+    // Start with default location (will be updated when GPS position arrives)
     map = L.map('map', {
-        zoomControl: false,
+        zoomControl: true,
         attributionControl: false,
-        touchZoom: false,
-        doubleClickZoom: false,
+        touchZoom: true,
+        doubleClickZoom: true,
         scrollWheelZoom: true,
         dragging: true,
         tap: false
-    }).setView([51.505, -0.09], 13);
+    }).setView([51.505, -0.09], 18);
     
     // Base layers
     const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -220,6 +225,81 @@ function initMap() {
     
     // Initialize heatmap layer
     heatmapLayer = L.layerGroup();
+    
+    // Add click handler for creating spots
+    map.on('click', handleMapClick);
+}
+
+// Handle map click for spot creation
+let spotCreationMode = false;
+
+function handleMapClick(e) {
+    if (!spotCreationMode) return;
+    
+    const lat = e.latlng.lat;
+    const lng = e.latlng.lng;
+    
+    // Generate random spot name
+    const adjectives = ['Mystischer', 'Geheimer', 'Verlassener', 'Alter', 'Neuer', 'Wilder', 'Ruhiger', 'Dunkler', 'Heller', 'Magischer'];
+    const nouns = ['Ort', 'Platz', 'Punkt', 'Spot', 'Bereich', 'Zone', 'Fleck', 'Winkel', 'Ecke', 'Stelle'];
+    const randomName = `${adjectives[Math.floor(Math.random() * adjectives.length)]} ${nouns[Math.floor(Math.random() * nouns.length)]} ${Math.floor(Math.random() * 1000)}`;
+    
+    // Create spot directly
+    createSpotAtLocation(lat, lng, randomName);
+    
+    // Exit spot creation mode
+    spotCreationMode = false;
+    document.getElementById('btn-create-spot').classList.remove('active');
+    showNotification('Spot erstellt', randomName, 'success');
+}
+
+// Toggle spot creation mode
+function toggleSpotCreationMode() {
+    spotCreationMode = !spotCreationMode;
+    const btn = document.getElementById('btn-create-spot');
+    
+    if (spotCreationMode) {
+        btn.classList.add('active');
+        showNotification('Spot-Modus', 'Tippe auf die Karte um einen Spot zu erstellen', 'info');
+    } else {
+        btn.classList.remove('active');
+    }
+}
+
+// Create spot at specific location
+async function createSpotAtLocation(lat, lng, name) {
+    if (!currentUser) {
+        showMessage('Please login first', 'error');
+        return;
+    }
+    
+    // Check if user is creator or admin
+    if (currentUser.role !== 'creator' && currentUser.role !== 'admin') {
+        showMessage('Only creators and admins can create spots', 'error');
+        return;
+    }
+    
+    try {
+        const response = await apiRequest('/spots/', {
+            method: 'POST',
+            body: JSON.stringify({
+                name: name,
+                description: '',
+                latitude: lat,
+                longitude: lng,
+                is_permanent: true,
+                is_loot: false
+            }),
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        loadNearbySpots();
+    } catch (error) {
+        console.error('Create spot error:', error);
+        showMessage('Failed to create spot', 'error');
+    }
 }
 
 // GPS Tracking
@@ -228,6 +308,20 @@ function startGPSTracking() {
         showNotification('GPS Error', 'Geolocation not supported', 'error');
         return;
     }
+    
+    // Get initial position and center map
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            map.setView([position.coords.latitude, position.coords.longitude], 18);
+        },
+        (error) => {
+            console.error('Initial GPS error:', error);
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 5000
+        }
+    );
     
     navigator.geolocation.watchPosition(
         (position) => {
@@ -274,25 +368,49 @@ function startGPSTracking() {
 }
 
 function updatePlayerPosition() {
-    if (!currentPosition) return;
+    if (!currentPosition || !map) return;
     
     if (playerMarker) {
+        // Just update position
         playerMarker.setLatLng([currentPosition.lat, currentPosition.lng]);
-        
-        // Update heading if compass enabled
-        if (compassEnabled && currentPosition.heading !== null) {
-            const icon = playerMarker.getElement();
-            if (icon) {
-                icon.style.transform += ` rotate(${currentPosition.heading}deg)`;
-            }
-        }
     } else {
+        // Create marker with appropriate SVG based on compass state
+        let arrowSvg;
+        
+        if (compassEnabled) {
+            // Rotatable arrow
+            arrowSvg = `
+                <div style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; transform: rotate(${currentPosition.heading || 0}deg);">
+                    <svg width="28" height="28" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="14" cy="14" r="12" fill="#667eea" stroke="white" stroke-width="1.5"/>
+                        <polygon points="14,6 18,12 10,12" fill="white"/>
+                        <rect x="12.5" y="12" width="3" height="7" fill="white"/>
+                    </svg>
+                </div>
+            `;
+        } else {
+            // Static arrow (no rotation)
+            arrowSvg = `
+                <svg width="28" height="28" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="14" cy="14" r="12" fill="#667eea" stroke="white" stroke-width="1.5"/>
+                    <polygon points="14,6 18,12 10,12" fill="white"/>
+                    <rect x="12.5" y="12" width="3" height="7" fill="white"/>
+                </svg>
+            `;
+        }
+        
         playerMarker = L.marker([currentPosition.lat, currentPosition.lng], {
             icon: L.divIcon({
-                className: 'player-marker',
-                iconSize: [20, 20]
+                html: arrowSvg,
+                className: 'player-marker-container',
+                iconSize: [28, 28],
+                iconAnchor: [14, 14],
+                popupAnchor: [0, -14]
             })
         }).addTo(map);
+        
+        // Bring player marker to front (above spots and other layers)
+        playerMarker.setZIndexOffset(10000);
     }
 }
 
@@ -387,7 +505,9 @@ async function apiRequest(endpoint, options = {}) {
     });
     
     if (!response.ok) {
-        throw new Error(`API Error: ${response.statusText}`);
+        const error = new Error(`API Error: ${response.statusText}`);
+        error.status = response.status;
+        throw error;
     }
     
     return response.json();
@@ -514,7 +634,16 @@ window.logSpot = async function(spotId) {
         loadStats();
         map.closePopup();
     } catch (error) {
-        showNotification('Error', error.message, 'error');
+        // Check for 429 Too Many Requests (rate limiting)
+        if (error.status === 429) {
+            showNotification(
+                '⏱️ Cooldown Active',
+                'Please wait before logging another spot',
+                'warning'
+            );
+        } else {
+            showNotification('Error', error.message || 'Failed to log spot', 'error');
+        }
     }
 };
 
@@ -542,6 +671,7 @@ async function startTrack() {
         });
         
         activeTrackId = track.id;
+        activeTrackPoints = []; // Reset live track points
         showNotification('Tracking', 'Started tracking your route', 'success');
     } catch (error) {
         console.error('Failed to start track:', error);
@@ -557,6 +687,13 @@ async function endTrack() {
         });
         
         showNotification('Tracking', 'Track saved', 'success');
+        
+        // Clear active track visualization
+        if (trackLayers.has('active')) {
+            trackingLayer.removeLayer(trackLayers.get('active'));
+            trackLayers.delete('active');
+        }
+        activeTrackPoints = [];
         activeTrackId = null;
     } catch (error) {
         console.error('Failed to end track:', error);
@@ -576,8 +713,30 @@ async function addTrackPoint(position) {
                 accuracy: position.accuracy
             })
         });
+        
+        // Add point to live track visualization
+        activeTrackPoints.push([position.lat, position.lng]);
+        updateActiveTrackLine();
     } catch (error) {
         console.error('Failed to add track point:', error);
+    }
+}
+
+function updateActiveTrackLine() {
+    // Remove old line if exists
+    if (trackLayers.has('active')) {
+        trackingLayer.removeLayer(trackLayers.get('active'));
+    }
+    
+    // Draw new line with all points
+    if (activeTrackPoints.length > 1) {
+        const polyline = L.polyline(activeTrackPoints, {
+            color: '#667eea',
+            weight: 3,
+            opacity: 0.8
+        });
+        trackingLayer.addLayer(polyline);
+        trackLayers.set('active', polyline);
     }
 }
 
@@ -601,34 +760,87 @@ function toggleCompass() {
     
     if (compassEnabled) {
         btn.classList.add('active');
+        // REQUEST ORIENTATION FIRST to set up listener before flag is toggled
         requestDeviceOrientation();
+        // Recreate marker for compass mode - gets real heading from deviceorientation event
+        if (playerMarker && map) {
+            map.removeLayer(playerMarker);
+            playerMarker = null;
+        }
+        // Don't call updatePlayerPosition yet - wait for first orientation event
+        // to ensure we have a real heading value
     } else {
         btn.classList.remove('active');
+        // Recreate marker for non-compass mode
+        if (playerMarker && map) {
+            map.removeLayer(playerMarker);
+            playerMarker = null;
+            updatePlayerPosition();
+        }
     }
 }
 
 function requestDeviceOrientation() {
-    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+    // iOS 13+: Request permission for motion and orientation
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         DeviceOrientationEvent.requestPermission()
             .then(permissionState => {
                 if (permissionState === 'granted') {
-                    window.addEventListener('deviceorientation', handleOrientation);
+                    // iOS uses relative orientation with magnetometer when available
+                    // The magnetometer is accessed via deviceorientation with absolute property check
+                    window.addEventListener('deviceorientation', handleOrientationEvent, false);
+                    document.getElementById('debug-heading').textContent = 'Compass active (WebKit)...';
                 }
             })
-            .catch(console.error);
+            .catch(err => {
+                document.getElementById('debug-heading').textContent = 'Permission denied';
+            });
     } else {
-        window.addEventListener('deviceorientation', handleOrientation);
+        // Non-iOS: Try deviceorientationabsolute
+        window.addEventListener('deviceorientationabsolute', handleOrientationEvent, false);
+        document.getElementById('debug-heading').textContent = 'Compass active...';
     }
 }
 
-function handleOrientation(event) {
+// Unified handler for both orientation events
+function handleOrientationEvent(event) {
     if (!compassEnabled) return;
     
-    const heading = event.alpha; // 0-360 degrees
-    if (playerMarker && heading !== null) {
-        const icon = playerMarker.getElement();
-        if (icon) {
-            icon.style.transform = `rotate(${heading}deg)`;
+    const rawAlpha = event.alpha;
+    const beta = event.beta;
+    const gamma = event.gamma;
+    
+    // iOS WebKit: Use webkitCompassHeading if available (this is the magnetometer!)
+    let heading;
+    if (typeof event.webkitCompassHeading !== 'undefined') {
+        // Direct magnetometer heading from WebKit
+        heading = event.webkitCompassHeading;
+        document.getElementById('debug-heading').textContent = Math.round(heading) + '° (webkitCompassHeading)';
+    } else if (event.absolute) {
+        // deviceorientationabsolute with magnetometer
+        heading = rawAlpha;
+        document.getElementById('debug-heading').textContent = Math.round(heading) + '° (absolute)';
+    } else {
+        // Fallback: relative orientation - apply correction formula
+        // raw 270° = North, need to convert to 0°
+        heading = (270 - rawAlpha) % 360;
+        document.getElementById('debug-heading').textContent = Math.round(heading) + '° (relative, corrected)';
+    }
+    
+    currentPosition.heading = heading;
+    
+    document.getElementById('debug-beta').textContent = Math.round(beta);
+    document.getElementById('debug-gamma').textContent = Math.round(gamma);
+    
+    if (!playerMarker) {
+        updatePlayerPosition();
+    } else {
+        const markerElement = playerMarker.getElement();
+        if (markerElement) {
+            const rotDiv = markerElement.querySelector('div');
+            if (rotDiv) {
+                rotDiv.style.transform = `rotate(${heading}deg)`;
+            }
         }
     }
 }
@@ -641,15 +853,12 @@ function centerMap() {
 
 async function toggleHeatmap() {
     heatmapVisible = !heatmapVisible;
-    const btn = document.getElementById('btn-heatmap');
     
     if (heatmapVisible) {
-        btn.classList.add('active');
         await loadHeatmap();
         heatmapLayer.addTo(map);
     } else {
-        btn.classList.remove('active');
-        heatmapLayer.remove();
+        map.removeLayer(heatmapLayer);
     }
 }
 
@@ -664,10 +873,16 @@ async function loadHeatmap() {
             const heat = L.heatLayer(points, {
                 radius: 25,
                 blur: 35,
-                maxZoom: 17
+                maxZoom: 17,
+                minOpacity: 0.4
             });
             heatmapLayer.addLayer(heat);
         });
+        
+        // Ensure heatmap is on top
+        if (map.hasLayer(heatmapLayer)) {
+            heatmapLayer.bringToFront();
+        }
     } catch (error) {
         console.error('Failed to load heatmap:', error);
     }
@@ -680,19 +895,75 @@ async function updateClaimHeatmap() {
 }
 
 function showLayerMenu() {
-    // Simple layer switching (could be enhanced with a proper UI)
-    const layers = Object.keys(window.mapLayers);
-    const currentIndex = layers.findIndex(name => map.hasLayer(window.mapLayers[name]));
-    const nextIndex = (currentIndex + 1) % layers.length;
+    const menu = document.createElement('div');
+    menu.className = 'layer-menu';
+    menu.innerHTML = `
+        <h3>Kartenansicht & Overlays</h3>
+        <div class="layer-section">
+            <h4>Basiskarte</h4>
+            ${Object.keys(window.mapLayers).map(name => `
+                <label>
+                    <input type="radio" name="baselayer" value="${name}" ${map.hasLayer(window.mapLayers[name]) ? 'checked' : ''}>
+                    ${name}
+                </label>
+            `).join('')}
+        </div>
+        <div class="layer-section">
+            <h4>Overlays</h4>
+            <label>
+                <input type="checkbox" id="overlay-heatmap" ${heatmapVisible ? 'checked' : ''}>
+                Heatmap 🔥
+            </label>
+            <label>
+                <input type="checkbox" id="overlay-tracks" ${trackLayers.size > (activeTrackId ? 1 : 0) ? 'checked' : ''}>
+                Tracks 📊
+            </label>
+        </div>
+        <button id="layer-close">Schließen</button>
+    `;
     
-    map.eachLayer(layer => {
-        if (layer instanceof L.TileLayer) {
-            map.removeLayer(layer);
+    document.body.appendChild(menu);
+    
+    // Handle base layer changes
+    menu.querySelectorAll('input[name="baselayer"]').forEach(input => {
+        input.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                map.eachLayer(layer => {
+                    if (layer instanceof L.TileLayer) {
+                        map.removeLayer(layer);
+                    }
+                });
+                window.mapLayers[e.target.value].addTo(map);
+            }
+        });
+    });
+    
+    // Handle heatmap overlay
+    menu.querySelector('#overlay-heatmap').addEventListener('change', (e) => {
+        if (e.target.checked) {
+            toggleHeatmap();
+        } else if (heatmapVisible) {
+            toggleHeatmap();
         }
     });
     
-    window.mapLayers[layers[nextIndex]].addTo(map);
-    showNotification('Map Layer', `Switched to ${layers[nextIndex]}`, 'success');
+    // Handle tracks overlay
+    menu.querySelector('#overlay-tracks').addEventListener('change', (e) => {
+        if (e.target.checked) {
+            if (trackLayers.size === (activeTrackId ? 1 : 0)) {
+                toggleTracksView();
+            }
+        } else {
+            if (trackLayers.size > (activeTrackId ? 1 : 0)) {
+                toggleTracksView();
+            }
+        }
+    });
+    
+    // Close button
+    menu.querySelector('#layer-close').addEventListener('click', () => {
+        menu.remove();
+    });
 }
 
 function toggleStatsDetail() {
@@ -743,4 +1014,176 @@ function showLootSpawn(data) {
     showNotification('Loot Spawned!', `+${data.xp} XP nearby`, 'loot-event');
     
     spotMarkers.set(data.spot_id, marker);
+}
+
+// Create Spot Modal
+function showCreateSpotModal() {
+    if (!currentUser) {
+        showMessage('Please login first', 'error');
+        return;
+    }
+    
+    // Check if user is creator or admin
+    if (currentUser.role !== 'creator' && currentUser.role !== 'admin') {
+        showMessage('Only creators and admins can create spots', 'error');
+        return;
+    }
+    
+    if (!currentPosition) {
+        showMessage('Please enable GPS first', 'error');
+        return;
+    }
+    
+    const name = prompt('Spot name:');
+    if (!name) return;
+    
+    const description = prompt('Spot description (optional):');
+    const isLoot = confirm('Is this a loot spot?');
+    
+    createSpot({
+        name: name,
+        description: description || '',
+        latitude: currentPosition.lat,
+        longitude: currentPosition.lng,
+        is_permanent: true,
+        is_loot: isLoot
+    });
+}
+
+async function createSpot(spotData) {
+    try {
+        const response = await apiRequest('/spots/', {
+            method: 'POST',
+            body: JSON.stringify(spotData),
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        showMessage(`Spot "${spotData.name}" created!`, 'success');
+        loadNearbySpots();
+    } catch (error) {
+        console.error('Create spot error:', error);
+        showMessage('Failed to create spot', 'error');
+    }
+}
+
+// WakeLock - Keep screen on
+async function requestWakeLock() {
+    if (!('wakeLock' in navigator)) {
+        console.log('WakeLock API not supported');
+        return;
+    }
+    
+    try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        console.log('WakeLock acquired');
+        
+        wakeLock.addEventListener('release', () => {
+            console.log('WakeLock released');
+        });
+    } catch (err) {
+        console.error('WakeLock error:', err);
+    }
+}
+
+async function releaseWakeLock() {
+    if (wakeLock !== null) {
+        await wakeLock.release();
+        wakeLock = null;
+        console.log('WakeLock manually released');
+    }
+}
+
+function toggleWakeLock() {
+    wakeLockEnabled = !wakeLockEnabled;
+    const btn = document.getElementById('btn-wakelock');
+    
+    if (wakeLockEnabled) {
+        btn.classList.add('active');
+        requestWakeLock();
+        showNotification('Display', 'Display bleibt an', 'success');
+    } else {
+        btn.classList.remove('active');
+        releaseWakeLock();
+        showNotification('Display', 'Display kann ausgehen', 'info');
+    }
+}
+
+// Re-request wakelock when page becomes visible again
+document.addEventListener('visibilitychange', async () => {
+    if (wakeLockEnabled && document.visibilityState === 'visible') {
+        await requestWakeLock();
+    }
+});
+
+// Track Management Functions
+async function loadAllTracks() {
+    try {
+        const tracks = await apiRequest('/tracks/');
+        displayTracks(tracks);
+    } catch (error) {
+        console.error('Failed to load tracks:', error);
+    }
+}
+
+async function loadTrackPoints(trackId) {
+    try {
+        const points = await apiRequest(`/tracks/${trackId}/points`);
+        return points.map(p => [p.latitude, p.longitude]);
+    } catch (error) {
+        console.error('Failed to load track points:', error);
+        return [];
+    }
+}
+
+function displayTracks(tracks) {
+    // Clear old tracks (except active)
+    for (const [id, layer] of trackLayers.entries()) {
+        if (id !== 'active') {
+            trackingLayer.removeLayer(layer);
+            trackLayers.delete(id);
+        }
+    }
+    
+    // Display each track
+    tracks.forEach(async (track) => {
+        const points = await loadTrackPoints(track.id);
+        if (points.length > 1) {
+            const polyline = L.polyline(points, {
+                color: track.id === activeTrackId ? '#667eea' : '#888',
+                weight: 2,
+                opacity: 0.6
+            });
+            
+            // Add click handler to show track info
+            polyline.bindPopup(`
+                <strong>${track.name}</strong><br>
+                Started: ${new Date(track.started_at).toLocaleString()}<br>
+                ${track.ended_at ? 'Ended: ' + new Date(track.ended_at).toLocaleString() : 'Active'}
+            `);
+            
+            trackingLayer.addLayer(polyline);
+            trackLayers.set(track.id, polyline);
+        }
+    });
+}
+
+function toggleTracksView() {
+    const hasOldTracks = trackLayers.size > (activeTrackId ? 1 : 0);
+    
+    if (hasOldTracks) {
+        // Hide all old tracks
+        for (const [id, layer] of trackLayers.entries()) {
+            if (id !== 'active') {
+                trackingLayer.removeLayer(layer);
+                trackLayers.delete(id);
+            }
+        }
+        showNotification('Tracks', 'Alte Tracks ausgeblendet', 'info');
+    } else {
+        // Load and show all tracks
+        loadAllTracks();
+        showNotification('Tracks', 'Lade alle Tracks...', 'info');
+    }
 }

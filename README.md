@@ -409,3 +409,4 @@ Bei Fragen oder Problemen:
 ---
 
 **Viel Spaß beim Claimen! 🗺️🎮**
+:-)
