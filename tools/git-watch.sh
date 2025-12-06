@@ -5,7 +5,7 @@
 set -uo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SYNC_SCRIPT="$PROJECT_ROOT/tools/auto_sync.sh"
+SYNC_SCRIPT="$PROJECT_ROOT/auto_sync.sh"
 LOG_FILE="$PROJECT_ROOT/.git-watch.log"
 INTERVAL="${1:=30}"  # Default: check every 30 seconds
 
