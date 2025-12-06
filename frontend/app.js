@@ -26,8 +26,6 @@ class SoundManager {
         // Setup global listeners for aggressive auto-unlock on ANY user interaction
         // iOS requires multiple unlock attempts, so we trigger on EVERY click/touch
         const unlockAudio = () => {
-            console.log('🎵 Auto-unlock triggered by user interaction');
-            if (window.debugLog) window.debugLog('🎵 Auto-unlock triggered by user interaction');
             this.performUnlock();
         };
         
@@ -40,22 +38,9 @@ class SoundManager {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         const ctx = new AudioContext({ latencyHint: 'interactive' });
         
-        // Play 3 quick beeps
-        for (let i = 0; i < 3; i++) {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.frequency.value = 440 + (i * 100); // 440Hz, 540Hz, 640Hz
-            gain.gain.setValueAtTime(0.1, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.03);
-            osc.start(ctx.currentTime + (i * 0.1));
-            osc.stop(ctx.currentTime + (i * 0.1) + 0.03);
-        }
-        
+        // Don't play beeps - just create context silently
         ctx.resume().catch(() => {});
         this.setUnlocked(ctx);
-        serverLog('🎵 Auto-unlock performed');
     }
 
     // Called by unlock button to mark audio as unlocked
@@ -63,8 +48,6 @@ class SoundManager {
         this.unlocked = true;
         this.audioContext = ctx;
         this.audioInitialized = true;
-        console.log('🎵 SoundManager marked as unlocked');
-        if (window.debugLog) window.debugLog('🎵 SoundManager marked as unlocked');
     }
 
     // Workaround: Use actual audio file to unlock iOS audio
@@ -615,7 +598,6 @@ async function initializeApp() {
                 return;
             }
             if (window.soundManager) {
-                console.log(`🎵 Periodic unlock attempt #${unlockAttempts}`);
                 window.soundManager.performUnlock();
             }
         }, 3000);
