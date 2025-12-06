@@ -49,23 +49,30 @@ class SoundManager {
         }
     }
 
-    resumeContext() {
-        if (!this.audioContext) return;
-        
+    async resumeContext() {
+        if (!this.audioContext) return false;
         if (this.audioContext.state === 'suspended') {
             this.resumeAttempts++;
             if (window.debugLog) window.debugLog('⏸️ Resume attempt #' + this.resumeAttempts);
-            this.audioContext.resume().then(() => {
+            try {
+                await this.audioContext.resume();
                 this.contextResumed = true;
-                console.log('✓ AudioContext resumed (attempt', this.resumeAttempts + ')');
-                if (window.debugLog) window.debugLog('✓ AudioContext resumed #' + this.resumeAttempts);
-            }).catch(err => {
+                const st = this.audioContext.state;
+                console.log('✓ AudioContext resumed (attempt', this.resumeAttempts + ') state:', st);
+                if (window.debugLog) window.debugLog('✓ AudioContext resumed #' + this.resumeAttempts + ' state:' + st);
+                // kick a silent buffer to fully unlock on iOS
+                this.playUnlockTone();
+                return st === 'running';
+            } catch (err) {
                 console.warn('Resume failed:', err);
                 if (window.debugLog) window.debugLog('✗ Resume failed: ' + err.message);
-            });
+                return false;
+            }
         } else if (this.audioContext.state === 'running') {
             this.contextResumed = true;
+            return true;
         }
+        return false;
     }
 
     playHaptic(pattern) {
@@ -82,6 +89,25 @@ class SoundManager {
         } catch (e) {
             console.log('📳 Haptic error:', e);
             if (window.debugLog) window.debugLog('📳 Haptic error: ' + e.message);
+        }
+    }
+
+    playUnlockTone() {
+        if (!this.audioContext || this.audioContext.state !== 'running') return;
+        try {
+            const now = this.audioContext.currentTime;
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(this.audioContext.destination);
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+            osc.frequency.setValueAtTime(440, now);
+            osc.start(now);
+            osc.stop(now + 0.1);
+            if (window.debugLog) window.debugLog('🔓 Unlock tone played');
+        } catch (e) {
+            if (window.debugLog) window.debugLog('🔓 Unlock tone failed: ' + e.message);
         }
     }
 
