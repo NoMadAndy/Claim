@@ -1,5 +1,10 @@
 # Changelog
 
+## 2025-12-06 04:54:59
+**Files:** 1filechanged,9insertions(+),7deletions(-)
+**Modified:**
+- `app/routers/tracks.py`
+
 ## 2025-12-06 04:54:27
 **Files:** 1filechanged,9insertions(+),10deletions(-)
 **Modified:**

@@ -19,13 +19,15 @@ async def start_track(
     db: Session = Depends(get_db)
 ):
     """Start a new track"""
-    # Check if user already has an active track
-    active_track = tracking_service.get_active_track(db, current_user.id)
-    if active_track:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You already have an active track. End it first."
-        )
+    # End any existing active tracks for this user
+    active_tracks = db.query(Track).filter(
+        Track.user_id == current_user.id,
+        Track.is_active == True
+    ).all()
+    
+    for active_track in active_tracks:
+        tracking_service.end_track(db, active_track.id)
+        print(f"Auto-ended old track {active_track.id} for user {current_user.id}")
     
     track = tracking_service.create_track(db, current_user, track_data)
     return track
