@@ -241,6 +241,8 @@ class SoundManager {
 }
 
 const soundManager = new SoundManager();
+// Expose globally for debug/HTML button handlers
+window.soundManager = soundManager;
 
 // State
 let map, playerMarker, trackingLayer, heatmapLayer;
