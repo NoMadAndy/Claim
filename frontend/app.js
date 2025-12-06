@@ -199,6 +199,14 @@ async function initializeApp() {
         const response = await apiRequest('/auth/me');
         currentUser = response;
         
+        // Hide Create Spot button for travellers
+        if (currentUser.role === 'traveller') {
+            const createBtn = document.getElementById('btn-create-spot');
+            if (createBtn) {
+                createBtn.style.display = 'none';
+            }
+        }
+        
         // Initialize map
         initMap();
         
