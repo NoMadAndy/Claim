@@ -15,21 +15,12 @@ class SoundManager {
         this.resumeAttempts = 0;
         this.setupGlobalListeners();
         // Do NOT auto-create AudioContext on load (iOS blocks it). Create lazily on first gesture or play.
+        // Do NOT setup global listeners - only manual unlock button
     }
 
     setupGlobalListeners() {
-        // Aggressive resume on ANY user interaction
-        const events = ['pointerdown', 'click', 'touchstart', 'touchend', 'keydown', 'scroll'];
-        const initAndResume = () => {
-            this.ensureContext(true);
-        };
-        events.forEach(event => {
-            document.addEventListener(event, initAndResume, { once: true, capture: true, passive: true });
-        });
-        // Keep resuming on further interactions
-        events.forEach(event => {
-            document.addEventListener(event, () => this.resumeContext(), { once: false, capture: true, passive: true });
-        });
+        // Removed: Global listeners cause conflicts with manual unlock button
+        // Sound will only work after manual unlock on iOS
     }
 
     initAudioContext(force = false) {
