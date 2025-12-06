@@ -167,6 +167,12 @@ async function initializeApp() {
         // Start GPS tracking
         startGPSTracking();
         
+        // Enable tracking and follow mode initially
+        trackingActive = true;
+        followMode = true;
+        document.getElementById('btn-tracking').classList.add('active');
+        document.getElementById('btn-follow').classList.add('active');
+        
         // Connect WebSocket
         connectWebSocket();
         
