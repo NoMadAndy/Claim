@@ -670,7 +670,7 @@ function toggleTracking() {
     }
 }
 
-async function startTrack() {
+async function startTrack(retryCount = 0) {
     try {
         const track = await apiRequest('/tracks/', {
             method: 'POST',
@@ -686,26 +686,32 @@ async function startTrack() {
         console.error('Failed to start track:', error);
         
         // If there's already an active track, try to end it first
-        if (error.detail && error.detail.includes('already have an active track')) {
-            console.log('Attempting to clean up old track...');
+        if (error.detail && error.detail.includes('already have an active track') && retryCount < 3) {
+            console.log('Attempting to clean up old track (attempt ' + (retryCount + 1) + ')...');
             try {
                 // Get list of active tracks and end them
                 const myTracks = await apiRequest('/tracks/me?active_only=true');
                 if (myTracks && myTracks.length > 0) {
+                    console.log(`Found ${myTracks.length} active track(s), ending them...`);
                     for (const oldTrack of myTracks) {
                         await apiRequest(`/tracks/${oldTrack.id}/end`, { method: 'POST' });
                         console.log(`Ended old track ${oldTrack.id}`);
                     }
-                    // Retry starting new track
-                    await new Promise(r => setTimeout(r, 500));
-                    return startTrack();
+                    // Wait a bit and retry
+                    await new Promise(r => setTimeout(r, 800));
+                    return startTrack(retryCount + 1);
+                } else {
+                    console.log('No active tracks found, retrying...');
+                    await new Promise(r => setTimeout(r, 800));
+                    return startTrack(retryCount + 1);
                 }
             } catch (cleanupError) {
                 console.error('Failed to clean up old tracks:', cleanupError);
+                showNotification('Tracking', 'Failed to clean up old track', 'error');
             }
+        } else {
+            showNotification('Tracking', 'Failed to start: ' + (error.detail || error.message || 'Unknown error'), 'error');
         }
-        
-        showNotification('Tracking', 'Failed to start: ' + (error.detail || error.message || 'Unknown error'), 'error');
     }
 }
 
