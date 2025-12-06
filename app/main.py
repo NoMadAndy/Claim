@@ -84,7 +84,19 @@ async def client_log(payload: dict = Body(...)):
     msg = payload.get("msg", "")
     level = payload.get("level", "INFO")
     if msg:
+        # Print to stdout (what you see in server terminal)
         print(f"CLIENTLOG [{level}] {msg}")
+        
+        # Also write to file for easy access
+        try:
+            log_dir = os.path.join(os.path.dirname(__file__), "..", "logs")
+            os.makedirs(log_dir, exist_ok=True)
+            log_file = os.path.join(log_dir, "client-debug.log")
+            with open(log_file, "a", encoding="utf-8") as f:
+                timestamp = datetime.now().isoformat()
+                f.write(f"[{timestamp}] [{level}] {msg}\n")
+        except Exception as e:
+            print(f"ERROR writing log file: {e}")
     return {"ok": True}
 
 
