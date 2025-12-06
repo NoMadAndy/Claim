@@ -51,14 +51,20 @@ def get_spots_in_radius(
 
 
 def can_log_spot(db: Session, user_id: int, spot_id: int) -> bool:
-    """Check if user can log this spot (cooldown check)"""
+    """
+    Check if user can log this spot (per-spot cooldown).
+    
+    Each player has a separate 5-minute cooldown per spot.
+    Example: Player A has cooldown on Spot 1, but Player B can log Spot 1 immediately.
+    """
     cooldown_time = datetime.utcnow() - timedelta(seconds=settings.LOG_COOLDOWN)
     
+    # Check if this specific user logged this specific spot recently
     last_log = db.query(Log).filter(
         and_(
-            Log.user_id == user_id,
-            Log.spot_id == spot_id,
-            Log.timestamp > cooldown_time
+            Log.user_id == user_id,  # This user
+            Log.spot_id == spot_id,  # This specific spot
+            Log.timestamp > cooldown_time  # Within cooldown window
         )
     ).first()
     
