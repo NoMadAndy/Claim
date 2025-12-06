@@ -89,14 +89,13 @@ async def client_log(payload: dict = Body(...)):
         
         # Also write to file for easy access
         try:
-            log_dir = os.path.join(os.path.dirname(__file__), "..", "logs")
-            os.makedirs(log_dir, exist_ok=True)
-            log_file = os.path.join(log_dir, "client-debug.log")
+            log_file = "/workspaces/Claim/logs/client-debug.log"
             with open(log_file, "a", encoding="utf-8") as f:
                 timestamp = datetime.now().isoformat()
                 f.write(f"[{timestamp}] [{level}] {msg}\n")
+                f.flush()
         except Exception as e:
-            print(f"ERROR writing log file: {e}")
+            print(f"ERROR writing to {log_file}: {e}")
     return {"ok": True}
 
 
