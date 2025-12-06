@@ -1621,7 +1621,7 @@ function showSettings() {
 
 function closeSettings() {
     const settingsModal = document.getElementById('settings-modal');
-    settingsModal.classList.add('hidden');
+    if (settingsModal) settingsModal.classList.add('hidden');
 }
 
 function toggleSound() {
@@ -1632,7 +1632,9 @@ function toggleSound() {
 
 function changeVolume() {
     const slider = document.getElementById('setting-volume-slider');
+    const volumeValue = document.getElementById('volume-value');
+    if (!slider || !volumeValue) return;
     const volume = slider.value / 100;
     soundManager.setVolume(volume);
-    document.getElementById('volume-value').textContent = slider.value + '%';
+    volumeValue.textContent = slider.value + '%';
 }
