@@ -180,6 +180,70 @@
     <!-- Notification Container -->
     <div id="notifications" class="notifications"></div>
     
+    <script>
+        // Safe debug bootstrap after DOM is ready and elements exist
+        document.addEventListener('DOMContentLoaded', () => {
+            const debugWrapper = document.getElementById('debug-wrapper');
+            const debugConsole = document.getElementById('debug-console');
+            const toggleBtn = document.getElementById('toggle-debug');
+            const enableAudioBtn = document.getElementById('btn-enable-audio');
+            if (!debugWrapper || !debugConsole || !toggleBtn || !enableAudioBtn) {
+                console.warn('Debug elements missing');
+                return;
+            }
+
+            window.debugLogs = window.debugLogs || ['Debug system initialized'];
+            let debugOpen = false;
+
+            window.debugLog = function(msg) {
+                const timestamp = new Date().toLocaleTimeString();
+                window.debugLogs.push('[' + timestamp + '] ' + msg);
+                if (window.debugLogs.length > 30) window.debugLogs.shift();
+                debugConsole.textContent = window.debugLogs.join('\n');
+                setTimeout(() => {
+                    if (debugOpen) debugConsole.scrollTop = debugConsole.scrollHeight;
+                }, 0);
+            };
+
+            toggleBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                debugOpen = !debugOpen;
+                debugWrapper.style.display = debugOpen ? 'block' : 'none';
+                toggleBtn.textContent = debugOpen ? '✕' : '🔼';
+                toggleBtn.style.background = debugOpen ? '#ff3333' : '#0f0';
+                window.debugLog('DEBUG TOGGLE: ' + debugOpen);
+            });
+
+            // Wait for soundManager to exist, then enable button
+            let tries = 0;
+            const enableBtnReady = setInterval(() => {
+                tries++;
+                if (window.soundManager) {
+                    enableAudioBtn.disabled = false;
+                    window.debugLog('🎵 soundManager ready after ' + tries + ' checks');
+                    clearInterval(enableBtnReady);
+                } else if (tries > 50) {
+                    window.debugLog('🎵 soundManager still missing after ' + tries + ' checks');
+                    clearInterval(enableBtnReady);
+                }
+            }, 100);
+
+            enableAudioBtn.addEventListener('click', async function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (window.soundManager) {
+                    window.debugLog('🎵 Manual enable pressed');
+                    await window.soundManager.ensureContext(true);
+                    window.soundManager.playUnlockTone();
+                    window.debugLog('🎵 Manual enable done. State: ' + (window.soundManager.audioContext?.state || 'none'));
+                } else {
+                    window.debugLog('🎵 soundManager missing');
+                }
+            });
+        });
+    </script>
+
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
