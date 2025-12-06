@@ -293,9 +293,28 @@
                 e.stopPropagation();
                 if (window.soundManager) {
                     window.debugLog('🎵 Manual enable pressed');
-                    await window.soundManager.ensureContext(true);
-                    window.soundManager.playUnlockTone();
-                    window.debugLog('🎵 Manual enable done. State: ' + (window.soundManager.audioContext?.state || 'none'));
+                    
+                    // CRITICAL: Create and resume SYNCHRONOUSLY in click handler for iOS
+                    if (!window.soundManager.audioContext) {
+                        window.soundManager.initAudioContext(true);
+                    }
+                    
+                    if (window.soundManager.audioContext && window.soundManager.audioContext.state === 'suspended') {
+                        window.debugLog('🎵 Calling resume() synchronously...');
+                        // Must be synchronous in the click handler
+                        window.soundManager.audioContext.resume().then(() => {
+                            const state = window.soundManager.audioContext.state;
+                            window.debugLog('🎵 Resume done. State: ' + state);
+                            if (state === 'running') {
+                                window.soundManager.playUnlockTone();
+                                window.debugLog('✓ AudioContext is RUNNING!');
+                            }
+                        }).catch(err => {
+                            window.debugLog('✗ Resume error: ' + err.message);
+                        });
+                    } else {
+                        window.debugLog('🎵 Already running or no context');
+                    }
                 } else {
                     window.debugLog('🎵 soundManager missing');
                 }
