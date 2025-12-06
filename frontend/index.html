@@ -274,49 +274,67 @@
                 window.debugLog('DEBUG TOGGLE: ' + debugOpen);
             });
 
-            // Wait for soundManager to exist, then enable button
-            let tries = 0;
-            const enableBtnReady = setInterval(() => {
-                tries++;
-                if (window.soundManager) {
-                    enableAudioBtn.disabled = false;
-                    window.debugLog('🎵 soundManager ready after ' + tries + ' checks');
-                    clearInterval(enableBtnReady);
-                } else if (tries > 50) {
-                    window.debugLog('🎵 soundManager still missing after ' + tries + ' checks');
-                    clearInterval(enableBtnReady);
-                }
-            }, 100);
+            // Enable button immediately (no waiting for soundManager)
+            enableAudioBtn.disabled = false;
 
             enableAudioBtn.addEventListener('click', async function(e) {
                 e.preventDefault();
                 e.stopPropagation();
+                
+                window.debugLog('🎵 Unlock button pressed');
+                
+                // Wait for soundManager if not ready yet
+                let tries = 0;
+                while (!window.soundManager && tries < 10) {
+                    await new Promise(r => setTimeout(r, 100));
+                    tries++;
+                }
+                
                 if (window.soundManager) {
-                    window.debugLog('🎵 Manual enable pressed');
-                    
                     // CRITICAL: Create and resume SYNCHRONOUSLY in click handler for iOS
                     if (!window.soundManager.audioContext) {
                         window.soundManager.initAudioContext(true);
                     }
                     
-                    if (window.soundManager.audioContext && window.soundManager.audioContext.state === 'suspended') {
-                        window.debugLog('🎵 Calling resume() synchronously...');
-                        // Must be synchronous in the click handler
-                        window.soundManager.audioContext.resume().then(() => {
-                            const state = window.soundManager.audioContext.state;
-                            window.debugLog('🎵 Resume done. State: ' + state);
-                            if (state === 'running') {
-                                window.soundManager.playUnlockTone();
-                                window.debugLog('✓ AudioContext is RUNNING!');
-                            }
-                        }).catch(err => {
-                            window.debugLog('✗ Resume error: ' + err.message);
-                        });
+                    if (window.soundManager.audioContext) {
+                        const stateBefore = window.soundManager.audioContext.state;
+                        window.debugLog('🎵 State before: ' + stateBefore);
+                        
+                        if (stateBefore === 'suspended' || stateBefore === 'interrupted') {
+                            // Must be synchronous in the click handler
+                            window.soundManager.audioContext.resume().then(() => {
+                                const state = window.soundManager.audioContext.state;
+                                window.debugLog('🎵 After resume: ' + state);
+                                if (state === 'running') {
+                                    window.soundManager.playUnlockTone();
+                                    window.debugLog('✓ AudioContext UNLOCKED!');
+                                    enableAudioBtn.textContent = '✅ Ready';
+                                    enableAudioBtn.style.background = '#00ff00';
+                                    setTimeout(() => {
+                                        enableAudioBtn.textContent = '🔊 Unlock';
+                                        enableAudioBtn.style.background = '#ffcc00';
+                                    }, 2000);
+                                } else {
+                                    window.debugLog('⚠ Still not running: ' + state);
+                                }
+                            }).catch(err => {
+                                window.debugLog('✗ Resume error: ' + err.message);
+                            });
+                        } else if (stateBefore === 'running') {
+                            window.soundManager.playUnlockTone();
+                            window.debugLog('✓ Already running!');
+                            enableAudioBtn.textContent = '✅ Ready';
+                            enableAudioBtn.style.background = '#00ff00';
+                            setTimeout(() => {
+                                enableAudioBtn.textContent = '🔊 Unlock';
+                                enableAudioBtn.style.background = '#ffcc00';
+                            }, 2000);
+                        }
                     } else {
-                        window.debugLog('🎵 Already running or no context');
+                        window.debugLog('✗ No AudioContext');
                     }
                 } else {
-                    window.debugLog('🎵 soundManager missing');
+                    window.debugLog('✗ soundManager still missing after wait');
                 }
             });
         });
