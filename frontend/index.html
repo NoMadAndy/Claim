@@ -77,6 +77,23 @@
             <button id="btn-logout" style="width: 100%; padding: 8px; background: #d9534f; color: white; border: none; border-radius: 4px; cursor: pointer;">
                 Logout
             </button>
+
+            <button id="btn-enable-audio" style="
+                position: fixed;
+                top: 80px;
+                right: 12px;
+                background: #ffcc00;
+                color: #000;
+                border: 2px solid #000;
+                padding: 8px 14px;
+                border-radius: 4px;
+                font-weight: bold;
+                z-index: 12000;
+                cursor: pointer;
+                font-size: 14px;
+                width: auto;
+                min-width: 90px;
+            ">Sound an</button>
         </div>
     </div>
     
@@ -208,6 +225,7 @@
         const debugWrapper = document.getElementById('debug-wrapper');
         const debugConsole = document.getElementById('debug-console');
         const toggleBtn = document.getElementById('toggle-debug');
+        const enableAudioBtn = document.getElementById('btn-enable-audio');
         let debugOpen = false;
         
         window.debugLog = function(msg) {
@@ -231,6 +249,19 @@
             toggleBtn.textContent = debugOpen ? '✕' : '🔼';
             toggleBtn.style.background = debugOpen ? '#ff3333' : '#0f0';
             if (window.debugLog) window.debugLog('DEBUG TOGGLE: ' + debugOpen);
+        });
+
+        enableAudioBtn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (window.soundManager) {
+                window.debugLog('🎵 Manual enable pressed');
+                await window.soundManager.ensureContext(true);
+                window.soundManager.playUnlockTone();
+                window.debugLog('🎵 Manual enable done. State: ' + (window.soundManager.audioContext?.state || 'none'));
+            } else {
+                window.debugLog('🎵 soundManager missing');
+            }
         });
     </script>
     
