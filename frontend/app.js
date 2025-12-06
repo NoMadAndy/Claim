@@ -170,8 +170,6 @@ function handleLogout() {
         showLoginModal();
     }, 500);
 }
-    }
-}
 
 function showMessage(text, type) {
     const messageEl = document.getElementById('auth-message');
