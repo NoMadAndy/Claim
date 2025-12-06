@@ -3,6 +3,87 @@
 const API_BASE = window.location.origin + '/api';
 const WS_BASE = (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + window.location.host + '/ws';
 
+// Sound Manager
+class SoundManager {
+    constructor() {
+        this.audioContext = null;
+        this.soundsEnabled = localStorage.getItem('claim_sounds_enabled') !== 'false'; // Default: true
+        this.volume = parseFloat(localStorage.getItem('claim_sound_volume')) || 0.3;
+        this.sounds = {};
+        this.initAudioContext();
+    }
+
+    initAudioContext() {
+        if (!this.audioContext) {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    }
+
+    playSound(type) {
+        if (!this.soundsEnabled || !this.audioContext) return;
+
+        try {
+            const now = this.audioContext.currentTime;
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(this.audioContext.destination);
+
+            gain.gain.setValueAtTime(this.volume, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+
+            switch (type) {
+                case 'log': // Success beep
+                    osc.frequency.setValueAtTime(800, now);
+                    osc.frequency.setValueAtTime(1000, now + 0.1);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                    break;
+                case 'loot': // Ding
+                    osc.frequency.setValueAtTime(1200, now);
+                    osc.frequency.setValueAtTime(1500, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                    break;
+                case 'levelup': // Ascending tones
+                    for (let i = 0; i < 3; i++) {
+                        const osc2 = this.audioContext.createOscillator();
+                        const gain2 = this.audioContext.createGain();
+                        osc2.connect(gain2);
+                        gain2.connect(this.audioContext.destination);
+                        osc2.frequency.value = 600 + (i * 200);
+                        gain2.gain.setValueAtTime(this.volume * 0.7, now + i * 0.1);
+                        gain2.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.15);
+                        osc2.start(now + i * 0.1);
+                        osc2.stop(now + i * 0.1 + 0.15);
+                    }
+                    break;
+                case 'error': // Low buzz
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.setValueAtTime(250, now + 0.1);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                    break;
+            }
+        } catch (e) {
+            console.warn('Sound playback failed:', e);
+        }
+    }
+
+    toggle() {
+        this.soundsEnabled = !this.soundsEnabled;
+        localStorage.setItem('claim_sounds_enabled', this.soundsEnabled);
+        return this.soundsEnabled;
+    }
+
+    setVolume(vol) {
+        this.volume = Math.max(0, Math.min(1, vol));
+        localStorage.setItem('claim_sound_volume', this.volume);
+    }
+}
+
+const soundManager = new SoundManager();
+
 // State
 let map, playerMarker, trackingLayer, heatmapLayer;
 let currentPosition = null;
@@ -17,6 +98,7 @@ let activeTrackId = null;
 let wakeLock = null;
 let wakeLockEnabled = false; // Initial aus
 let heatmapUpdateInterval = null; // Interval für Heatmap-Refresh
+let currentLevel = 0; // Track for level-up detection
 
 // Map markers storage
 const spotMarkers = new Map();
@@ -70,6 +152,12 @@ function setupEventListeners() {
     document.getElementById('btn-layers').addEventListener('click', showLayerMenu);
     document.getElementById('btn-create-spot').addEventListener('click', toggleSpotCreationMode);
     document.getElementById('btn-wakelock').addEventListener('click', toggleWakeLock);
+    document.getElementById('btn-settings').addEventListener('click', showSettings);
+    
+    // Settings modal
+    document.getElementById('btn-close-settings').addEventListener('click', closeSettings);
+    document.getElementById('setting-sound-toggle').addEventListener('change', toggleSound);
+    document.getElementById('setting-volume-slider').addEventListener('input', changeVolume);
     
     // Stats toggle
     document.getElementById('stats-toggle').addEventListener('click', toggleStatsDetail);
@@ -219,14 +307,12 @@ async function initializeApp() {
         // Start GPS tracking
         startGPSTracking();
         
-        // Enable tracking and follow mode initially
-        trackingActive = true;
+        // Enable follow mode initially
         followMode = true;
-        document.getElementById('btn-tracking').classList.add('active');
         document.getElementById('btn-follow').classList.add('active');
         
-        // Start recording a track immediately
-        startTrack();
+        // Don't automatically start tracking - let user decide via button
+        trackingActive = false;
         
         // Connect WebSocket
         connectWebSocket();
@@ -592,6 +678,15 @@ async function loadStats() {
     try {
         const stats = await apiRequest('/stats');
         
+        // Check for level-up
+        if (stats.level > currentLevel) {
+            soundManager.playSound('levelup');
+            showNotification('🎉 LEVEL UP!', `Du bist jetzt Level ${stats.level}!`, 'levelup');
+            currentLevel = stats.level;
+        } else if (currentLevel === 0) {
+            currentLevel = stats.level; // Initialize on first load
+        }
+        
         document.getElementById('level').textContent = stats.level;
         document.getElementById('claims').textContent = stats.total_claim_points;
         document.getElementById('total-logs').textContent = stats.total_logs;
@@ -674,6 +769,7 @@ async function performAutoLog(spotId) {
             })
         });
         
+        soundManager.playSound('log');
         showNotification(
             'Auto Log!',
             `+${log.xp_gained} XP, +${log.claim_points} Claims`,
@@ -699,6 +795,7 @@ window.logSpot = async function(spotId) {
             })
         });
         
+        soundManager.playSound('log');
         showNotification(
             'Logged!',
             `+${log.xp_gained} XP, +${log.claim_points} Claims`,
@@ -710,6 +807,7 @@ window.logSpot = async function(spotId) {
     } catch (error) {
         // Check for 429 Too Many Requests (rate limiting)
         if (error.status === 429) {
+            soundManager.playSound('error');
             showNotification(
                 '⏱️ Cooldown Active',
                 'Please wait before logging another spot',
@@ -1133,6 +1231,7 @@ function showLootSpawn(data) {
         <button onclick="logSpot(${data.spot_id})">Collect</button>
     `);
     
+    soundManager.playSound('loot');
     showNotification('Loot Spawned!', `+${data.xp} XP nearby`, 'loot-event');
     
     spotMarkers.set(data.spot_id, marker);
@@ -1308,4 +1407,33 @@ function toggleTracksView() {
         loadAllTracks();
         showNotification('Tracks', 'Lade alle Tracks...', 'info');
     }
+}
+
+// Settings Functions
+function showSettings() {
+    const settingsModal = document.getElementById('settings-modal');
+    settingsModal.classList.remove('hidden');
+    
+    // Update current settings in UI
+    document.getElementById('setting-sound-toggle').checked = soundManager.soundsEnabled;
+    document.getElementById('setting-volume-slider').value = soundManager.volume * 100;
+    document.getElementById('volume-value').textContent = Math.round(soundManager.volume * 100) + '%';
+}
+
+function closeSettings() {
+    const settingsModal = document.getElementById('settings-modal');
+    settingsModal.classList.add('hidden');
+}
+
+function toggleSound() {
+    const enabled = soundManager.toggle();
+    soundManager.playSound('log'); // Play sound to confirm
+    showNotification('Sound', enabled ? '🔊 Aktiviert' : '🔇 Deaktiviert', 'info');
+}
+
+function changeVolume() {
+    const slider = document.getElementById('setting-volume-slider');
+    const volume = slider.value / 100;
+    soundManager.setVolume(volume);
+    document.getElementById('volume-value').textContent = slider.value + '%';
 }

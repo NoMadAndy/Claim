@@ -109,6 +109,10 @@
             <span class="btn-icon">☀️</span>
             <span class="btn-label">Wake</span>
         </button>
+        <button class="action-btn" id="btn-settings" title="Settings">
+            <span class="btn-icon">⚙️</span>
+            <span class="btn-label">Settings</span>
+        </button>
     </div>
     
     <!-- Login Modal -->
@@ -131,6 +135,29 @@
                 <p>Already have an account? <a href="#" id="show-login">Login</a></p>
             </div>
             <div id="auth-message" class="message"></div>
+        </div>
+    </div>
+    
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Settings</h3>
+            <div style="padding: 15px; display: flex; flex-direction: column; gap: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>🔊 Sound</span>
+                    <input type="checkbox" id="setting-sound-toggle" style="width: 20px; height: 20px; cursor: pointer;">
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                    <span>🔉 Volume</span>
+                    <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                        <input type="range" id="setting-volume-slider" min="0" max="100" style="flex: 1;">
+                        <span id="volume-value" style="min-width: 30px;">30%</span>
+                    </div>
+                </div>
+                <button id="btn-close-settings" style="padding: 10px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;">
+                    Close
+                </button>
+            </div>
         </div>
     </div>
     

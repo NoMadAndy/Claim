@@ -341,6 +341,11 @@ body {
     background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
 }
 
+.notification.levelup {
+    background: linear-gradient(135deg, #ec4899 0%, #d946ef 100%);
+    animation: pulse 0.5s ease;
+}
+
 .notification h4 {
     margin-bottom: 5px;
     font-size: 14px;
