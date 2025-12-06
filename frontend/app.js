@@ -56,6 +56,12 @@ function setupEventListeners() {
         document.getElementById('login-form').classList.remove('hidden');
     });
     
+    // Logout button
+    const logoutBtn = document.getElementById('btn-logout');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', handleLogout);
+    }
+    
     // Action buttons
     document.getElementById('btn-tracking').addEventListener('click', toggleTracking);
     document.getElementById('btn-follow').addEventListener('click', toggleFollow);
@@ -137,6 +143,33 @@ async function handleRegister() {
         }, 1000);
     } catch (error) {
         showMessage('Registration failed: ' + error.message, 'error');
+    }
+}
+
+function handleLogout() {
+    // Clear auth token and user data
+    localStorage.removeItem('claim_token');
+    authToken = null;
+    currentUser = null;
+    
+    // Stop tracking and reset state
+    if (trackingActive) {
+        trackingActive = false;
+        document.getElementById('btn-tracking').classList.remove('active');
+    }
+    if (ws) {
+        ws.close();
+        ws = null;
+    }
+    
+    // Show logout message
+    showNotification('Logout', 'Successfully logged out', 'success');
+    
+    // Redirect to login
+    setTimeout(() => {
+        showLoginModal();
+    }, 500);
+}
     }
 }
 
