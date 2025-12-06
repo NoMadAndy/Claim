@@ -457,16 +457,21 @@ function startGPSTracking() {
     }
     
     // Get initial position and center map
+    // Use longer timeout for initial request (may need time to get first fix)
     navigator.geolocation.getCurrentPosition(
         (position) => {
             map.setView([position.coords.latitude, position.coords.longitude], 18);
+            console.log('Initial GPS position acquired');
         },
         (error) => {
-            console.error('Initial GPS error:', error);
+            console.warn('Initial GPS error (code: ' + error.code + '):', error.message);
+            // Don't show error for initial position - it's not critical
+            // The watchPosition will continue trying
         },
         {
             enableHighAccuracy: true,
-            timeout: 5000
+            timeout: 10000, // Increased timeout for initial position
+            maximumAge: 30000 // Accept cached position up to 30s old
         }
     );
     
@@ -503,13 +508,26 @@ function startGPSTracking() {
             }
         },
         (error) => {
-            console.error('GPS error:', error);
-            showNotification('GPS Error', 'Cannot access location', 'error');
+            // Handle different GPS error codes
+            let errorMsg = 'Cannot access location';
+            if (error.code === 1) {
+                errorMsg = 'Permission denied - enable location in settings';
+            } else if (error.code === 2) {
+                errorMsg = 'Position unavailable - check GPS signal';
+            } else if (error.code === 3) {
+                errorMsg = 'GPS Timeout - trying to reconnect...';
+            }
+            
+            console.warn('GPS error (code: ' + error.code + '):', error.message);
+            // Only show notification for permission errors, not timeouts
+            if (error.code === 1) {
+                showNotification('GPS Error', errorMsg, 'error');
+            }
         },
         {
             enableHighAccuracy: true,
-            maximumAge: 0,
-            timeout: 5000
+            maximumAge: 5000, // Accept position up to 5s old for continuous tracking
+            timeout: 10000 // Longer timeout to allow GPS to acquire fix
         }
     );
 }
