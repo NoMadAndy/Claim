@@ -306,10 +306,11 @@ class SoundManager {
                         gain.connect(this.audioContext.destination);
                         osc.frequency.setValueAtTime(300, now);
                         osc.frequency.setValueAtTime(250, now + 0.1);
-                    osc.start(now);
-                    osc.stop(now + 0.25);
-                    if (window.debugLog) window.debugLog('♪ Playing ERROR sound (300-250Hz)');
-                    this.playHaptic([200]);
+                        osc.start(now);
+                        osc.stop(now + 0.25);
+                        if (window.debugLog) window.debugLog('♪ Playing ERROR sound (300-250Hz)');
+                        this.playHaptic([200]);
+                    }
                     break;
             }
         } catch (e) {
@@ -317,6 +318,30 @@ class SoundManager {
             if (window.debugLog) window.debugLog('🔊 Playback error: ' + e.message);
             this.playHaptic([30]);
         }
+    }
+
+    // Play triumphales aufsteigendes Log-Sound (E-G-C chord progression)
+    playLogSound(now) {
+        const frequencies = [330, 392, 523]; // E, G, C (triadic chord)
+        const duration = 0.15;
+        const startDelay = 0.05;
+        
+        for (let i = 0; i < frequencies.length; i++) {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(this.audioContext.destination);
+            
+            const startTime = now + (i * startDelay);
+            osc.frequency.value = frequencies[i];
+            gain.gain.setValueAtTime(this.volume * 0.8, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+            
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        }
+        
+        if (window.debugLog) window.debugLog('♪ Playing LOG sound (E-G-C chord)');
     }
 
     toggle() {
