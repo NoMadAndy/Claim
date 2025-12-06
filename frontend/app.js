@@ -16,6 +16,7 @@ let currentUser = null;
 let activeTrackId = null;
 let wakeLock = null;
 let wakeLockEnabled = false; // Initial aus
+let heatmapUpdateInterval = null; // Interval für Heatmap-Refresh
 
 // Map markers storage
 const spotMarkers = new Map();
@@ -933,8 +934,25 @@ async function toggleHeatmap() {
     if (heatmapVisible) {
         await loadHeatmap();
         heatmapLayer.addTo(map);
+        
+        // Starte Auto-Refresh der Heatmap (alle 30 Sekunden)
+        if (heatmapUpdateInterval) {
+            clearInterval(heatmapUpdateInterval);
+        }
+        heatmapUpdateInterval = setInterval(async () => {
+            if (heatmapVisible) {
+                await loadHeatmap();
+                console.log('🔥 Heatmap aktualisiert');
+            }
+        }, 30000); // 30 Sekunden
     } else {
         map.removeLayer(heatmapLayer);
+        
+        // Stoppe Auto-Refresh
+        if (heatmapUpdateInterval) {
+            clearInterval(heatmapUpdateInterval);
+            heatmapUpdateInterval = null;
+        }
     }
 }
 
@@ -944,16 +962,20 @@ async function loadHeatmap() {
         
         heatmapLayer.clearLayers();
         
-        heatmaps.forEach(heatmap => {
-            const points = heatmap.points.map(p => [p.latitude, p.longitude, p.intensity]);
-            const heat = L.heatLayer(points, {
-                radius: 25,
-                blur: 35,
-                maxZoom: 17,
-                minOpacity: 0.4
+        if (heatmaps && heatmaps.length > 0) {
+            heatmaps.forEach(heatmap => {
+                if (heatmap.points && heatmap.points.length > 0) {
+                    const points = heatmap.points.map(p => [p.latitude, p.longitude, p.intensity]);
+                    const heat = L.heatLayer(points, {
+                        radius: 25,
+                        blur: 35,
+                        maxZoom: 17,
+                        minOpacity: 0.4
+                    });
+                    heatmapLayer.addLayer(heat);
+                }
             });
-            heatmapLayer.addLayer(heat);
-        });
+        }
         
         // Ensure heatmap is on top
         if (map.hasLayer(heatmapLayer)) {
