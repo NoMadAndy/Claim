@@ -25,11 +25,13 @@ REQ_FILE="$PROJECT_ROOT/requirements.txt"
 : "${DATABASE_URL:=}"
 
 compose_cmd=""
-if command -v docker >/dev/null 2>&1; then
-  if command -v docker compose >/dev/null 2>&1; then
+# Prefer classic docker-compose if present
+if command -v docker-compose >/dev/null 2>&1; then
+  compose_cmd="docker-compose"
+elif command -v docker >/dev/null 2>&1; then
+  # Check if docker compose plugin is available
+  if docker compose version >/dev/null 2>&1; then
     compose_cmd="docker compose"
-  elif command -v docker-compose >/dev/null 2>&1; then
-    compose_cmd="docker-compose"
   fi
 fi
 
