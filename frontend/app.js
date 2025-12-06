@@ -686,8 +686,9 @@ async function startTrack(retryCount = 0) {
         console.error('Failed to start track:', error);
         
         // If there's already an active track, try to end it first
-        if (error.detail && error.detail.includes('already have an active track') && retryCount < 3) {
-            console.log('Attempting to clean up old track (attempt ' + (retryCount + 1) + ')...');
+        if (error.detail && error.detail.includes('already have an active track') && retryCount < 5) {
+            const waitTime = 500 + (retryCount * 500); // Progressive backoff: 500ms, 1s, 1.5s, 2s, 2.5s
+            console.log(`Attempting to clean up old track (attempt ${retryCount + 1}/5, waiting ${waitTime}ms)...`);
             try {
                 // Get list of active tracks and end them
                 const myTracks = await apiRequest('/tracks/me?active_only=true');
@@ -697,18 +698,16 @@ async function startTrack(retryCount = 0) {
                         await apiRequest(`/tracks/${oldTrack.id}/end`, { method: 'POST' });
                         console.log(`Ended old track ${oldTrack.id}`);
                     }
-                    // Wait a bit and retry
-                    await new Promise(r => setTimeout(r, 800));
-                    return startTrack(retryCount + 1);
-                } else {
-                    console.log('No active tracks found, retrying...');
-                    await new Promise(r => setTimeout(r, 800));
-                    return startTrack(retryCount + 1);
                 }
+                // Wait progressively longer before retrying
+                await new Promise(r => setTimeout(r, waitTime));
+                return startTrack(retryCount + 1);
             } catch (cleanupError) {
                 console.error('Failed to clean up old tracks:', cleanupError);
-                showNotification('Tracking', 'Failed to clean up old track', 'error');
+                showNotification('Tracking', 'Failed to clean up old track: ' + (cleanupError.detail || cleanupError.message), 'error');
             }
+        } else if (retryCount >= 5) {
+            showNotification('Tracking', 'Failed: Could not clean up old tracks after 5 attempts', 'error');
         } else {
             showNotification('Tracking', 'Failed to start: ' + (error.detail || error.message || 'Unknown error'), 'error');
         }
