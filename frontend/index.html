@@ -318,6 +318,7 @@
                 e.preventDefault();
                 e.stopPropagation();
                 unlockLog('🎵 Unlock button pressed (' + e.type + ')');
+                unlockLog('🔹 Checkpoint 1: Button handler started');
 
                 // Wait briefly for soundManager
                 let tries = 0;
@@ -325,14 +326,18 @@
                     await new Promise(r => setTimeout(r, 50));
                     tries++;
                 }
+                unlockLog('🔹 Checkpoint 2: soundManager ready');
 
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 if (!AudioContext) {
                     unlockLog('✗ No AudioContext support', 'ERROR');
                     return;
                 }
+                unlockLog('🔹 Checkpoint 3: AudioContext available');
 
                 try {
+                    unlockLog('🔹 Checkpoint 4: Entering try block');
+                    
                     // Prefer reusing existing context; avoid closing to prevent device errors
                     let ctx = window.soundManager ? window.soundManager.audioContext : null;
                     try {
