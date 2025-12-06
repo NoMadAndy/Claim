@@ -7,13 +7,14 @@ const WS_BASE = (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' 
 class SoundManager {
     constructor() {
         this.audioContext = null;
+        this.audioInitialized = false;
         this.soundsEnabled = localStorage.getItem('claim_sounds_enabled') !== 'false'; // Default: true
         this.volume = parseFloat(localStorage.getItem('claim_sound_volume')) || 0.3;
         this.sounds = {};
         this.contextResumed = false;
         this.resumeAttempts = 0;
         this.setupGlobalListeners();
-        this.initAudioContext();
+        // Do NOT auto-create AudioContext on load (iOS blocks it). Create lazily on first gesture or play.
     }
 
     setupGlobalListeners() {
