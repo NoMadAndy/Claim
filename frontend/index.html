@@ -343,14 +343,25 @@
                     osc.stop(now + 0.05);
                     unlockLog('🎵 Immediate tone played (within gesture)');
 
-                    // Now try resume
+                    // Now try resume with explicit timeout
                     unlockLog('🎵 Attempting resume...');
+                    let resumeSuccess = false;
                     try {
-                        await ctx.resume();
+                        // Create a promise that rejects after 3 seconds
+                        const resumePromise = ctx.resume();
+                        const timeoutPromise = new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Resume timeout')), 3000)
+                        );
+                        
+                        await Promise.race([resumePromise, timeoutPromise]);
+                        resumeSuccess = true;
                         unlockLog('🎵 Resume successful');
                     } catch (err) {
-                        unlockLog('✗ Resume failed: ' + err.message, 'ERROR');
+                        unlockLog('✗ Resume error: ' + err.message, 'ERROR');
                     }
+
+                    unlockLog('🎵 Resume result: ' + (resumeSuccess ? 'success' : 'failed'));
+                    unlockLog('🎵 Context state after resume: ' + ctx.state);
 
                     // Store context
                     if (window.soundManager) {
