@@ -297,24 +297,27 @@
                 }
 
                 try {
-                    // Close old context if exists
-                    if (window.soundManager && window.soundManager.audioContext) {
-                        try {
-                            await window.soundManager.audioContext.close();
-                            window.debugLog('🎵 Old context closed');
-                        } catch (e2) {
-                            window.debugLog('⚠ Close failed: ' + e2.message);
-                        }
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioContext) {
+                        window.debugLog('✗ No AudioContext support');
+                        return;
                     }
 
-                    // Create fresh context inside the gesture
-                    const ctx = new AudioContext({ latencyHint: 'interactive' });
-                    const primeContext = () => {
+                    // Prefer reusing existing context; avoid closing to prevent device errors
+                    let ctx = window.soundManager ? window.soundManager.audioContext : null;
+                    if (!ctx || ctx.state === 'closed') {
+                        ctx = new AudioContext({ latencyHint: 'interactive' });
+                        window.debugLog('🎵 Created new context, state: ' + ctx.state);
+                    } else {
+                        window.debugLog('🎵 Reusing existing context, state: ' + ctx.state);
+                    }
+
+                    const primeContext = (context) => {
                         // Play a 1-sample silent buffer to fully unlock on iOS
-                        const buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
-                        const source = ctx.createBufferSource();
+                        const buffer = context.createBuffer(1, 1, context.sampleRate);
+                        const source = context.createBufferSource();
                         source.buffer = buffer;
-                        source.connect(ctx.destination);
+                        source.connect(context.destination);
                         source.start(0);
                     };
 
@@ -324,26 +327,43 @@
                         window.soundManager.contextResumed = false;
                     }
 
-                    const st = ctx.state;
-                    window.debugLog('🎵 New context state: ' + st);
-
+                    let resumeError = null;
                     try {
                         await ctx.resume();
                         window.debugLog('🎵 Resume requested');
                     } catch (err) {
+                        resumeError = err;
                         window.debugLog('✗ Resume failed: ' + err.message);
                     }
 
                     // Prime immediately after resume attempt
                     try {
-                        primeContext();
+                        primeContext(ctx);
                         window.debugLog('🎵 Prime buffer played');
                     } catch (e3) {
                         window.debugLog('⚠ Prime failed: ' + e3.message);
                     }
 
-                    const finalState = ctx.state;
+                    let finalState = ctx.state;
                     window.debugLog('🎵 Final state: ' + finalState);
+
+                    // If still suspended and resume failed, try a fresh context once
+                    if (finalState !== 'running' && resumeError) {
+                        window.debugLog('⚠ Retrying with fresh context');
+                        try {
+                            ctx = new AudioContext({ latencyHint: 'interactive' });
+                            if (window.soundManager) {
+                                window.soundManager.audioContext = ctx;
+                                window.soundManager.audioInitialized = true;
+                            }
+                            await ctx.resume();
+                            primeContext(ctx);
+                            finalState = ctx.state;
+                            window.debugLog('🎵 Retry final state: ' + finalState);
+                        } catch (e4) {
+                            window.debugLog('✗ Retry failed: ' + e4.message);
+                        }
+                    }
 
                     if (finalState === 'running' && window.soundManager) {
                         window.soundManager.contextResumed = true;
