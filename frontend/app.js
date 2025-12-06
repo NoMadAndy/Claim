@@ -631,6 +631,34 @@ function initMap() {
 let spotCreationMode = false;
 
 function handleMapClick(e) {
+    // Auto-unlock audio on any map tap (even outside spot creation mode)
+    // This ensures AudioContext resume is called frequently without user needing to press unlock button
+    if (!window.soundManager?.unlocked) {
+        console.log('🎵 Auto-unlock triggered by map tap');
+        if (window.debugLog) window.debugLog('🎵 Auto-unlock triggered by map tap');
+        
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AudioContext({ latencyHint: 'interactive' });
+        
+        // Play 3 quick beeps
+        for (let i = 0; i < 3; i++) {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = 440 + (i * 100); // 440Hz, 540Hz, 640Hz
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.03);
+            osc.start(ctx.currentTime + (i * 0.1));
+            osc.stop(ctx.currentTime + (i * 0.1) + 0.03);
+        }
+        
+        ctx.resume().catch(() => {});
+        window.soundManager.setUnlocked(ctx);
+        
+        serverLog('🎵 Auto-unlock triggered by map tap');
+    }
+    
     if (!spotCreationMode) return;
     
     const lat = e.latlng.lat;
