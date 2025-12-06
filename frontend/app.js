@@ -13,6 +13,7 @@ class SoundManager {
         this.sounds = {};
         this.contextResumed = false;
         this.resumeAttempts = 0;
+        this.unlocked = false; // NEW: Track if unlock button was pressed
         this.setupGlobalListeners();
         // Version tag for debugging
         if (window.debugLog) window.debugLog('SoundManager init v1765055500');
@@ -24,6 +25,15 @@ class SoundManager {
     setupGlobalListeners() {
         // Removed: Global listeners cause conflicts with manual unlock button
         // Sound will only work after manual unlock on iOS
+    }
+
+    // Called by unlock button to mark audio as unlocked
+    setUnlocked(ctx) {
+        this.unlocked = true;
+        this.audioContext = ctx;
+        this.audioInitialized = true;
+        console.log('🎵 SoundManager marked as unlocked');
+        if (window.debugLog) window.debugLog('🎵 SoundManager marked as unlocked');
     }
 
     initAudioContext(force = false) {
