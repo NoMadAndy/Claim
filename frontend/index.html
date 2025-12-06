@@ -280,74 +280,67 @@
             enableAudioBtn.addEventListener('click', async function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                
                 window.debugLog('🎵 Unlock button pressed');
-                
-                // Wait for soundManager if not ready yet
+
+                // Wait briefly for soundManager
                 let tries = 0;
                 while (!window.soundManager && tries < 10) {
-                    await new Promise(r => setTimeout(r, 100));
+                    await new Promise(r => setTimeout(r, 50));
                     tries++;
                 }
-                
-                if (window.soundManager) {
-                    try {
-                        // Force-create a NEW AudioContext on each unlock (iOS workaround)
-                        const AudioContext = window.AudioContext || window.webkitAudioContext;
-                        if (AudioContext) {
-                            // Close old context if exists
-                            if (window.soundManager.audioContext) {
-                                try {
-                                    await window.soundManager.audioContext.close();
-                                    window.debugLog('🎵 Old context closed');
-                                } catch (e) {
-                                    window.debugLog('⚠ Close failed: ' + e.message);
-                                }
-                            }
-                            
-                            // Create fresh context
-                            window.soundManager.audioContext = new AudioContext({ latencyHint: 'interactive' });
-                            window.debugLog('🎵 NEW AudioContext created');
-                            
-                            // Wait a moment for context to initialize
-                            await new Promise(r => setTimeout(r, 100));
-                            
-                            const state = window.soundManager.audioContext.state;
-                            window.debugLog('🎵 New context state: ' + state);
-                            
-                            if (state === 'running') {
-                                window.soundManager.playUnlockTone();
-                                window.debugLog('✓ NEW AudioContext RUNNING!');
-                                enableAudioBtn.textContent = '✅ Ready';
-                                enableAudioBtn.style.background = '#00ff00';
-                                setTimeout(() => {
-                                    enableAudioBtn.textContent = '🔊 Unlock';
-                                    enableAudioBtn.style.background = '#ffcc00';
-                                }, 2000);
-                            } else if (state === 'suspended') {
-                                // Try resume
-                                await window.soundManager.audioContext.resume();
-                                const newState = window.soundManager.audioContext.state;
-                                window.debugLog('🎵 After resume: ' + newState);
-                                if (newState === 'running') {
-                                    window.soundManager.playUnlockTone();
-                                    window.debugLog('✓ Resumed successfully!');
-                                    enableAudioBtn.textContent = '✅ Ready';
-                                    enableAudioBtn.style.background = '#00ff00';
-                                    setTimeout(() => {
-                                        enableAudioBtn.textContent = '🔊 Unlock';
-                                        enableAudioBtn.style.background = '#ffcc00';
-                                    }, 2000);
-                                } else {
-                                    window.debugLog('⚠ Still ' + newState);
-                                }
-                            }
+
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) {
+                    window.debugLog('✗ No AudioContext support');
+                    return;
+                }
+
+                try {
+                    // Close old context if exists
+                    if (window.soundManager && window.soundManager.audioContext) {
+                        try {
+                            await window.soundManager.audioContext.close();
+                            window.debugLog('🎵 Old context closed');
+                        } catch (e2) {
+                            window.debugLog('⚠ Close failed: ' + e2.message);
                         }
-                    } catch (err) {
-                        window.debugLog('✗ Error: ' + err.message);
                     }
-                } else {
-                    window.debugLog('✗ soundManager still missing after wait');
+
+                    // Create fresh context
+                    const ctx = new AudioContext({ latencyHint: 'interactive' });
+                    if (window.soundManager) {
+                        window.soundManager.audioContext = ctx;
+                        window.soundManager.audioInitialized = true;
+                    }
+                    const st = ctx.state;
+                    window.debugLog('🎵 New context state: ' + st);
+
+                    if (st === 'suspended') {
+                        window.debugLog('🎵 Resume attempt (manual button)');
+                        try {
+                            await ctx.resume();
+                        } catch (err) {
+                            window.debugLog('✗ Resume failed: ' + err.message);
+                        }
+                    }
+
+                    const finalState = ctx.state;
+                    window.debugLog('🎵 Final state: ' + finalState);
+
+                    if (finalState === 'running' && window.soundManager) {
+                        window.soundManager.playUnlockTone();
+                        window.debugLog('✓ Audio READY');
+                        enableAudioBtn.textContent = '✅ Ready';
+                        enableAudioBtn.style.background = '#00ff00';
+                        setTimeout(() => {
+                            enableAudioBtn.textContent = '🔊 Unlock';
+                            enableAudioBtn.style.background = '#ffcc00';
+                        }, 2000);
+                    } else {
+                        window.debugLog('⚠ Still not running');
+                    }
+                } catch (err) {
+                    window.debugLog('✗ Error: ' + err.message);
                 }
             });
         });
