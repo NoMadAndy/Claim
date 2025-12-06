@@ -164,17 +164,17 @@
     <!-- Debug Console (visible overlay) -->
     <div id="debug-console" style="
         position: fixed;
-        top: 120px;
+        top: 140px;
         left: 0;
         right: 0;
         background: rgba(0,0,0,0.95);
         color: #0f0;
         font-family: monospace;
-        font-size: 12px;
-        padding: 10px;
+        font-size: 11px;
+        padding: 40px 10px 10px 10px;
         border-bottom: 2px solid #0f0;
         border-radius: 0;
-        max-height: 180px;
+        max-height: 220px;
         overflow-y: auto;
         z-index: 10000;
         white-space: pre-wrap;
@@ -185,18 +185,19 @@
     
     <button id="toggle-debug" style="
         position: fixed;
-        top: 120px;
-        left: 10px;
+        top: 125px;
+        right: 10px;
         background: #0f0;
         color: black;
         border: none;
-        padding: 5px 10px;
+        padding: 8px 12px;
         border-radius: 4px;
         font-weight: bold;
         z-index: 9999;
         cursor: pointer;
-        font-size: 12px;
-    ">🔼 Debug</button>
+        font-size: 14px;
+        width: 60px;
+    ">🔼</button>
     
     <script>
         // Global debug logger
@@ -207,14 +208,18 @@
         
         window.debugLog = function(msg) {
             debugLogs.push('[' + new Date().toLocaleTimeString() + '] ' + msg);
-            if (debugLogs.length > 15) debugLogs.shift();
+            if (debugLogs.length > 20) debugLogs.shift();
             debugConsole.textContent = debugLogs.join('\n');
         };
         
-        toggleBtn.addEventListener('click', function() {
+        toggleBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
             debugOpen = !debugOpen;
             debugConsole.style.display = debugOpen ? 'block' : 'none';
-            toggleBtn.textContent = debugOpen ? '🔽 Debug' : '🔼 Debug';
+            toggleBtn.textContent = debugOpen ? '✕' : '🔼';
+            toggleBtn.style.background = debugOpen ? '#f00' : '#0f0';
+            debugConsole.scrollTop = debugConsole.scrollHeight;
         });
         
         // Hijack console.log for debugging
