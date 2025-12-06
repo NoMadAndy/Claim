@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.css" />
     
     <!-- Custom CSS with cache buster -->
-    <link rel="stylesheet" href="styles.css?v=1765053000">
+    <link rel="stylesheet" href="styles.css?v=1765053300">
 </head>
 <body>
     <!-- Stats Bar (Top) -->
@@ -252,7 +252,7 @@
                 return;
             }
 
-            window.debugLogs = window.debugLogs || ['Debug system initialized v1765053000'];
+            window.debugLogs = window.debugLogs || ['Debug system initialized v1765053300'];
             let debugOpen = false;
 
             window.debugLog = function(msg) {
@@ -429,7 +429,9 @@
                     }
                 } catch (err) {
                     unlockLog('✗ Error: ' + err.message, 'ERROR');
+                    unlockLog('✗ Stack: ' + err.stack, 'ERROR');
                 }
+                unlockLog('🔹 Checkpoint 9: handleUnlock complete');
             };
 
             // Inline fallback for cases where addEventListener is skipped by the browser.
@@ -446,6 +448,6 @@
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     
     <!-- Custom JS with cache buster -->
-    <script src="app.js?v=1765053000"></script>
+    <script src="app.js?v=1765053300"></script>
 </body>
 </html>
