@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.css" />
     
     <!-- Custom CSS with cache buster -->
-    <link rel="stylesheet" href="styles.css?v=1765050600">
+    <link rel="stylesheet" href="styles.css?v=1765050800">
 </head>
 <body>
     <!-- Stats Bar (Top) -->
@@ -252,7 +252,7 @@
                 return;
             }
 
-            window.debugLogs = window.debugLogs || ['Debug system initialized v1765050600'];
+            window.debugLogs = window.debugLogs || ['Debug system initialized v1765050800'];
             let debugOpen = false;
 
             window.debugLog = function(msg) {
@@ -345,6 +345,9 @@
                 }
             };
 
+            // Inline fallback for cases where addEventListener is skipped by the browser.
+            window.handleUnlockButton = handleUnlock;
+
             enableAudioBtn.addEventListener('click', handleUnlock, { passive: false });
             enableAudioBtn.addEventListener('touchstart', handleUnlock, { passive: false });
             enableAudioBtn.addEventListener('pointerdown', handleUnlock, { passive: false });
@@ -356,6 +359,6 @@
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     
     <!-- Custom JS with cache buster -->
-    <script src="app.js?v=1765050600"></script>
+    <script src="app.js?v=1765050800"></script>
 </body>
 </html>
