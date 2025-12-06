@@ -85,6 +85,15 @@ async def end_track(
     return track
 
 
+@router.get("/", response_model=List[TrackResponse])
+async def list_all_tracks(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all tracks for current user"""
+    return tracking_service.get_user_tracks(db, current_user.id, active_only=False)
+
+
 @router.get("/me", response_model=List[TrackResponse])
 async def get_my_tracks(
     active_only: bool = False,
