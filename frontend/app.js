@@ -27,41 +27,65 @@ class SoundManager {
         // Sound will only work after manual unlock on iOS
     }
 
-    // Workaround: Simulate suspend/resume to unlock iOS audio on page load
+    // Workaround: Use actual audio file to unlock iOS audio
     async autoUnlockOnLoad() {
-        if (!this.audioContext || this.audioContext.state === 'closed') {
+        try {
+            // Create a simple beep tone as base64-encoded WAV
+            // This is a 1kHz sine wave, 100ms, mono, 16-bit, 44.1kHz
+            const wavBase64 = 'UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==';
+            const binaryString = atob(wavBase64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            
+            const ctx = new AudioContext({ latencyHint: 'interactive' });
+            const audioBuffer = await ctx.decodeAudioData(bytes.buffer);
+            
+            // Play the buffer
+            const source = ctx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(ctx.destination);
+            source.start(0);
+            
+            // Store context
+            this.audioContext = ctx;
+            this.unlocked = true;
+            this.audioInitialized = true;
+            
+            console.log('🔊 AutoUnlock: Audio file played, context ready');
+            if (window.debugLog) window.debugLog('🔊 AutoUnlock: Audio file played');
+        } catch (e) {
+            console.log('🔊 AutoUnlock with file failed:', e.message);
+            // Fallback: try oscillator method
             try {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 if (AudioContext) {
-                    this.audioContext = new AudioContext({ latencyHint: 'interactive' });
+                    const ctx = new AudioContext({ latencyHint: 'interactive' });
+                    const now = ctx.currentTime;
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    gain.gain.setValueAtTime(0.00001, now);
+                    gain.gain.exponentialRampToValueAtTime(0.000001, now + 0.01);
+                    osc.frequency.value = 440;
+                    osc.start(now);
+                    osc.stop(now + 0.01);
+                    
+                    this.audioContext = ctx;
+                    this.unlocked = true;
+                    this.audioInitialized = true;
+                    
+                    console.log('🔊 AutoUnlock: Oscillator fallback used');
+                    if (window.debugLog) window.debugLog('🔊 AutoUnlock: Oscillator fallback');
                 }
-            } catch (e) {
-                console.log('🔊 AutoUnlock: Create failed', e.message);
-                return;
+            } catch (e2) {
+                console.log('🔊 AutoUnlock completely failed:', e2.message);
             }
-        }
-
-        if (!this.audioContext) return;
-
-        try {
-            // Play a silent tone to trigger iOS audio unlock
-            const now = this.audioContext.currentTime;
-            const osc = this.audioContext.createOscillator();
-            const gain = this.audioContext.createGain();
-            osc.connect(gain);
-            gain.connect(this.audioContext.destination);
-            gain.gain.setValueAtTime(0.00001, now);
-            gain.gain.exponentialRampToValueAtTime(0.000001, now + 0.01);
-            osc.frequency.value = 440;
-            osc.start(now);
-            osc.stop(now + 0.01);
-            
-            console.log('🔊 AutoUnlock: Silent tone played');
-            if (window.debugLog) window.debugLog('🔊 AutoUnlock: Silent tone played');
-            
-            this.unlocked = true;
-        } catch (e) {
-            console.log('🔊 AutoUnlock failed:', e.message);
         }
     }
 
