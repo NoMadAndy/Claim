@@ -27,6 +27,15 @@ class SoundManager {
         // Sound will only work after manual unlock on iOS
     }
 
+    // Called by unlock button to mark audio as unlocked
+    setUnlocked(ctx) {
+        this.unlocked = true;
+        this.audioContext = ctx;
+        this.audioInitialized = true;
+        console.log('🎵 SoundManager marked as unlocked');
+        if (window.debugLog) window.debugLog('🎵 SoundManager marked as unlocked');
+    }
+
     // Workaround: Use actual audio file to unlock iOS audio
     async autoUnlockOnLoad() {
         try {
