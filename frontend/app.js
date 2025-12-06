@@ -27,13 +27,42 @@ class SoundManager {
         // Sound will only work after manual unlock on iOS
     }
 
-    // Called by unlock button to mark audio as unlocked
-    setUnlocked(ctx) {
-        this.unlocked = true;
-        this.audioContext = ctx;
-        this.audioInitialized = true;
-        console.log('🎵 SoundManager marked as unlocked');
-        if (window.debugLog) window.debugLog('🎵 SoundManager marked as unlocked');
+    // Workaround: Simulate suspend/resume to unlock iOS audio on page load
+    async autoUnlockOnLoad() {
+        if (!this.audioContext || this.audioContext.state === 'closed') {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    this.audioContext = new AudioContext({ latencyHint: 'interactive' });
+                }
+            } catch (e) {
+                console.log('🔊 AutoUnlock: Create failed', e.message);
+                return;
+            }
+        }
+
+        if (!this.audioContext) return;
+
+        try {
+            // Play a silent tone to trigger iOS audio unlock
+            const now = this.audioContext.currentTime;
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(this.audioContext.destination);
+            gain.gain.setValueAtTime(0.00001, now);
+            gain.gain.exponentialRampToValueAtTime(0.000001, now + 0.01);
+            osc.frequency.value = 440;
+            osc.start(now);
+            osc.stop(now + 0.01);
+            
+            console.log('🔊 AutoUnlock: Silent tone played');
+            if (window.debugLog) window.debugLog('🔊 AutoUnlock: Silent tone played');
+            
+            this.unlocked = true;
+        } catch (e) {
+            console.log('🔊 AutoUnlock failed:', e.message);
+        }
     }
 
     initAudioContext(force = false) {
