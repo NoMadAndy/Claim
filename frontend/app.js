@@ -111,16 +111,22 @@ class SoundManager {
         }
     }
 
-    playSound(type) {
+    async ensureContext(force) {
+        if (!this.audioContext || force) {
+            this.initAudioContext(true);
+            if (window.debugLog) window.debugLog('🎵 initAudioContext invoked');
+        }
+        const resumed = await this.resumeContext();
+        return resumed;
+    }
+
+    async playSound(type) {
         const msg = '🔊 playSound: ' + type + ' enabled:' + this.soundsEnabled + ' vol:' + this.volume;
         console.log(msg);
         if (window.debugLog) window.debugLog(msg);
 
-        // Ensure AudioContext exists (created lazily on first gesture)
-        if (!this.audioContext) {
-            this.initAudioContext(true);
-            if (window.debugLog) window.debugLog('🎵 initAudioContext invoked from playSound');
-        }
+        // Ensure AudioContext exists and is running
+        await this.ensureContext(true);
         
         // Always try vibration as fallback
         if (!this.soundsEnabled) {
@@ -158,7 +164,7 @@ class SoundManager {
         if (this.audioContext.state !== 'running') {
             console.log('🔊 Attempting to resume AudioContext...');
             if (window.debugLog) window.debugLog('🔊 Attempting resume...');
-            this.resumeContext();
+            await this.resumeContext();
         }
 
         try {
