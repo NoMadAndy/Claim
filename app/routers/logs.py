@@ -20,9 +20,12 @@ async def create_log(
     """Create a log entry (manual or auto)"""
     # Check cooldown
     if not spot_service.can_log_spot(db, current_user.id, log_data.spot_id):
+        remaining = spot_service.get_cooldown_remaining(db, current_user.id, log_data.spot_id)
+        minutes = remaining // 60
+        seconds = remaining % 60
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Cooldown active for this spot"
+            detail=f"Cooldown active: {minutes}m {seconds}s remaining"
         )
     
     # Create log

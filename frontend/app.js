@@ -805,12 +805,12 @@ window.logSpot = async function(spotId) {
         loadStats();
         map.closePopup();
     } catch (error) {
-        // Check for 429 Too Many Requests (rate limiting)
+        // Check for 429 Too Many Requests (rate limiting/cooldown)
         if (error.status === 429) {
             soundManager.playSound('error');
             showNotification(
                 '⏱️ Cooldown Active',
-                'Please wait before logging another spot',
+                error.detail || 'Please wait before logging this spot',
                 'warning'
             );
         } else {

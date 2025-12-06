@@ -1,5 +1,12 @@
 # Changelog
 
+## 2025-12-06 19:35:06
+**Files:** 3fileschanged,29insertions(+),13deletions(-)
+**Modified:**
+- `app/routers/logs.py`
+- `app/services/spot_service.py`
+- `frontend/app.js`
+
 ## 2025-12-06 19:32:45
 **Files:** 1filechanged,10insertions(+),4deletions(-)
 **Modified:**

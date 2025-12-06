@@ -50,6 +50,30 @@ def get_spots_in_radius(
     return spots
 
 
+def get_cooldown_remaining(db: Session, user_id: int, spot_id: int) -> int:
+    """
+    Get remaining cooldown time in seconds for a user on a specific spot.
+    Returns 0 if no cooldown is active.
+    """
+    cooldown_time = datetime.utcnow() - timedelta(seconds=settings.LOG_COOLDOWN)
+    
+    last_log = db.query(Log).filter(
+        and_(
+            Log.user_id == user_id,
+            Log.spot_id == spot_id,
+            Log.timestamp > cooldown_time
+        )
+    ).first()
+    
+    if not last_log:
+        return 0
+    
+    # Calculate remaining cooldown
+    elapsed = (datetime.utcnow() - last_log.timestamp).total_seconds()
+    remaining = max(0, settings.LOG_COOLDOWN - int(elapsed))
+    return remaining
+
+
 def can_log_spot(db: Session, user_id: int, spot_id: int) -> bool:
     """
     Check if user can log this spot (per-spot cooldown).
@@ -57,18 +81,7 @@ def can_log_spot(db: Session, user_id: int, spot_id: int) -> bool:
     Each player has a separate 5-minute cooldown per spot.
     Example: Player A has cooldown on Spot 1, but Player B can log Spot 1 immediately.
     """
-    cooldown_time = datetime.utcnow() - timedelta(seconds=settings.LOG_COOLDOWN)
-    
-    # Check if this specific user logged this specific spot recently
-    last_log = db.query(Log).filter(
-        and_(
-            Log.user_id == user_id,  # This user
-            Log.spot_id == spot_id,  # This specific spot
-            Log.timestamp > cooldown_time  # Within cooldown window
-        )
-    ).first()
-    
-    return last_log is None
+    return get_cooldown_remaining(db, user_id, spot_id) == 0
 
 
 def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
