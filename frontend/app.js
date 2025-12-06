@@ -15,8 +15,8 @@ class SoundManager {
         this.resumeAttempts = 0;
         this.setupGlobalListeners();
         // Version tag for debugging
-        if (window.debugLog) window.debugLog('SoundManager init v1765054300');
-        console.log('SoundManager init v1765054300');
+        if (window.debugLog) window.debugLog('SoundManager init v1765054600');
+        console.log('SoundManager init v1765054600');
         // Do NOT auto-create AudioContext on load (iOS blocks it). Create lazily on first gesture or play.
         // Do NOT setup global listeners - only manual unlock button
     }
