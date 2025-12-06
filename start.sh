@@ -36,9 +36,20 @@ elif command -v docker >/dev/null 2>&1; then
 fi
 
 if [[ -z "$DATABASE_URL" && "$USE_COMPOSE_DB" == "true" && -n "$compose_cmd" ]]; then
-  export DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}"
-  echo "[info] Using Docker Compose PostGIS database at $DATABASE_URL"
+  compose_target_url="postgresql://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}"
+  echo "[info] Using Docker Compose PostGIS database at $compose_target_url"
+  set +e
   (cd "$PROJECT_ROOT" && $compose_cmd up -d db)
+  compose_status=$?
+  set -e
+  if [[ $compose_status -eq 0 ]]; then
+    export DATABASE_URL="$compose_target_url"
+  else
+    echo "[error] Failed to start PostGIS via Compose (status $compose_status)." >&2
+    echo "[error] Please ensure docker/compose is running and accessible (DOCKER_HOST, permissions)." >&2
+    compose_cmd=""
+    DATABASE_URL=""
+  fi
 fi
 
 if [[ -z "$DATABASE_URL" ]]; then
