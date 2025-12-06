@@ -505,8 +505,17 @@ async function apiRequest(endpoint, options = {}) {
     });
     
     if (!response.ok) {
-        const error = new Error(`API Error: ${response.statusText}`);
+        let errorDetail = response.statusText;
+        try {
+            const errorBody = await response.json();
+            errorDetail = errorBody.detail || errorBody.message || errorBody.error || response.statusText;
+        } catch (e) {
+            // If response body is not JSON, use status text
+        }
+        
+        const error = new Error(`API Error: ${errorDetail}`);
         error.status = response.status;
+        error.detail = errorDetail;
         throw error;
     }
     
