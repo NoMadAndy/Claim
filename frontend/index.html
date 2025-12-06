@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.css" />
     
     <!-- Custom CSS with cache buster -->
-    <link rel="stylesheet" href="styles.css?v=1765051400">
+    <link rel="stylesheet" href="styles.css?v=1765052200">
 </head>
 <body>
     <!-- Stats Bar (Top) -->
@@ -252,7 +252,7 @@
                 return;
             }
 
-            window.debugLogs = window.debugLogs || ['Debug system initialized v1765051400'];
+            window.debugLogs = window.debugLogs || ['Debug system initialized v1765052200'];
             let debugOpen = false;
 
             window.debugLog = function(msg) {
@@ -272,6 +272,29 @@
             };
             window.logBoth = logBoth;
 
+            // Throttled server log sender to surface client debug in server console
+            let lastServerLogTs = 0;
+            window.serverLog = (msg, level = 'INFO') => {
+                const now = Date.now();
+                if (now - lastServerLogTs < 500) return; // throttle to avoid spam
+                lastServerLogTs = now;
+                try {
+                    const body = JSON.stringify({ msg, level });
+                    if (navigator.sendBeacon) {
+                        const blob = new Blob([body], { type: 'application/json' });
+                        navigator.sendBeacon('/api/client-log', blob);
+                    } else {
+                        fetch('/api/client-log', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body
+                        });
+                    }
+                } catch (e) {
+                    console.warn('serverLog failed', e);
+                }
+            };
+
             toggleBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -289,6 +312,7 @@
                 e.preventDefault();
                 e.stopPropagation();
                 logBoth('🎵 Unlock button pressed (' + e.type + ')');
+                serverLog('Unlock pressed ' + e.type);
 
                 // Wait briefly for soundManager
                 let tries = 0;
@@ -307,6 +331,7 @@
                     const AudioContext = window.AudioContext || window.webkitAudioContext;
                     if (!AudioContext) {
                         logBoth('✗ No AudioContext support');
+                        serverLog('No AudioContext support', 'ERROR');
                         return;
                     }
 
@@ -315,8 +340,10 @@
                     if (!ctx || ctx.state === 'closed') {
                         ctx = new AudioContext({ latencyHint: 'interactive' });
                         logBoth('🎵 Created new context, state: ' + ctx.state);
+                        serverLog('Created context state ' + ctx.state);
                     } else {
                         logBoth('🎵 Reusing existing context, state: ' + ctx.state);
+                        serverLog('Reusing context state ' + ctx.state);
                     }
 
                     const primeContext = (context) => {
@@ -338,9 +365,11 @@
                     try {
                         await ctx.resume();
                         logBoth('🎵 Resume requested');
+                        serverLog('Resume requested');
                     } catch (err) {
                         resumeError = err;
                         logBoth('✗ Resume failed: ' + err.message);
+                        serverLog('Resume failed: ' + err.message, 'ERROR');
                     }
 
                     // Prime immediately after resume attempt
@@ -349,14 +378,17 @@
                         logBoth('🎵 Prime buffer played');
                     } catch (e3) {
                         logBoth('⚠ Prime failed: ' + e3.message);
+                        serverLog('Prime failed: ' + e3.message, 'WARN');
                     }
 
                     let finalState = ctx.state;
                     logBoth('🎵 Final state: ' + finalState);
+                    serverLog('Final state: ' + finalState);
 
                     // If still suspended and resume failed, try a fresh context once
                     if (finalState !== 'running' && resumeError) {
                         logBoth('⚠ Retrying with fresh context');
+                        serverLog('Retrying fresh context');
                         try {
                             ctx = new AudioContext({ latencyHint: 'interactive' });
                             if (window.soundManager) {
@@ -367,8 +399,10 @@
                             primeContext(ctx);
                             finalState = ctx.state;
                             logBoth('🎵 Retry final state: ' + finalState);
+                            serverLog('Retry final state: ' + finalState);
                         } catch (e4) {
                             logBoth('✗ Retry failed: ' + e4.message);
+                            serverLog('Retry failed: ' + e4.message, 'ERROR');
                         }
                     }
 
@@ -376,6 +410,7 @@
                         window.soundManager.contextResumed = true;
                         window.soundManager.playUnlockTone();
                         logBoth('✓ Audio READY');
+                        serverLog('Audio READY');
                         enableAudioBtn.textContent = '✅ Ready';
                         enableAudioBtn.style.background = '#00ff00';
                         setTimeout(() => {
@@ -384,9 +419,11 @@
                         }, 2000);
                     } else {
                         logBoth('⚠ Still not running');
+                        serverLog('Still not running', 'WARN');
                     }
                 } catch (err) {
                     logBoth('✗ Error: ' + err.message);
+                    serverLog('Unlock error: ' + err.message, 'ERROR');
                 }
             };
 
@@ -404,6 +441,6 @@
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     
     <!-- Custom JS with cache buster -->
-    <script src="app.js?v=1765051400"></script>
+    <script src="app.js?v=1765052200"></script>
 </body>
 </html>
