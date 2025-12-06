@@ -164,6 +164,47 @@
     <!-- Notification Container -->
     <div id="notifications" class="notifications"></div>
     
+    <!-- Debug Console (visible overlay) -->
+    <div id="debug-console" style="
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        background: rgba(0,0,0,0.9);
+        color: #0f0;
+        font-family: monospace;
+        font-size: 10px;
+        padding: 10px;
+        border: 2px solid #0f0;
+        border-radius: 4px;
+        max-width: 200px;
+        max-height: 150px;
+        overflow-y: auto;
+        z-index: 10000;
+        white-space: pre-wrap;
+        word-break: break-all;
+    "></div>
+    
+    <script>
+        // Global debug logger
+        const debugLogs = [];
+        const debugConsole = document.getElementById('debug-console');
+        
+        window.debugLog = function(msg) {
+            debugLogs.push('[' + new Date().toLocaleTimeString() + '] ' + msg);
+            if (debugLogs.length > 10) debugLogs.shift();
+            debugConsole.textContent = debugLogs.join('\n');
+        };
+        
+        // Hijack console.log for debugging
+        const originalLog = console.log;
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            if (args[0] && (args[0].includes('🔊') || args[0].includes('📳') || args[0].includes('✓') || args[0].includes('AudioContext'))) {
+                window.debugLog(args.join(' '));
+            }
+        };
+    </script>
+    
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>

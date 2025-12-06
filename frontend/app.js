@@ -56,14 +56,24 @@ class SoundManager {
 
     playHaptic(pattern) {
         // Vibration API fallback for iOS
-        if (navigator.vibrate) {
-            navigator.vibrate(pattern);
+        try {
+            if (navigator.vibrate) {
+                const result = navigator.vibrate(pattern);
+                console.log('📳 Haptic triggered:', pattern, 'result:', result);
+            } else {
+                console.log('📳 Vibration API not available');
+            }
+        } catch (e) {
+            console.log('📳 Haptic error:', e);
         }
     }
 
     playSound(type) {
+        console.log('🔊 playSound called:', type, 'soundsEnabled:', this.soundsEnabled, 'volume:', this.volume);
+        
+        // Always try vibration as fallback
         if (!this.soundsEnabled) {
-            // Try haptics instead
+            console.log('🔊 Sound disabled - using haptics only');
             switch (type) {
                 case 'log':
                     this.playHaptic([30, 30, 30]);
@@ -82,18 +92,23 @@ class SoundManager {
         }
 
         if (!this.audioContext) {
+            console.log('🔊 AudioContext not initialized');
             this.playHaptic([30]);
             return;
         }
 
+        console.log('🔊 AudioContext state:', this.audioContext.state);
+
         // Always try to resume
         if (this.audioContext.state !== 'running') {
+            console.log('🔊 Attempting to resume AudioContext...');
             this.resumeContext();
         }
 
         try {
             // If context still not running, use haptics
             if (this.audioContext.state !== 'running') {
+                console.log('🔊 AudioContext still suspended - using haptics');
                 this.playHaptic([30]);
                 return;
             }
