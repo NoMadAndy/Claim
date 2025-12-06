@@ -1606,12 +1606,17 @@ function toggleTracksView() {
 // Settings Functions
 function showSettings() {
     const settingsModal = document.getElementById('settings-modal');
+    if (!settingsModal) return;
     settingsModal.classList.remove('hidden');
     
     // Update current settings in UI
-    document.getElementById('setting-sound-toggle').checked = soundManager.soundsEnabled;
-    document.getElementById('setting-volume-slider').value = soundManager.volume * 100;
-    document.getElementById('volume-value').textContent = Math.round(soundManager.volume * 100) + '%';
+    const soundToggle = document.getElementById('setting-sound-toggle');
+    const volumeSlider = document.getElementById('setting-volume-slider');
+    const volumeValue = document.getElementById('volume-value');
+    
+    if (soundToggle) soundToggle.checked = soundManager.soundsEnabled;
+    if (volumeSlider) volumeSlider.value = soundManager.volume * 100;
+    if (volumeValue) volumeValue.textContent = Math.round(soundManager.volume * 100) + '%';
 }
 
 function closeSettings() {
