@@ -686,7 +686,7 @@ async function startTrack() {
         console.error('Failed to start track:', error);
         
         // If there's already an active track, try to end it first
-        if (error.message.includes('already have an active track')) {
+        if (error.detail && error.detail.includes('already have an active track')) {
             console.log('Attempting to clean up old track...');
             try {
                 // Get list of active tracks and end them
@@ -705,7 +705,7 @@ async function startTrack() {
             }
         }
         
-        showNotification('Tracking', 'Failed to start: ' + (error.message || 'Unknown error'), 'error');
+        showNotification('Tracking', 'Failed to start: ' + (error.detail || error.message || 'Unknown error'), 'error');
     }
 }
 
