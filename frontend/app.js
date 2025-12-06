@@ -675,6 +675,28 @@ async function startTrack() {
         showNotification('Tracking', 'Started tracking your route', 'success');
     } catch (error) {
         console.error('Failed to start track:', error);
+        
+        // If there's already an active track, try to end it first
+        if (error.message.includes('already have an active track')) {
+            console.log('Attempting to clean up old track...');
+            try {
+                // Get list of active tracks and end them
+                const myTracks = await apiRequest('/tracks/me?active_only=true');
+                if (myTracks && myTracks.length > 0) {
+                    for (const oldTrack of myTracks) {
+                        await apiRequest(`/tracks/${oldTrack.id}/end`, { method: 'POST' });
+                        console.log(`Ended old track ${oldTrack.id}`);
+                    }
+                    // Retry starting new track
+                    await new Promise(r => setTimeout(r, 500));
+                    return startTrack();
+                }
+            } catch (cleanupError) {
+                console.error('Failed to clean up old tracks:', cleanupError);
+            }
+        }
+        
+        showNotification('Tracking', 'Failed to start: ' + (error.message || 'Unknown error'), 'error');
     }
 }
 
