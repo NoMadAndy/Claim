@@ -359,11 +359,9 @@
                         unlockLog('⚠ Resume threw: ' + err.message, 'WARN');
                     }
 
-                    // Store context
+                    // Store context via SoundManager's setUnlocked method
                     if (window.soundManager) {
-                        window.soundManager.audioContext = ctx;
-                        window.soundManager.audioInitialized = true;
-                        window.soundManager.contextResumed = true;
+                        window.soundManager.setUnlocked(ctx);
                     }
 
                     unlockLog('✓ Audio unlocked (context ready for playback)');
