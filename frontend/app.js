@@ -200,6 +200,12 @@ class SoundManager {
         return resumed;
     }
 
+    // Audio samples (Base64-encoded WAV files)
+    audioSamples = {
+        // LOG sound: Triumphales aufsteigendes Ding für Spot-Capture (E-G-C chord, ascending)
+        log: 'UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA=='
+    };
+
     async playSound(type) {
         const msg = '🔊 playSound: ' + type + ' enabled:' + this.soundsEnabled + ' vol:' + this.volume;
         console.log(msg);
@@ -255,30 +261,27 @@ class SoundManager {
         try {
             // Try to play sound
             const now = this.audioContext.currentTime;
-            const osc = this.audioContext.createOscillator();
-            const gain = this.audioContext.createGain();
-            osc.connect(gain);
-            gain.connect(this.audioContext.destination);
-
-            gain.gain.setValueAtTime(this.volume, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
 
             switch (type) {
-                case 'log': // Success beep
-                    osc.frequency.setValueAtTime(800, now);
-                    osc.frequency.setValueAtTime(1000, now + 0.1);
-                    osc.start(now);
-                    osc.stop(now + 0.15);
-                    if (window.debugLog) window.debugLog('♪ Playing LOG sound (800-1000Hz)');
+                case 'log': // Triumphales aufsteigendes Ding
+                    this.playLogSound(now);
                     this.playHaptic([30, 30, 30]);
                     break;
                 case 'loot': // Ding
-                    osc.frequency.setValueAtTime(1200, now);
-                    osc.frequency.setValueAtTime(1500, now + 0.05);
-                    osc.start(now);
-                    osc.stop(now + 0.2);
-                    if (window.debugLog) window.debugLog('♪ Playing LOOT sound (1200-1500Hz)');
-                    this.playHaptic([50, 50, 50]);
+                    {
+                        const osc = this.audioContext.createOscillator();
+                        const gain = this.audioContext.createGain();
+                        osc.connect(gain);
+                        gain.connect(this.audioContext.destination);
+                        osc.frequency.setValueAtTime(1200, now);
+                        osc.frequency.setValueAtTime(1500, now + 0.05);
+                        gain.gain.setValueAtTime(this.volume, now);
+                        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                        osc.start(now);
+                        osc.stop(now + 0.2);
+                        if (window.debugLog) window.debugLog('♪ Playing LOOT sound (1200-1500Hz)');
+                        this.playHaptic([50, 50, 50]);
+                    }
                     break;
                 case 'levelup': // Ascending tones
                     for (let i = 0; i < 3; i++) {
@@ -296,8 +299,13 @@ class SoundManager {
                     this.playHaptic([100, 50, 100, 50, 100]);
                     break;
                 case 'error': // Low buzz
-                    osc.frequency.setValueAtTime(300, now);
-                    osc.frequency.setValueAtTime(250, now + 0.1);
+                    {
+                        const osc = this.audioContext.createOscillator();
+                        const gain = this.audioContext.createGain();
+                        osc.connect(gain);
+                        gain.connect(this.audioContext.destination);
+                        osc.frequency.setValueAtTime(300, now);
+                        osc.frequency.setValueAtTime(250, now + 0.1);
                     osc.start(now);
                     osc.stop(now + 0.25);
                     if (window.debugLog) window.debugLog('♪ Playing ERROR sound (300-250Hz)');
