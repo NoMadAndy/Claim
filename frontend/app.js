@@ -11,7 +11,17 @@ class SoundManager {
         this.volume = parseFloat(localStorage.getItem('claim_sound_volume')) || 0.3;
         this.sounds = {};
         this.contextResumed = false;
+        this.resumeAttempts = 0;
+        this.setupGlobalListeners();
         this.initAudioContext();
+    }
+
+    setupGlobalListeners() {
+        // Aggressive resume on ANY user interaction
+        const events = ['click', 'touchstart', 'touchend', 'keydown', 'scroll'];
+        events.forEach(event => {
+            document.addEventListener(event, () => this.resumeContext(), { once: false, capture: true });
+        });
     }
 
     initAudioContext() {
@@ -20,8 +30,7 @@ class SoundManager {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 if (AudioContext) {
                     this.audioContext = new AudioContext();
-                    // Resume context on user interaction (required for mobile)
-                    this.resumeContext();
+                    console.log('AudioContext created, state:', this.audioContext.state);
                 }
             }
         } catch (e) {
@@ -33,31 +42,60 @@ class SoundManager {
         if (!this.audioContext) return;
         
         if (this.audioContext.state === 'suspended') {
-            const resume = () => {
-                this.audioContext.resume().then(() => {
-                    this.contextResumed = true;
-                    console.log('AudioContext resumed');
-                    // Remove listeners after successful resume
-                    document.removeEventListener('click', resume);
-                    document.removeEventListener('touchstart', resume);
-                });
-            };
-            
-            document.addEventListener('click', resume);
-            document.addEventListener('touchstart', resume);
-        } else {
+            this.resumeAttempts++;
+            this.audioContext.resume().then(() => {
+                this.contextResumed = true;
+                console.log('✓ AudioContext resumed (attempt', this.resumeAttempts + ')');
+            }).catch(err => {
+                console.warn('Resume failed:', err);
+            });
+        } else if (this.audioContext.state === 'running') {
             this.contextResumed = true;
         }
     }
 
+    playHaptic(pattern) {
+        // Vibration API fallback for iOS
+        if (navigator.vibrate) {
+            navigator.vibrate(pattern);
+        }
+    }
+
     playSound(type) {
-        if (!this.soundsEnabled || !this.audioContext) return;
+        if (!this.soundsEnabled) {
+            // Try haptics instead
+            switch (type) {
+                case 'log':
+                    this.playHaptic([30, 30, 30]);
+                    break;
+                case 'loot':
+                    this.playHaptic([50, 50, 50]);
+                    break;
+                case 'levelup':
+                    this.playHaptic([100, 50, 100, 50, 100]);
+                    break;
+                case 'error':
+                    this.playHaptic([200]);
+                    break;
+            }
+            return;
+        }
+
+        if (!this.audioContext) {
+            this.playHaptic([30]);
+            return;
+        }
+
+        // Always try to resume
+        if (this.audioContext.state !== 'running') {
+            this.resumeContext();
+        }
 
         try {
-            // Ensure context is running
-            if (this.audioContext.state === 'suspended') {
-                this.resumeContext();
-                return; // Try again on next call after resume
+            // If context still not running, use haptics
+            if (this.audioContext.state !== 'running') {
+                this.playHaptic([30]);
+                return;
             }
 
             const now = this.audioContext.currentTime;
@@ -75,12 +113,14 @@ class SoundManager {
                     osc.frequency.setValueAtTime(1000, now + 0.1);
                     osc.start(now);
                     osc.stop(now + 0.15);
+                    this.playHaptic([30, 30, 30]);
                     break;
                 case 'loot': // Ding
                     osc.frequency.setValueAtTime(1200, now);
                     osc.frequency.setValueAtTime(1500, now + 0.05);
                     osc.start(now);
                     osc.stop(now + 0.2);
+                    this.playHaptic([50, 50, 50]);
                     break;
                 case 'levelup': // Ascending tones
                     for (let i = 0; i < 3; i++) {
@@ -94,16 +134,19 @@ class SoundManager {
                         osc2.start(now + i * 0.1);
                         osc2.stop(now + i * 0.1 + 0.15);
                     }
+                    this.playHaptic([100, 50, 100, 50, 100]);
                     break;
                 case 'error': // Low buzz
                     osc.frequency.setValueAtTime(300, now);
                     osc.frequency.setValueAtTime(250, now + 0.1);
                     osc.start(now);
                     osc.stop(now + 0.25);
+                    this.playHaptic([200]);
                     break;
             }
         } catch (e) {
             console.warn('Sound playback failed:', e);
+            this.playHaptic([30]);
         }
     }
 
