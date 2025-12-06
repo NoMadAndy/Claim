@@ -163,6 +163,12 @@ function handleLogout() {
         ws = null;
     }
     
+    // Stop heatmap refresh interval
+    if (heatmapUpdateInterval) {
+        clearInterval(heatmapUpdateInterval);
+        heatmapUpdateInterval = null;
+    }
+    
     // Show logout message
     showNotification('Logout', 'Successfully logged out', 'success');
     
@@ -502,6 +508,10 @@ function handleWebSocketMessage(message) {
             
         case 'claim_update':
             updateClaimHeatmap();
+            // Aktualisiere Heatmap wenn sichtbar
+            if (heatmapVisible) {
+                loadHeatmap();
+            }
             break;
             
         case 'tracking_update':
