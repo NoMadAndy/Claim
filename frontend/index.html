@@ -272,24 +272,17 @@
             };
             window.logBoth = logBoth;
 
-            // Server log sender to mirror key events; rate-limited per 200ms
-            let lastServerLogTs = 0;
+            // Server log sender to mirror key events; NO throttle for unlock debugging
             window.serverLog = (msg, level = 'INFO') => {
-                const now = Date.now();
-                if (now - lastServerLogTs < 200) return; // light throttle
-                lastServerLogTs = now;
                 try {
                     const body = JSON.stringify({ msg, level });
-                    if (navigator.sendBeacon) {
-                        const blob = new Blob([body], { type: 'application/json' });
-                        navigator.sendBeacon('/api/client-log', blob);
-                    } else {
-                        fetch('/api/client-log', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body
-                        });
-                    }
+                    // Use fetch with no waiting (fire and forget)
+                    fetch('/api/client-log', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body,
+                        keepalive: true
+                    }).catch(e => console.warn('serverLog fetch failed', e));
                 } catch (e) {
                     console.warn('serverLog failed', e);
                 }
@@ -298,6 +291,7 @@
             // Helper to always log to both and server in one call
             window.unlockLog = (msg, level = 'INFO') => {
                 logBoth(msg);
+                // Fire async without waiting
                 serverLog(msg, level);
             };
 
