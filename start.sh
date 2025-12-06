@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail  # Removed -e to allow recovery from transient errors like pip failures
+trap 'echo "[error] Script failed at line $LINENO"; exit 1' ERR
 
 # Simple bootstrap/start script for Claim (backend + static frontend)
 # Requirements: Python 3.10+, PostgreSQL/PostGIS (matching DATABASE_URL), internet for pip on first run.
@@ -83,8 +84,22 @@ fi
 source "$VENV_DIR/bin/activate"
 
 # Upgrade pip & install deps (use --break-system-packages on Debian-based systems)
-pip install --upgrade pip >/dev/null 2>&1 || pip install --upgrade pip --break-system-packages >/dev/null 2>&1
-pip install -r "$REQ_FILE" 2>&1 || pip install -r "$REQ_FILE" --break-system-packages
+echo "[info] Installing dependencies..."
+if ! pip install --upgrade pip >/dev/null 2>&1; then
+  echo "[info] Retrying pip upgrade with --break-system-packages..."
+  pip install --upgrade pip --break-system-packages >/dev/null 2>&1
+fi
+
+if ! pip install -r "$REQ_FILE" >/dev/null 2>&1; then
+  echo "[info] Retrying pip install with --break-system-packages..."
+  pip install -r "$REQ_FILE" --break-system-packages >/dev/null 2>&1
+fi
+
+if ! python -c "import uvicorn" 2>/dev/null; then
+  echo "[error] Failed to install dependencies. Check pip output above." >&2
+  exit 1
+fi
+echo "[info] Dependencies installed successfully"
 
 # Wait for database if applicable
 if [[ "$DATABASE_URL" == postgresql* ]]; then
