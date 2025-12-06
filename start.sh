@@ -38,6 +38,14 @@ fi
 if [[ -z "$DATABASE_URL" && "$USE_COMPOSE_DB" == "true" && -n "$compose_cmd" ]]; then
   compose_target_url="postgresql://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}"
   echo "[info] Using Docker Compose PostGIS database at $compose_target_url"
+  # Check if Docker daemon is running
+  if ! docker info >/dev/null 2>&1; then
+    echo "[error] Docker-Daemon läuft nicht oder ist nicht erreichbar!" >&2
+    echo "[hint] Starte Docker manuell (z.B. 'sudo systemctl start docker' oder 'service docker start')." >&2
+    echo "[hint] Prüfe ggf. 'docker context ls' und 'docker context use default'." >&2
+    echo "[hint] Prüfe Umgebungsvariable DOCKER_HOST (sollte meist unset sein oder auf unix:///var/run/docker.sock zeigen)." >&2
+    exit 1
+  fi
   set +e
   (cd "$PROJECT_ROOT" && $compose_cmd up -d db)
   compose_status=$?
@@ -46,9 +54,10 @@ if [[ -z "$DATABASE_URL" && "$USE_COMPOSE_DB" == "true" && -n "$compose_cmd" ]];
     export DATABASE_URL="$compose_target_url"
   else
     echo "[error] Failed to start PostGIS via Compose (status $compose_status)." >&2
-    echo "[error] Please ensure docker/compose is running and accessible (DOCKER_HOST, permissions)." >&2
+    echo "[error] Bitte prüfe Docker-Status, DOCKER_HOST und Berechtigungen." >&2
     compose_cmd=""
     DATABASE_URL=""
+    exit 1
   fi
 fi
 
