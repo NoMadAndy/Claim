@@ -10,12 +10,43 @@ class SoundManager {
         this.soundsEnabled = localStorage.getItem('claim_sounds_enabled') !== 'false'; // Default: true
         this.volume = parseFloat(localStorage.getItem('claim_sound_volume')) || 0.3;
         this.sounds = {};
+        this.contextResumed = false;
         this.initAudioContext();
     }
 
     initAudioContext() {
-        if (!this.audioContext) {
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        try {
+            if (!this.audioContext) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    this.audioContext = new AudioContext();
+                    // Resume context on user interaction (required for mobile)
+                    this.resumeContext();
+                }
+            }
+        } catch (e) {
+            console.warn('AudioContext not available:', e);
+        }
+    }
+
+    resumeContext() {
+        if (!this.audioContext) return;
+        
+        if (this.audioContext.state === 'suspended') {
+            const resume = () => {
+                this.audioContext.resume().then(() => {
+                    this.contextResumed = true;
+                    console.log('AudioContext resumed');
+                    // Remove listeners after successful resume
+                    document.removeEventListener('click', resume);
+                    document.removeEventListener('touchstart', resume);
+                });
+            };
+            
+            document.addEventListener('click', resume);
+            document.addEventListener('touchstart', resume);
+        } else {
+            this.contextResumed = true;
         }
     }
 
@@ -23,6 +54,12 @@ class SoundManager {
         if (!this.soundsEnabled || !this.audioContext) return;
 
         try {
+            // Ensure context is running
+            if (this.audioContext.state === 'suspended') {
+                this.resumeContext();
+                return; // Try again on next call after resume
+            }
+
             const now = this.audioContext.currentTime;
             const osc = this.audioContext.createOscillator();
             const gain = this.audioContext.createGain();
