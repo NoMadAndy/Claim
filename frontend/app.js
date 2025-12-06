@@ -16,8 +16,8 @@ class SoundManager {
         this.unlocked = false; // NEW: Track if unlock button was pressed
         this.setupGlobalListeners();
         // Version tag for debugging
-        if (window.debugLog) window.debugLog('SoundManager init v1765056000');
-        console.log('SoundManager init v1765056000');
+        if (window.debugLog) window.debugLog('SoundManager init v1765056300');
+        console.log('SoundManager init v1765056300');
         // Do NOT auto-create AudioContext on load (iOS blocks it). Create lazily on first gesture or play.
         // Do NOT setup global listeners - only manual unlock button
     }
@@ -129,8 +129,8 @@ class SoundManager {
         console.log(msg);
         if (window.debugLog) window.debugLog(msg);
 
-        // Check if unlocked and AudioContext exists
-        if (!this.unlocked || !this.audioContext) {
+        // Check if unlocked
+        if (!this.unlocked) {
             if (window.debugLog) window.debugLog('🔊 Not unlocked yet - press Unlock first!');
             this.playHaptic([30]);
             return;
@@ -157,12 +157,27 @@ class SoundManager {
             return;
         }
 
+        // If context is dead/closed, recreate it
+        if (!this.audioContext || this.audioContext.state === 'closed') {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    this.audioContext = new AudioContext({ latencyHint: 'interactive' });
+                    if (window.debugLog) window.debugLog('🔊 AudioContext recreated');
+                }
+            } catch (e) {
+                if (window.debugLog) window.debugLog('🔊 Recreate failed: ' + e.message);
+                this.playHaptic([30]);
+                return;
+            }
+        }
+
         const ctxState = this.audioContext.state;
         console.log('🔊 AudioContext state:', ctxState);
         if (window.debugLog) window.debugLog('🔊 AudioContext state: ' + ctxState);
 
         try {
-            // Try to play sound regardless of state (iOS may report suspended but audio works)
+            // Try to play sound
             const now = this.audioContext.currentTime;
             const osc = this.audioContext.createOscillator();
             const gain = this.audioContext.createGain();
