@@ -199,6 +199,12 @@ async function initializeApp() {
         const response = await apiRequest('/auth/me');
         currentUser = response;
         
+        // Update logout button with username
+        const logoutBtn = document.getElementById('btn-logout');
+        if (logoutBtn && currentUser.username) {
+            logoutBtn.textContent = `Logout (${currentUser.username})`;
+        }
+        
         // Hide Create Spot button for travellers
         if (currentUser.role === 'traveller') {
             const createBtn = document.getElementById('btn-create-spot');
