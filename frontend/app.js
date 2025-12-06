@@ -19,17 +19,16 @@ class SoundManager {
 
     setupGlobalListeners() {
         // Aggressive resume on ANY user interaction
-        const events = ['click', 'touchstart', 'touchend', 'keydown', 'scroll'];
+        const events = ['pointerdown', 'click', 'touchstart', 'touchend', 'keydown', 'scroll'];
         const initAndResume = () => {
-            this.initAudioContext(true);
-            this.resumeContext();
+            this.ensureContext(true);
         };
         events.forEach(event => {
-            document.addEventListener(event, initAndResume, { once: true, capture: true });
+            document.addEventListener(event, initAndResume, { once: true, capture: true, passive: true });
         });
         // Keep resuming on further interactions
         events.forEach(event => {
-            document.addEventListener(event, () => this.resumeContext(), { once: false, capture: true });
+            document.addEventListener(event, () => this.resumeContext(), { once: false, capture: true, passive: true });
         });
     }
 
@@ -38,7 +37,7 @@ class SoundManager {
             if (!this.audioContext || force) {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 if (AudioContext) {
-                    this.audioContext = new AudioContext();
+                    this.audioContext = new AudioContext({ latencyHint: 'interactive' });
                     this.audioInitialized = true;
                     console.log('AudioContext created, state:', this.audioContext.state);
                     if (window.debugLog) window.debugLog('🎵 AudioContext created, state: ' + this.audioContext.state);
