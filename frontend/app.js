@@ -160,18 +160,25 @@ class SoundManager {
         console.log('🔊 AudioContext state:', ctxState);
         if (window.debugLog) window.debugLog('🔊 AudioContext state: ' + ctxState);
 
-        // Always try to resume
+        // Always try to resume if not running
         if (this.audioContext.state !== 'running') {
             console.log('🔊 Attempting to resume AudioContext...');
             if (window.debugLog) window.debugLog('🔊 Attempting resume...');
-            await this.resumeContext();
+            // Try synchronous resume
+            try {
+                await this.audioContext.resume();
+                const newState = this.audioContext.state;
+                if (window.debugLog) window.debugLog('🔊 After resume: ' + newState);
+            } catch (err) {
+                if (window.debugLog) window.debugLog('🔊 Resume failed: ' + err.message);
+            }
         }
 
         try {
-            // If context still not running, use haptics
+            // Check again after resume attempt
             if (this.audioContext.state !== 'running') {
                 console.log('🔊 AudioContext still suspended - using haptics');
-                if (window.debugLog) window.debugLog('🔊 Still suspended - haptics');
+                if (window.debugLog) window.debugLog('🔊 Still suspended after resume - haptics');
                 this.playHaptic([30]);
                 return;
             }
