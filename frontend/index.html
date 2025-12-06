@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.css" />
     
     <!-- Custom CSS with cache buster -->
-    <link rel="stylesheet" href="styles.css?v=1765050317">
+    <link rel="stylesheet" href="styles.css?v=1765050400">
 </head>
 <body>
     <!-- Stats Bar (Top) -->
@@ -93,7 +93,7 @@
                 font-size: 14px;
                 width: auto;
                 min-width: 90px;
-            ">Sound an</button>
+            " disabled>Sound an</button>
         </div>
     </div>
     
@@ -158,50 +158,67 @@
     <!-- Settings Modal -->
     <div id="settings-modal" class="modal hidden">
         <div class="modal-content">
-            <h3>Settings</h3>
-            <div style="padding: 15px; display: flex; flex-direction: column; gap: 15px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span>🔊 Sound</span>
-                    <input type="checkbox" id="setting-sound-toggle" style="width: 20px; height: 20px; cursor: pointer;">
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
-                    <span>🔉 Volume</span>
-                    <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
-                        <input type="range" id="setting-volume-slider" min="0" max="100" style="flex: 1;">
-                        <span id="volume-value" style="min-width: 30px;">30%</span>
-                    </div>
-                </div>
-                <button id="btn-close-settings" style="padding: 10px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;">
-                    Close
-                </button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Debug Console (visible overlay) -->
-    <div id="debug-wrapper" style="
-        position: fixed;
-        top: 125px;
-        left: 0;
-        right: 0;
-        z-index: 10000;
-        display: none;
-    ">
-        <div id="debug-console" style="
-            background: rgba(0,0,0,0.98);
-            color: #0f0;
-            font-family: monospace;
-            font-size: 11px;
-            padding: 10px;
-            border-bottom: 2px solid #0f0;
-            max-height: 250px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            word-break: break-word;
-            line-height: 1.4;
-        ">Debug logs appear here...</div>
-    </div>
-    
+            <script>
+                // Global debug logger - MUST BE FIRST
+                const debugLogs = ['Debug system initialized'];
+                const debugWrapper = document.getElementById('debug-wrapper');
+                const debugConsole = document.getElementById('debug-console');
+                const toggleBtn = document.getElementById('toggle-debug');
+                const enableAudioBtn = document.getElementById('btn-enable-audio');
+                let debugOpen = false;
+        
+                window.debugLog = function(msg) {
+                    const timestamp = new Date().toLocaleTimeString();
+                    debugLogs.push('[' + timestamp + '] ' + msg);
+                    if (debugLogs.length > 30) debugLogs.shift();
+                    debugConsole.textContent = debugLogs.join('\n');
+                    // Auto scroll
+                    setTimeout(() => {
+                        if (debugConsole && debugOpen) {
+                            debugConsole.scrollTop = debugConsole.scrollHeight;
+                        }
+                    }, 0);
+                };
+
+                document.addEventListener('DOMContentLoaded', () => {
+                    toggleBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        debugOpen = !debugOpen;
+                        debugWrapper.style.display = debugOpen ? 'block' : 'none';
+                        toggleBtn.textContent = debugOpen ? '✕' : '🔼';
+                        toggleBtn.style.background = debugOpen ? '#ff3333' : '#0f0';
+                        if (window.debugLog) window.debugLog('DEBUG TOGGLE: ' + debugOpen);
+                    });
+
+                    // Wait for soundManager to exist, then enable button
+                    let tries = 0;
+                    const enableBtnReady = setInterval(() => {
+                        tries++;
+                        if (window.soundManager) {
+                            enableAudioBtn.disabled = false;
+                            window.debugLog('🎵 soundManager ready after ' + tries + ' checks');
+                            clearInterval(enableBtnReady);
+                        } else if (tries > 50) {
+                            window.debugLog('🎵 soundManager still missing after ' + tries + ' checks');
+                            clearInterval(enableBtnReady);
+                        }
+                    }, 100);
+
+                    enableAudioBtn.addEventListener('click', async function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (window.soundManager) {
+                            window.debugLog('🎵 Manual enable pressed');
+                            await window.soundManager.ensureContext(true);
+                            window.soundManager.playUnlockTone();
+                            window.debugLog('🎵 Manual enable done. State: ' + (window.soundManager.audioContext?.state || 'none'));
+                        } else {
+                            window.debugLog('🎵 soundManager missing');
+                        }
+                    });
+                });
+            </script>
     <button id="toggle-debug" style="
         position: fixed;
         top: 80px;
@@ -273,6 +290,6 @@
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     
     <!-- Custom JS with cache buster -->
-    <script src="app.js?v=1765050317"></script>
+    <script src="app.js?v=1765050400"></script>
 </body>
 </html>
