@@ -1,5 +1,10 @@
 # Changelog
 
+## 2025-12-06 14:47:56
+**Files:** 1filechanged,3insertions(+),3deletions(-)
+**Modified:**
+- `start.sh`
+
 ## 2025-12-06 14:23:39
 **Files:** 1filechanged,10insertions(+),1deletion(-)
 **Modified:**

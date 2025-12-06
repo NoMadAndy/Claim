@@ -82,9 +82,9 @@ fi
 # shellcheck disable=SC1090
 source "$VENV_DIR/bin/activate"
 
-# Upgrade pip & install deps
-pip install --upgrade pip >/dev/null
-pip install -r "$REQ_FILE"
+# Upgrade pip & install deps (use --break-system-packages on Debian-based systems)
+pip install --upgrade pip >/dev/null 2>&1 || pip install --upgrade pip --break-system-packages >/dev/null 2>&1
+pip install -r "$REQ_FILE" 2>&1 || pip install -r "$REQ_FILE" --break-system-packages
 
 # Wait for database if applicable
 if [[ "$DATABASE_URL" == postgresql* ]]; then
