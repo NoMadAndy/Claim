@@ -191,6 +191,7 @@ class SoundManager {
                     osc.frequency.setValueAtTime(1000, now + 0.1);
                     osc.start(now);
                     osc.stop(now + 0.15);
+                    if (window.debugLog) window.debugLog('♪ Playing LOG sound (800-1000Hz)');
                     this.playHaptic([30, 30, 30]);
                     break;
                 case 'loot': // Ding
@@ -198,6 +199,7 @@ class SoundManager {
                     osc.frequency.setValueAtTime(1500, now + 0.05);
                     osc.start(now);
                     osc.stop(now + 0.2);
+                    if (window.debugLog) window.debugLog('♪ Playing LOOT sound (1200-1500Hz)');
                     this.playHaptic([50, 50, 50]);
                     break;
                 case 'levelup': // Ascending tones
@@ -212,6 +214,7 @@ class SoundManager {
                         osc2.start(now + i * 0.1);
                         osc2.stop(now + i * 0.1 + 0.15);
                     }
+                    if (window.debugLog) window.debugLog('♪ Playing LEVELUP sound (600-1000Hz)');
                     this.playHaptic([100, 50, 100, 50, 100]);
                     break;
                 case 'error': // Low buzz
@@ -219,6 +222,7 @@ class SoundManager {
                     osc.frequency.setValueAtTime(250, now + 0.1);
                     osc.start(now);
                     osc.stop(now + 0.25);
+                    if (window.debugLog) window.debugLog('♪ Playing ERROR sound (300-250Hz)');
                     this.playHaptic([200]);
                     break;
             }
