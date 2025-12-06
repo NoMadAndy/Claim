@@ -167,33 +167,58 @@
     <!-- Debug Console (visible overlay) -->
     <div id="debug-console" style="
         position: fixed;
-        bottom: 10px;
-        right: 10px;
-        background: rgba(0,0,0,0.9);
+        top: 0;
+        left: 0;
+        right: 0;
+        background: rgba(0,0,0,0.95);
         color: #0f0;
         font-family: monospace;
-        font-size: 10px;
+        font-size: 12px;
         padding: 10px;
-        border: 2px solid #0f0;
-        border-radius: 4px;
-        max-width: 200px;
-        max-height: 150px;
+        border-bottom: 2px solid #0f0;
+        border-radius: 0;
+        max-height: 200px;
         overflow-y: auto;
         z-index: 10000;
         white-space: pre-wrap;
         word-break: break-all;
+        margin-top: 0;
     "></div>
+    
+    <button id="toggle-debug" style="
+        position: fixed;
+        top: 210px;
+        left: 10px;
+        background: #0f0;
+        color: black;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-weight: bold;
+        z-index: 9999;
+        cursor: pointer;
+        font-size: 12px;
+    ">🔽 Debug</button>
     
     <script>
         // Global debug logger
         const debugLogs = [];
         const debugConsole = document.getElementById('debug-console');
+        const toggleBtn = document.getElementById('toggle-debug');
+        let debugOpen = true;
         
         window.debugLog = function(msg) {
             debugLogs.push('[' + new Date().toLocaleTimeString() + '] ' + msg);
-            if (debugLogs.length > 10) debugLogs.shift();
+            if (debugLogs.length > 15) debugLogs.shift();
             debugConsole.textContent = debugLogs.join('\n');
         };
+        
+        toggleBtn.addEventListener('click', function() {
+            debugOpen = !debugOpen;
+            debugConsole.style.display = debugOpen ? 'block' : 'none';
+            toggleBtn.textContent = debugOpen ? '🔽 Debug' : '🔼 Debug';
+            toggleBtn.style.top = debugOpen ? '210px' : '10px';
+        });
         
         // Hijack console.log for debugging
         const originalLog = console.log;
