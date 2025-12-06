@@ -1,9 +1,10 @@
 # Changelog
 
-## 2025-12-06 22:27:48
-**Files:** 1filechanged,0insertions(+),0deletions(-)
+## 2025-12-06 22:29:52
+**Files:** 2fileschanged,1insertion(+),12deletions(-)
 **Modified:**
-- `app/__pycache__/main.cpython-312.pyc`
+- `CHANGELOG.md`
+- `frontend/index.html`
 
 ## 2025-12-06 22:26:49
 **Files:** 2fileschanged,10insertions(+),4deletions(-)

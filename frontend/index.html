@@ -328,17 +328,11 @@
 
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 if (!AudioContext) {
-                    window.debugLog('✗ No AudioContext support');
+                    unlockLog('✗ No AudioContext support', 'ERROR');
                     return;
                 }
 
                 try {
-                    const AudioContext = window.AudioContext || window.webkitAudioContext;
-                    if (!AudioContext) {
-                        unlockLog('✗ No AudioContext support', 'ERROR');
-                        return;
-                    }
-
                     // Prefer reusing existing context; avoid closing to prevent device errors
                     let ctx = window.soundManager ? window.soundManager.audioContext : null;
                     try {
