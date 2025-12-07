@@ -81,10 +81,9 @@ async def get_spot_logs(
 @router.get("/{log_id}/photo")
 async def get_log_photo(
     log_id: int,
-    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get photo from a log entry"""
+    """Get photo from a log entry (no auth required)"""
     from app.models import Log
     from fastapi.responses import StreamingResponse
     import io
