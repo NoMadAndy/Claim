@@ -1207,7 +1207,12 @@ function startGPSTracking() {
             }
             
             if (followMode) {
-                map.setView([currentPosition.lat, currentPosition.lng], map.getZoom());
+                // Smooth pan instead of instant setView
+                map.panTo([currentPosition.lat, currentPosition.lng], {
+                    animate: true,
+                    duration: 0.5, // 500ms smooth animation
+                    easeLinearity: 0.25
+                });
             }
             
             // Send position via WebSocket
@@ -1256,8 +1261,20 @@ function updatePlayerPosition() {
     if (!currentPosition || !map) return;
     
     if (playerMarker) {
-        // Just update position
+        // Smooth animation to new position
         playerMarker.setLatLng([currentPosition.lat, currentPosition.lng]);
+        
+        // Update rotation if compass is enabled
+        if (compassEnabled && currentPosition.heading !== null) {
+            const icon = playerMarker.getElement();
+            if (icon) {
+                const arrowDiv = icon.querySelector('div');
+                if (arrowDiv) {
+                    arrowDiv.style.transition = 'transform 0.3s ease-out';
+                    arrowDiv.style.transform = `rotate(${currentPosition.heading}deg)`;
+                }
+            }
+        }
     } else {
         // Create marker with appropriate SVG based on compass state
         let arrowSvg;

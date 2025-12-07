@@ -45,6 +45,15 @@ body {
     touch-action: manipulation;
 }
 
+/* Smooth marker transitions */
+.leaflet-marker-icon {
+    transition: transform 0.5s ease-out !important;
+}
+
+.leaflet-marker-pane {
+    transition: all 0.3s ease-out;
+}
+
 .leaflet-touch .leaflet-bar {
     display: none;
 }
