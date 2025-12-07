@@ -535,8 +535,16 @@ function initVersionBadge() {
     const toggleDebugBtn = document.getElementById('toggle-debug');
     
     if (timestampDisplay && toggleDebugBtn) {
-        const commit = toggleDebugBtn.getAttribute('data-commit');
-        const timestamp = toggleDebugBtn.getAttribute('data-timestamp');
+        let commit = toggleDebugBtn.getAttribute('data-commit');
+        let timestamp = toggleDebugBtn.getAttribute('data-timestamp');
+        
+        // Fallback if not injected
+        if (!commit) {
+            commit = new Date().toISOString().split('T')[0];
+        }
+        if (!timestamp) {
+            timestamp = new Date().toLocaleString('de-DE');
+        }
         
         if (commit && timestamp) {
             // Format: commit hash + timestamp
