@@ -1629,7 +1629,7 @@ async function updateAutoLog() {
         
         // Auto-log at 20m
         if (distance <= 20) {
-            if (window.debugLog) window.debugLog(`🎯 AutoLog triggered for spot ${spotId.substring(0, 8)}: ${distance.toFixed(1)}m`);
+            if (window.debugLog) window.debugLog(`🎯 AutoLog triggered for spot ${spotId}: ${distance.toFixed(1)}m`);
             performAutoLog(spotId);
         }
     });
