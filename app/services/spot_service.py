@@ -63,7 +63,8 @@ def get_cooldown_remaining(db: Session, user_id: int, spot_id: int) -> int:
     Get remaining cooldown time in seconds for a user on a specific spot.
     Returns 0 if no cooldown is active.
     """
-    cooldown_time = get_current_cet() - timedelta(seconds=settings.LOG_COOLDOWN)
+    current_time = get_current_cet()
+    cooldown_time = current_time - timedelta(seconds=settings.LOG_COOLDOWN)
     
     last_log = db.query(Log).filter(
         and_(
@@ -77,8 +78,12 @@ def get_cooldown_remaining(db: Session, user_id: int, spot_id: int) -> int:
         return 0
     
     # Calculate remaining cooldown
-    elapsed = (get_current_cet() - last_log.timestamp).total_seconds()
+    elapsed = (current_time - last_log.timestamp).total_seconds()
     remaining = max(0, settings.LOG_COOLDOWN - int(elapsed))
+    
+    # Debug logging
+    print(f"[COOLDOWN DEBUG] Current CET: {current_time}, Last log: {last_log.timestamp}, Elapsed: {elapsed}s, Remaining: {remaining}s")
+    
     return remaining
 
 
