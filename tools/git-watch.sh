@@ -23,12 +23,16 @@ log_msg() {
   echo "[$timestamp] [$level] $msg" | tee -a "$LOG_FILE"
 }
 
+cd "$PROJECT_ROOT"
+
+# Get current branch
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+
 log_msg "INFO" "Git Watch started (interval: ${INTERVAL}s)"
 log_msg "INFO" "Log file: $LOG_FILE"
 log_msg "INFO" "Sync script: $SYNC_SCRIPT"
 log_msg "INFO" "Project root: $PROJECT_ROOT"
-
-cd "$PROJECT_ROOT"
+log_msg "INFO" "Current branch: $CURRENT_BRANCH"
 
 # Track last known commits
 local_commit=$(git rev-parse HEAD 2>/dev/null || echo "")
@@ -37,33 +41,30 @@ remote_commit="none"
 log_msg "INFO" "Initial local commit: ${local_commit:0:8}"
 
 while true; do
-  # Get current branch dynamically
-  current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
-  
   # Fetch latest from remote for current branch
-  if git fetch origin "$current_branch" >/dev/null 2>&1; then
+  if git fetch origin "$CURRENT_BRANCH" >/dev/null 2>&1; then
     new_local=$(git rev-parse HEAD 2>/dev/null || echo "")
-    new_remote=$(git rev-parse origin/main 2>/dev/null || echo "")
+    new_remote=$(git rev-parse "origin/$CURRENT_BRANCH" 2>/dev/null || echo "")
     
     # Debug output
     log_msg "DEBUG" "Local: ${new_local:0:8}, Remote: ${new_remote:0:8}, Last remote: ${remote_commit:0:8}"
     
-    # Check for remote changes on current branch
+    # Check for remote changes (new commits on origin/branch)
     if [[ "$new_remote" != "$remote_commit" ]]; then
       log_msg "INFO" "🌐 Remote changes detected on branch '$current_branch'!"
       log_msg "INFO" "   Old: ${remote_commit:0:8}"
       log_msg "INFO" "   New: ${new_remote:0:8}"
       
       # Check merge base to determine if we're behind
-      # If origin/main is an ancestor of HEAD, we're ahead or equal
-      # If origin/main is NOT an ancestor of HEAD, we're behind and need to pull
-      if git merge-base --is-ancestor origin/main HEAD 2>/dev/null; then
-        # origin/main IS an ancestor of HEAD = we're ahead
+      # If origin/branch is an ancestor of HEAD, we're ahead or equal
+      # If origin/branch is NOT an ancestor of HEAD, we're behind and need to pull
+      if git merge-base --is-ancestor "origin/$CURRENT_BRANCH" HEAD 2>/dev/null; then
+        # origin/branch IS an ancestor of HEAD = we're ahead
         log_msg "INFO" "✓ Local is ahead of or equal to remote (no pull needed)"
       else
-        # origin/main is NOT an ancestor of HEAD = we're behind
+        # origin/branch is NOT an ancestor of HEAD = we're behind
         log_msg "INFO" "⬇️  Local is behind remote, pulling..."
-        if git pull origin main 2>&1 | tee -a "$LOG_FILE"; then
+        if git pull origin "$CURRENT_BRANCH" 2>&1 | tee -a "$LOG_FILE"; then
           log_msg "SUCCESS" "✓ Remote changes pulled successfully"
           local_commit=$(git rev-parse HEAD)
         else
@@ -86,7 +87,7 @@ while true; do
       fi
     fi
   else
-    log_msg "WARN" "⚠️  Fetch from origin/$current_branch failed"
+    log_msg "WARN" "⚠️  Fetch from origin/$CURRENT_BRANCH failed"
   fi
   
   sleep "$INTERVAL"

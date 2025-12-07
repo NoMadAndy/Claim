@@ -531,48 +531,21 @@ function getVersionTimestamp() {
 }
 
 function initVersionBadge() {
-    const versionBadge = document.getElementById('version-badge');
-    const versionTimestamp = document.getElementById('version-timestamp');
+    const versionBadgeBtn = document.getElementById('version-badge-btn');
     const versionHash = document.getElementById('version-hash');
     
     if (versionHash) {
         const version = getVersionInfo();
         const timestamp = getVersionTimestamp();
-        versionHash.textContent = version;
         
-        // Always show timestamp
-        if (versionTimestamp) {
-            versionTimestamp.textContent = timestamp;
+        // Show in button
+        if (versionBadgeBtn) {
+            versionBadgeBtn.textContent = version;
+            versionBadgeBtn.title = `${timestamp}`;
         }
         
-        // Set title for additional info
-        if (versionBadge) {
-            versionBadge.title = `Click to copy: v${version} (${timestamp})`;
-            
-            // Click to copy functionality
-            versionBadge.addEventListener('click', () => {
-                const textToCopy = `v${version} (${timestamp})`;
-                navigator.clipboard.writeText(textToCopy).then(() => {
-                    // Show feedback
-                    const originalHash = versionHash.textContent;
-                    const originalTime = versionTimestamp.textContent;
-                    
-                    versionHash.textContent = '✓';
-                    versionTimestamp.textContent = 'copied';
-                    versionBadge.style.background = 'rgba(0,255,0,0.3)';
-                    
-                    setTimeout(() => {
-                        versionHash.textContent = originalHash;
-                        versionTimestamp.textContent = originalTime;
-                        versionBadge.style.background = 'rgba(0,0,0,0.8)';
-                    }, 1500);
-                });
-            });
-            
-            // Show version info in console
-            console.log(`%c📦 App Version: v${version}`, 'color: #0f0; font-weight: bold;');
-            console.log(`%c📅 Deployed: ${timestamp}`, 'color: #0f0; font-family: monospace;');
-        }
+        if (window.debugLog) window.debugLog(`🔖 Version: v${version}`);
+        if (window.debugLog) window.debugLog(`📅 Deployed: ${timestamp}`);
     }
 }
 
@@ -752,6 +725,7 @@ async function handleRegister() {
 
 function handleLogout() {
     // Clear auth token and user data
+    if (window.debugLog) window.debugLog('👋 Logging out...');
     localStorage.removeItem('claim_token');
     authToken = null;
     currentUser = null;
@@ -760,10 +734,12 @@ function handleLogout() {
     if (trackingActive) {
         trackingActive = false;
         document.getElementById('btn-tracking').classList.remove('active');
+        if (window.debugLog) window.debugLog('🛑 Tracking stopped');
     }
     if (ws) {
         ws.close();
         ws = null;
+        if (window.debugLog) window.debugLog('🌐 WebSocket closed');
     }
     
     // Stop heatmap refresh interval
@@ -774,6 +750,7 @@ function handleLogout() {
     
     // Show logout message
     showNotification('Logout', 'Successfully logged out', 'success');
+    if (window.debugLog) window.debugLog('✅ Logged out successfully');
     
     // Redirect to login
     setTimeout(() => {
@@ -1174,25 +1151,31 @@ function connectWebSocket() {
 
 function handleWebSocketMessage(message) {
     const { event_type, data } = message;
+    if (window.debugLog) window.debugLog(`📨 WS: ${event_type}`);
     
     switch (event_type) {
         case 'connected':
+            if (window.debugLog) window.debugLog(`✅ WS connected`);
             console.log('Connected:', data.message);
             break;
             
         case 'position_update':
+            if (window.debugLog) window.debugLog(`👥 Player pos update`);
             updateOtherPlayerPosition(data);
             break;
             
         case 'log_event':
+            if (window.debugLog) window.debugLog(`📝 Log: +${data.xp_gained}XP`);
             showLogNotification(data);
             break;
             
         case 'loot_spawn':
+            if (window.debugLog) window.debugLog(`💰 Loot: ${data.item_type}`);
             showLootSpawn(data);
             break;
             
         case 'claim_update':
+            if (window.debugLog) window.debugLog(`🚩 Claim update`);
             updateClaimHeatmap();
             // Aktualisiere Heatmap wenn sichtbar
             if (heatmapVisible) {
@@ -1201,6 +1184,7 @@ function handleWebSocketMessage(message) {
             break;
             
         case 'tracking_update':
+            if (window.debugLog) window.debugLog(`📍 Tracking update`);
             console.log('Tracking update:', data);
             break;
     }
@@ -1268,10 +1252,12 @@ async function apiRequest(endpoint, options = {}) {
 // Data Loading
 async function loadStats() {
     try {
+        if (window.debugLog) window.debugLog('📊 Loading stats...');
         const stats = await apiRequest('/stats');
         
         // Check for level-up
         if (stats.level > currentLevel && currentLevel > 0) {
+            if (window.debugLog) window.debugLog(`⬆️ LEVEL UP: ${currentLevel} → ${stats.level}`);
             // Only play sound if this is a real level-up (not on initial load)
             soundManager.playSound('levelup');
             showNotification('🎉 LEVEL UP!', `Du bist jetzt Level ${stats.level}!`, 'levelup');
@@ -1292,7 +1278,10 @@ async function loadStats() {
         const xpProgress = (stats.xp % 100) / 100 * 100;
         document.getElementById('xp-fill').style.width = xpProgress + '%';
         document.getElementById('xp-text').textContent = `${stats.xp % 100}/100`;
+        
+        if (window.debugLog) window.debugLog(`✅ Stats: L${stats.level} | ${stats.total_claim_points}pts | ${stats.total_logs}logs`);
     } catch (error) {
+        if (window.debugLog) window.debugLog(`❌ Stats failed: ${error.message}`);
         console.error('Failed to load stats:', error);
     }
 }
@@ -1378,11 +1367,13 @@ async function loadSpotDetails(spotId, container) {
 
 async function loadNearbySpots() {
     if (!currentPosition) {
+        if (window.debugLog) window.debugLog('⏳ Spots: Waiting for GPS position...');
         setTimeout(loadNearbySpots, 1000);
         return;
     }
     
     try {
+        if (window.debugLog) window.debugLog('🗺️ Loading nearby spots...');
         const spots = await apiRequest(
             `/spots/nearby?latitude=${currentPosition.lat}&longitude=${currentPosition.lng}&radius=1000`
         );
@@ -1399,6 +1390,8 @@ async function loadNearbySpots() {
                     iconSize: [15, 15]
                 })
             }).addTo(map);
+            
+        if (window.debugLog && spots.length > 0) window.debugLog(`✅ Spots: ${spots.length} spots loaded`);
             
             // Bind popup with click handler to load details dynamically
             marker.bindPopup(() => {
