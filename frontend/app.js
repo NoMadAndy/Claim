@@ -16,8 +16,8 @@ class SoundManager {
         this.unlocked = false; // NEW: Track if unlock button was pressed
         this.setupGlobalListeners();
         // Version tag for debugging
-        if (window.debugLog) window.debugLog('SoundManager init v1765059100');
-        console.log('SoundManager init v1765059100');
+        if (window.debugLog) window.debugLog('SoundManager init v1765059200');
+        console.log('SoundManager init v1765059200');
         // Do NOT auto-create AudioContext on load (iOS blocks it). Create lazily on first gesture or play.
         // Do NOT setup global listeners - only manual unlock button
     }
@@ -1145,8 +1145,6 @@ async function loadStats() {
         } else {
             // First load - just set level without sound
             currentLevel = stats.level;
-        }
-            currentLevel = stats.level; // Initialize on first load
         }
         
         document.getElementById('level').textContent = stats.level;
