@@ -1175,7 +1175,10 @@ function createSpotPopupContent(spot) {
             <b style="font-size: 14px;">${spot.name}</b><br>
             ${spot.description ? `<small>${spot.description}</small><br>` : ''}
             <div id="spot-details-${spot.id}" style="font-size: 11px; margin: 5px 0;">Lädt...</div>
-            <button onclick="logSpot(${spot.id})" style="margin-top: 5px; padding: 5px 10px; font-size: 12px;">Log Spot</button>
+            <div style="margin-top: 5px; display: flex; gap: 5px;">
+                <button onclick="logSpot(${spot.id})" style="flex: 1; padding: 5px 10px; font-size: 12px;">Log Spot</button>
+                <button onclick="showSpotLogs(${spot.id})" style="flex: 1; padding: 5px 10px; font-size: 12px;">Logs</button>
+            </div>
         </div>
     `;
     
@@ -2145,3 +2148,92 @@ function changeVolume() {
     soundManager.setVolume(volume);
     volumeValue.textContent = slider.value + '%';
 }
+
+// Show all logs for a spot with photos
+window.showSpotLogs = async function(spotId) {
+    try {
+        const logs = await apiRequest(`/logs/spot/${spotId}`);
+        
+        // Close the spot popup
+        map.closePopup();
+        
+        // Create modal dialog
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            overflow: auto;
+        `;
+        
+        const dialog = document.createElement('div');
+        dialog.style.cssText = `
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            margin: auto;
+        `;
+        
+        if (logs.length === 0) {
+            dialog.innerHTML = `
+                <h2 style="margin-top: 0; color: #333;">Logs für diesen Spot</h2>
+                <p style="color: #666;">Noch keine Logs vorhanden</p>
+                <button id="logs-close" style="margin-top: 10px; padding: 10px 20px; background: #007AFF; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%;">Schließen</button>
+            `;
+        } else {
+            let logsHtml = `<h2 style="margin-top: 0; color: #333;">Logs für diesen Spot (${logs.length})</h2>`;
+            
+            logs.forEach((log, index) => {
+                const date = new Date(log.timestamp).toLocaleString('de-DE');
+                logsHtml += `
+                    <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 5px;">
+                        <strong>${log.username}</strong> - <small style="color: #666;">${date}</small><br>
+                        <small style="color: #888;">+${log.xp_gained} XP, +${log.claim_points} Claims</small>
+                `;
+                
+                if (log.notes) {
+                    logsHtml += `<br><em style="color: #555;">📝 ${log.notes}</em>`;
+                }
+                
+                if (log.has_photo) {
+                    logsHtml += `<br><img id="log-photo-${log.id}" src="/api/logs/${log.id}/photo" style="max-width: 100%; max-height: 200px; margin-top: 8px; border-radius: 5px; cursor: pointer;" onclick="window.open('/api/logs/${log.id}/photo', '_blank')">`;
+                }
+                
+                logsHtml += `</div>`;
+            });
+            
+            logsHtml += `<button id="logs-close" style="margin-top: 10px; padding: 10px 20px; background: #007AFF; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%;">Schließen</button>`;
+            dialog.innerHTML = logsHtml;
+        }
+        
+        modal.appendChild(dialog);
+        document.body.appendChild(modal);
+        
+        // Close button
+        document.getElementById('logs-close').onclick = () => {
+            modal.remove();
+        };
+        
+        // Close on background click
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        };
+    } catch (error) {
+        showNotification('Fehler', 'Logs konnten nicht geladen werden', 'error');
+    }
+};
+
