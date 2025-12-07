@@ -1237,12 +1237,10 @@ function updatePlayerPosition() {
                 </div>
             `;
         } else {
-            // Static arrow (no rotation)
+            // Simple circle without arrow (compass not enabled)
             arrowSvg = `
                 <svg width="28" height="28" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="14" cy="14" r="12" fill="#667eea" stroke="white" stroke-width="1.5"/>
-                    <polygon points="14,6 18,12 10,12" fill="white"/>
-                    <rect x="12.5" y="12" width="3" height="7" fill="white"/>
                 </svg>
             `;
         }
@@ -1963,12 +1961,12 @@ function toggleCompass() {
         if (playerMarker && map) {
             map.removeLayer(playerMarker);
             playerMarker = null;
+            // Recreate marker immediately with current position and heading
+            updatePlayerPosition();
         }
-        // Don't call updatePlayerPosition yet - wait for first orientation event
-        // to ensure we have a real heading value
     } else {
         btn.classList.remove('active');
-        // Recreate marker for non-compass mode
+        // Recreate marker for non-compass mode (simple circle without arrow)
         if (playerMarker && map) {
             map.removeLayer(playerMarker);
             playerMarker = null;
