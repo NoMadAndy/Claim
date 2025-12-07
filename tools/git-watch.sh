@@ -44,17 +44,18 @@ while true; do
       log_msg "INFO" "   Old: ${remote_commit:0:8}"
       log_msg "INFO" "   New: ${new_remote:0:8}"
       
-      # Check if local is behind remote (origin/main is ancestor of HEAD means we're ahead)
-      if git merge-base --is-ancestor origin/main HEAD 2>/dev/null; then
-        log_msg "INFO" "⚠️  Local is ahead of remote (local changes not pushed?)"
-      else
-        log_msg "INFO" "⬇️  Pulling remote changes..."
+      # Check if we need to pull (if remote is ahead of local)
+      # If origin/main is NOT an ancestor of HEAD, we're behind and should pull
+      if ! git merge-base --is-ancestor origin/main HEAD 2>/dev/null; then
+        log_msg "INFO" "⬇️  Local is behind remote, pulling..."
         if git pull origin main >/dev/null 2>&1; then
-          log_msg "SUCCESS" "✓ Remote changes pulled"
+          log_msg "SUCCESS" "✓ Remote changes pulled successfully"
           local_commit=$(git rev-parse HEAD)
         else
           log_msg "WARN" "⚠️  Pull failed (may have conflicts)"
         fi
+      else
+        log_msg "INFO" "✓ Local is up-to-date or ahead of remote"
       fi
       remote_commit=$new_remote
     fi
