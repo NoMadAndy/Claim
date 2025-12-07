@@ -102,10 +102,10 @@ async def get_my_stats(
     xp_to_next = 100 - (current_user.xp % 100)
     
     return UserStats(
-        level=current_user.level,
-        xp=current_user.xp,
+        level=current_user.level or 1,
+        xp=current_user.xp or 0,
         xp_to_next_level=xp_to_next,
-        total_claim_points=current_user.total_claim_points,
+        total_claim_points=current_user.total_claim_points or 0,
         total_logs=int(total_logs),
         total_spots_claimed=int(total_spots_claimed),
         active_tracks=int(active_tracks),
