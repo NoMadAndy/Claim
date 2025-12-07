@@ -881,9 +881,9 @@ async function initializeApp() {
         }
         
         // Start update loops
-        setInterval(updateAutoLog, 5000); // Check auto-log every 5 seconds
+        setInterval(updateAutoLog, 1000); // Check auto-log every 1 second
         setInterval(loadStats, 30000); // Update stats every 30 seconds
-        if (window.debugLog) window.debugLog('⏱️ Update loops started (AutoLog: 5s, Stats: 30s)');
+        if (window.debugLog) window.debugLog('⏱️ Update loops started (AutoLog: 1s, Stats: 30s)');
         
         // AGGRESSIVE: Periodically try to unlock audio on iOS (every 3 seconds for first 30 seconds)
         let unlockAttempts = 0;
