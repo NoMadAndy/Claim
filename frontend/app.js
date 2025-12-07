@@ -532,7 +532,7 @@ function getVersionTimestamp() {
 
 function initVersionBadge() {
     const versionBadge = document.getElementById('version-badge');
-    const versionTooltip = document.getElementById('version-tooltip');
+    const versionTimestamp = document.getElementById('version-timestamp');
     const versionHash = document.getElementById('version-hash');
     
     if (versionHash) {
@@ -540,42 +540,31 @@ function initVersionBadge() {
         const timestamp = getVersionTimestamp();
         versionHash.textContent = version;
         
-        // Set title for fallback tooltip
+        // Always show timestamp
+        if (versionTimestamp) {
+            versionTimestamp.textContent = timestamp;
+        }
+        
+        // Set title for additional info
         if (versionBadge) {
-            versionBadge.title = `v${version} - ${timestamp}`;
-            
-            // Show tooltip on hover
-            versionBadge.addEventListener('mouseenter', () => {
-                if (versionTooltip) {
-                    versionTooltip.textContent = `📅 ${timestamp}`;
-                    versionTooltip.style.opacity = '1';
-                }
-            });
-            
-            versionBadge.addEventListener('mouseleave', () => {
-                if (versionTooltip) {
-                    versionTooltip.style.opacity = '0';
-                }
-            });
+            versionBadge.title = `Click to copy: v${version} (${timestamp})`;
             
             // Click to copy functionality
             versionBadge.addEventListener('click', () => {
                 const textToCopy = `v${version} (${timestamp})`;
                 navigator.clipboard.writeText(textToCopy).then(() => {
                     // Show feedback
-                    const originalContent = versionBadge.innerHTML;
-                    versionBadge.innerHTML = '✓ copied';
+                    const originalHash = versionHash.textContent;
+                    const originalTime = versionTimestamp.textContent;
+                    
+                    versionHash.textContent = '✓';
+                    versionTimestamp.textContent = 'copied';
                     versionBadge.style.background = 'rgba(0,255,0,0.3)';
                     
                     setTimeout(() => {
-                        versionBadge.innerHTML = originalContent;
-                        versionBadge.style.background = 'rgba(0,0,0,0.7)';
-                        // Re-initialize the hash element
-                        const newHash = document.getElementById('version-hash');
-                        if (newHash) {
-                            newHash.dataset.timestamp = timestamp;
-                            newHash.dataset.commit = versionHash.dataset.commit;
-                        }
+                        versionHash.textContent = originalHash;
+                        versionTimestamp.textContent = originalTime;
+                        versionBadge.style.background = 'rgba(0,0,0,0.8)';
                     }, 1500);
                 });
             });
