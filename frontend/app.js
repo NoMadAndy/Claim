@@ -1583,7 +1583,7 @@ async function loadNearbySpots() {
         if (window.debugLog) window.debugLog(`🗺️ Loading spots around map center (${lat.toFixed(6)}, ${lng.toFixed(6)})...`);
         
         const spots = await apiRequest(
-            `/spots/nearby?latitude=${lat}&longitude=${lng}&radius=1000`
+            `/spots/nearby?latitude=${lat}&longitude=${lng}&radius=5000`
         );
         
         if (window.debugLog) window.debugLog(`📦 API returned ${spots.length} spots`);
@@ -1613,7 +1613,7 @@ async function loadNearbySpots() {
             if (spots.length > 0) {
                 window.debugLog(`✅ Spots: ${spots.length} spots loaded and displayed`);
             } else {
-                window.debugLog('⚠️ No spots in range (1000m radius)');
+                window.debugLog('⚠️ No spots in range (5000m radius)');
             }
         }
     } catch (error) {
