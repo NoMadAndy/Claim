@@ -16,8 +16,8 @@ class SoundManager {
         this.unlocked = false; // NEW: Track if unlock button was pressed
         this.setupGlobalListeners();
         // Version tag for debugging
-        if (window.debugLog) window.debugLog('SoundManager init v1765058900');
-        console.log('SoundManager init v1765058900');
+        if (window.debugLog) window.debugLog('SoundManager init v1765059000');
+        console.log('SoundManager init v1765059000');
         // Do NOT auto-create AudioContext on load (iOS blocks it). Create lazily on first gesture or play.
         // Do NOT setup global listeners - only manual unlock button
     }
@@ -1115,6 +1115,12 @@ async function apiRequest(endpoint, options = {}) {
         const error = new Error(`API Error: ${errorDetail}`);
         error.status = response.status;
         error.detail = errorDetail;
+        
+        // Don't log 429 errors to console (rate limiting is expected)
+        if (response.status !== 429) {
+            console.error(`${response.status} ${endpoint}:`, errorDetail);
+        }
+        
         throw error;
     }
     
@@ -1226,7 +1232,12 @@ async function performAutoLog(spotId) {
         
         loadStats();
     } catch (error) {
-        // Cooldown or error - silently ignore
+        // Only handle 429 (cooldown) - ignore other errors silently
+        if (error.status === 429) {
+            // Rate limited - don't show notification, it will trigger too often
+            console.log('⏱️ Auto-log rate limited (cooldown active)');
+        }
+        // Silently ignore other errors
     }
 }
 
