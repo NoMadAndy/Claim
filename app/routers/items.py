@@ -11,63 +11,7 @@ from sqlalchemy import func
 router = APIRouter(prefix="/api/items", tags=["items", "stats"])
 
 
-# Items endpoints
-@router.get("", response_model=List[ItemResponse])
-async def get_all_items(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Get all available items"""
-    items = item_service.get_all_items(db)
-    return items
-
-
-@router.get("/{item_id}", response_model=ItemResponse)
-async def get_item(
-    item_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Get item by ID"""
-    item = item_service.get_item_by_id(db, item_id)
-    if not item:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Item not found"
-        )
-    return item
-
-
-# Inventory endpoints
-@router.get("/inventory", response_model=List[InventoryItemResponse])
-async def get_my_inventory(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Get current user's inventory"""
-    inventory = item_service.get_user_inventory(db, current_user.id)
-    return inventory
-
-
-@router.post("/{item_id}/use", response_model=UseItemResponse)
-async def use_item(
-    item_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Use/consume an item from inventory"""
-    result = item_service.use_item(db, current_user.id, item_id)
-    
-    if not result["success"]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=result["error"]
-        )
-    
-    return UseItemResponse(**result)
-
-
-# Stats endpoint
+# Stats endpoint (must be before /{item_id} to avoid path collision)
 @router.get("/stats", response_model=UserStats)
 async def get_my_stats(
     current_user: User = Depends(get_current_user),
@@ -111,3 +55,59 @@ async def get_my_stats(
         active_tracks=int(active_tracks),
         inventory_count=int(inventory_count)
     )
+
+
+# Inventory endpoints (must be before /{item_id} to avoid path collision)
+@router.get("/inventory", response_model=List[InventoryItemResponse])
+async def get_my_inventory(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get current user's inventory"""
+    inventory = item_service.get_user_inventory(db, current_user.id)
+    return inventory
+
+
+# Items endpoints
+@router.get("", response_model=List[ItemResponse])
+async def get_all_items(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all available items"""
+    items = item_service.get_all_items(db)
+    return items
+
+
+@router.get("/{item_id}", response_model=ItemResponse)
+async def get_item(
+    item_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get item by ID"""
+    item = item_service.get_item_by_id(db, item_id)
+    if not item:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Item not found"
+        )
+    return item
+
+
+@router.post("/{item_id}/use", response_model=UseItemResponse)
+async def use_item(
+    item_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Use/consume an item from inventory"""
+    result = item_service.use_item(db, current_user.id, item_id)
+    
+    if not result["success"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result["error"]
+        )
+    
+    return UseItemResponse(**result)
