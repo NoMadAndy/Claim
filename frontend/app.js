@@ -16,8 +16,8 @@ class SoundManager {
         this.unlocked = false; // NEW: Track if unlock button was pressed
         this.setupGlobalListeners();
         // Version tag for debugging
-        if (window.debugLog) window.debugLog('SoundManager init v1765058600');
-        console.log('SoundManager init v1765058600');
+        if (window.debugLog) window.debugLog('SoundManager init v1765058700');
+        console.log('SoundManager init v1765058700');
         // Do NOT auto-create AudioContext on load (iOS blocks it). Create lazily on first gesture or play.
         // Do NOT setup global listeners - only manual unlock button
     }
@@ -385,8 +385,8 @@ class SoundManager {
             
             // Load and play error sound
             if (!this.errorSoundBuffer) {
-                console.log('🎵 Loading error sound from /sounds/Sound_LD_Bumpy_Reconstruction_keyC%23min.wav');
-                const response = await fetch('/sounds/Sound_LD_Bumpy_Reconstruction_keyC%23min.wav');
+                console.log('🎵 Loading error sound from /sounds/Sound%20LD%20Bumpy%20Reconstruction_keyC%23min.wav');
+                const response = await fetch('/sounds/Sound%20LD%20Bumpy%20Reconstruction_keyC%23min.wav');
                 if (!response.ok) {
                     console.error(`🎵 Failed to load error sound: HTTP ${response.status}`);
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);

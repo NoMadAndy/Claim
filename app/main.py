@@ -157,10 +157,10 @@ async def serve_sound(filename: str):
     # Security: Only allow specific filenames to prevent directory traversal
     allowed_files = [
         "Yum_CMaj.wav",
-        "Sound_LD_Bumpy_Reconstruction_keyC#min.wav"
+        "Sound LD Bumpy Reconstruction_keyC#min.wav"
     ]
     
-    # URL decode the filename (handle encoded characters like %23 for #)
+    # URL decode the filename (handle encoded characters like %23 for # and %20 for space)
     import urllib.parse
     decoded_filename = urllib.parse.unquote(filename)
     
