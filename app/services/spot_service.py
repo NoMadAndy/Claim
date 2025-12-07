@@ -78,15 +78,15 @@ def can_log_spot(db: Session, user_id: int, spot_id: int, is_auto: bool = False)
     """
     Check if user can log this spot (per-spot cooldown).
     
-    - Auto logs: blocked only by recent MANUAL logs (manual has priority)
-    - Manual logs: blocked by recent MANUAL logs (can log after auto logs)
+    - Auto logs: blocked by recent MANUAL logs AND recent AUTO logs (both prevent next auto log)
+    - Manual logs: blocked by recent MANUAL logs (their own cooldown)
     
     This means: 
     - Manual log → blocks both auto and manual logs for 5 min
     - Auto log → blocks only auto logs for 5 min, manual still possible
     """
     if is_auto:
-        # Auto logs: blocked only by recent MANUAL logs
+        # Auto logs: blocked by recent MANUAL logs OR recent AUTO logs
         last_manual_log = db.query(Log).filter(
             and_(
                 Log.user_id == user_id,
@@ -95,7 +95,18 @@ def can_log_spot(db: Session, user_id: int, spot_id: int, is_auto: bool = False)
                 Log.timestamp > datetime.utcnow() - timedelta(seconds=settings.LOG_COOLDOWN)
             )
         ).first()
-        return last_manual_log is None
+        
+        last_auto_log = db.query(Log).filter(
+            and_(
+                Log.user_id == user_id,
+                Log.spot_id == spot_id,
+                Log.is_auto == True,
+                Log.timestamp > datetime.utcnow() - timedelta(seconds=settings.LOG_COOLDOWN)
+            )
+        ).first()
+        
+        # Can log if no recent manual AND no recent auto log
+        return last_manual_log is None and last_auto_log is None
     else:
         # Manual logs: blocked by recent MANUAL logs (their own cooldown)
         last_manual_log = db.query(Log).filter(
@@ -149,13 +160,22 @@ def get_log_status(db: Session, user_id: int, spot_id: int) -> dict:
     elif last_auto_log:
         last_log_type = "auto"
     
-    # Calculate auto log cooldown (blocked by manual log)
+    # Calculate auto log cooldown (blocked by manual log OR recent auto log)
     auto_cooldown = 0
     can_auto_log = True
+    
+    # Check manual log cooldown (blocks auto logs)
     if last_manual_log:
         elapsed = (datetime.utcnow() - last_manual_log.timestamp).total_seconds()
         auto_cooldown = max(0, int(settings.LOG_COOLDOWN - elapsed))
-        can_auto_log = (auto_cooldown == 0)
+    
+    # Also check auto log cooldown (blocks auto logs)
+    if last_auto_log:
+        elapsed = (datetime.utcnow() - last_auto_log.timestamp).total_seconds()
+        auto_cooldown_from_auto = max(0, int(settings.LOG_COOLDOWN - elapsed))
+        auto_cooldown = max(auto_cooldown, auto_cooldown_from_auto)
+    
+    can_auto_log = (auto_cooldown == 0)
     
     # Calculate manual log cooldown (blocked by manual log)
     manual_cooldown = 0
