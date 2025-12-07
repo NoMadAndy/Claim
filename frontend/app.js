@@ -2102,22 +2102,13 @@ function displayTracks(tracks) {
             });
             
             // Add click handler to show track info
-            const ceFormatter = new Intl.DateTimeFormat('de-DE', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                timeZone: 'Europe/Berlin'
-            });
-            const startedStr = ceFormatter.format(new Date(track.started_at));
-            const endedStr = track.ended_at ? ceFormatter.format(new Date(track.ended_at)) : 'Aktiv';
+            const startedStr = new Date(track.started_at).toLocaleString('de-DE');
+            const endedStr = track.ended_at ? new Date(track.ended_at).toLocaleString('de-DE') : 'Aktiv';
             
             polyline.bindPopup(`
                 <strong>${track.name}</strong><br>
                 Gestartet: ${startedStr}<br>
-                ${track.ended_at ? 'Beendet: ' + endedStr : 'Status: ' + endedStr}
+                ${track.ended_at ? 'Beendet: ' + endedStr : 'Status: Aktiv'}
             `);
             
             trackingLayer.addLayer(polyline);
@@ -2228,18 +2219,8 @@ window.showSpotLogs = async function(spotId) {
             let logsHtml = `<h2 style="margin-top: 0; color: #333;">Logs für diesen Spot (${logs.length})</h2>`;
             
             logs.forEach((log, index) => {
-                // Convert UTC timestamp to CET (Europe/Berlin timezone)
-                const utcDate = new Date(log.timestamp);
-                const ceFormatter = new Intl.DateTimeFormat('de-DE', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    timeZone: 'Europe/Berlin'
-                });
-                const date = ceFormatter.format(utcDate);
+                // Format CET timestamp (backend already provides CET)
+                const date = new Date(log.timestamp).toLocaleString('de-DE');
                 const username = log.username || 'Unknown';
                 
                 // Auto-Logs anzeigen: kompakt ohne Details

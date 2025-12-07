@@ -4,6 +4,14 @@ from sqlalchemy.orm import relationship
 from geoalchemy2 import Geography
 import enum
 from app.database import Base
+import pytz
+from datetime import timezone, timedelta
+
+# CET timezone (UTC+1, or UTC+2 during DST)
+def get_cet_now():
+    """Get current time in CET timezone"""
+    cet = pytz.timezone('Europe/Berlin')
+    return datetime.now(cet).replace(tzinfo=None)  # Store as naive datetime for compatibility
 
 
 class UserRole(str, enum.Enum):
@@ -26,8 +34,8 @@ class User(Base):
     xp = Column(Integer, default=0)
     total_claim_points = Column(Integer, default=0)
     
-    created_at = Column(DateTime, default=datetime.utcnow)
-    last_login = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_cet_now)
+    last_login = Column(DateTime, default=get_cet_now)
     
     # Relationships
     logs = relationship("Log", back_populates="user", cascade="all, delete-orphan")
@@ -58,7 +66,7 @@ class Spot(Base):
     loot_xp = Column(Integer, default=0)
     loot_item_id = Column(Integer, ForeignKey("items.id"), nullable=True)
     
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_cet_now)
     
     # Relationships
     logs = relationship("Log", back_populates="spot", cascade="all, delete-orphan")
@@ -89,7 +97,7 @@ class Log(Base):
     photo_mime = Column(String(50), nullable=True)  # MIME type (image/jpeg, image/png, etc)
     notes = Column(Text, nullable=True)
     
-    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+    timestamp = Column(DateTime, default=get_cet_now, index=True)
     
     # Relationships
     user = relationship("User", back_populates="logs")
@@ -107,8 +115,8 @@ class Claim(Base):
     claim_value = Column(Float, default=0.0)
     dominance = Column(Float, default=0.0)
     
-    last_log = Column(DateTime, default=datetime.utcnow)
-    last_decay = Column(DateTime, default=datetime.utcnow)
+    last_log = Column(DateTime, default=get_cet_now)
+    last_decay = Column(DateTime, default=get_cet_now)
     
     # Relationships
     user = relationship("User", back_populates="claims")
@@ -127,7 +135,7 @@ class Track(Base):
     # Track as LineString
     path = Column(Geography(geometry_type='LINESTRING', srid=4326), nullable=True)
     
-    started_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime, default=get_cet_now)
     ended_at = Column(DateTime, nullable=True)
     
     # Stats
@@ -146,7 +154,7 @@ class TrackPoint(Base):
     track_id = Column(Integer, ForeignKey("tracks.id"), nullable=False)
     
     location = Column(Geography(geometry_type='POINT', srid=4326), nullable=False)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=get_cet_now)
     
     # Optional metadata
     altitude = Column(Float, nullable=True)
@@ -186,7 +194,7 @@ class InventoryItem(Base):
     item_id = Column(Integer, ForeignKey("items.id"), nullable=False)
     
     quantity = Column(Integer, default=1)
-    acquired_at = Column(DateTime, default=datetime.utcnow)
+    acquired_at = Column(DateTime, default=get_cet_now)
     
     # Relationships
     user = relationship("User", back_populates="inventory")
