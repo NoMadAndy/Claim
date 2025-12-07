@@ -79,19 +79,19 @@ async def get_my_stats(
     # Count logs
     total_logs = db.query(func.count(Log.id)).filter(
         Log.user_id == current_user.id
-    ).scalar()
+    ).scalar() or 0
     
     # Count claimed spots
     total_spots_claimed = db.query(func.count(Claim.id)).filter(
         Claim.user_id == current_user.id,
         Claim.claim_value > 0
-    ).scalar()
+    ).scalar() or 0
     
     # Count active tracks
     active_tracks = db.query(func.count(Track.id)).filter(
         Track.user_id == current_user.id,
         Track.is_active == True
-    ).scalar()
+    ).scalar() or 0
     
     # Count inventory items
     inventory_count = db.query(func.sum(InventoryItem.quantity)).filter(
@@ -106,8 +106,8 @@ async def get_my_stats(
         xp=current_user.xp,
         xp_to_next_level=xp_to_next,
         total_claim_points=current_user.total_claim_points,
-        total_logs=total_logs,
-        total_spots_claimed=total_spots_claimed,
-        active_tracks=active_tracks,
-        inventory_count=inventory_count
+        total_logs=int(total_logs),
+        total_spots_claimed=int(total_spots_claimed),
+        active_tracks=int(active_tracks),
+        inventory_count=int(inventory_count)
     )
