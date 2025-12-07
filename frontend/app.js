@@ -482,6 +482,15 @@ const soundManager = new SoundManager();
 // Expose globally for debug/HTML button handlers
 window.soundManager = soundManager;
 
+// Heatmap color palette for different players
+const HEATMAP_COLORS = [
+    { user: 'Player1', gradient: {0.4: 'red', 0.65: 'orange', 1.0: 'yellow'} },
+    { user: 'Player2', gradient: {0.4: 'blue', 0.65: 'cyan', 1.0: 'lime'} },
+    { user: 'Player3', gradient: {0.4: 'purple', 0.65: 'magenta', 1.0: 'pink'} },
+    { user: 'Player4', gradient: {0.4: 'green', 0.65: 'lightgreen', 1.0: 'yellow'} },
+    { user: 'Player5', gradient: {0.4: 'brown', 0.65: 'orange', 1.0: 'gold'} }
+];
+
 // State
 let map, playerMarker, trackingLayer, heatmapLayer;
 let currentPosition = null;
@@ -497,6 +506,8 @@ let wakeLock = null;
 let wakeLockEnabled = false; // Initial aus
 let heatmapUpdateInterval = null; // Interval für Heatmap-Refresh
 let currentLevel = 0; // Track for level-up detection
+let activeHeatmaps = new Set(); // Track which player heatmaps are visible
+let heatmapLayers = new Map(); // Map of userId -> heatmapLayer
 
 // Map markers storage
 const spotMarkers = new Map();
