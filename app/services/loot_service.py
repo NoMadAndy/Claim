@@ -49,7 +49,9 @@ def spawn_loot_spots_for_user(db: Session, user_id: int, latitude: float, longit
         
         # Calculate offset lat/lng (rough approximation)
         lat_offset = (distance / 111000) * random.choice([-1, 1])
-        lng_offset = (distance / (111000 * abs(latitude))) * random.choice([-1, 1])
+        # Prevent division by zero/very small numbers near equator
+        lat_factor = max(abs(latitude), 0.0001)
+        lng_offset = (distance / (111000 * lat_factor)) * random.choice([-1, 1])
         
         loot_lat = latitude + lat_offset
         loot_lng = longitude + lng_offset
@@ -83,11 +85,30 @@ def spawn_loot_spots_for_user(db: Session, user_id: int, latitude: float, longit
         )
         
         db.add(loot_spot)
-        spawned_spots.append(loot_spot)
+        db.flush()  # Get the ID but don't commit yet
+        
+        # Store for WebSocket notification after commit
+        spawned_spots.append({
+            'spot': loot_spot,
+            'lat': loot_lat,
+            'lng': loot_lng,
+            'item_name': item_name
+        })
     
     db.commit()
-    for spot in spawned_spots:
+    
+    # Refresh and send WebSocket notifications
+    result_spots = []
+    for spot_data in spawned_spots:
+        spot = spot_data['spot']
         db.refresh(spot)
+        result_spots.append(spot)
+    # Refresh and send WebSocket notifications
+    result_spots = []
+    for spot_data in spawned_spots:
+        spot = spot_data['spot']
+        db.refresh(spot)
+        result_spots.append(spot)
         
         # Send WebSocket notification
         try:
@@ -95,17 +116,17 @@ def spawn_loot_spots_for_user(db: Session, user_id: int, latitude: float, longit
                 manager.send_loot_spawn(
                     user_id=user_id,
                     spot_id=spot.id,
-                    latitude=loot_lat,
-                    longitude=loot_lng,
+                    latitude=spot_data['lat'],
+                    longitude=spot_data['lng'],
                     xp=spot.loot_xp,
-                    item_name=item_name,
+                    item_name=spot_data['item_name'],
                     expires_at=spot.loot_expires_at.isoformat() if spot.loot_expires_at else None
                 )
             )
         except:
             pass  # WebSocket notification is not critical
     
-    return spawned_spots
+    return result_spots
 
 
 def collect_loot(db: Session, user_id: int, loot_spot_id: int, user_lat: float, user_lng: float) -> dict:
