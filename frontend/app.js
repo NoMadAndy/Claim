@@ -1166,6 +1166,70 @@ async function loadStats() {
     }
 }
 
+// Create dynamic popup content for spots with detailed info
+function createSpotPopupContent(spot) {
+    const container = document.createElement('div');
+    container.style.minWidth = '200px';
+    container.innerHTML = `
+        <div style="padding: 5px;">
+            <b style="font-size: 14px;">${spot.name}</b><br>
+            ${spot.description ? `<small>${spot.description}</small><br>` : ''}
+            <div id="spot-details-${spot.id}" style="font-size: 11px; margin: 5px 0;">Lädt...</div>
+            <button onclick="logSpot(${spot.id})" style="margin-top: 5px; padding: 5px 10px; font-size: 12px;">Log Spot</button>
+        </div>
+    `;
+    
+    // Load details async
+    loadSpotDetails(spot.id, container);
+    return container;
+}
+
+// Load and display detailed spot info
+async function loadSpotDetails(spotId, container) {
+    try {
+        const details = await apiRequest(
+            `/spots/${spotId}/details?latitude=${currentPosition.lat}&longitude=${currentPosition.lng}`
+        );
+        
+        const detailsDiv = document.getElementById(`spot-details-${spotId}`);
+        if (!detailsDiv) return;
+        
+        // Format cooldown
+        let cooldownText = '✅ Bereit zum Loggen';
+        if (details.cooldown_seconds > 0) {
+            const minutes = Math.floor(details.cooldown_seconds / 60);
+            const seconds = details.cooldown_seconds % 60;
+            cooldownText = `⏱️ Cooldown: ${minutes}m ${seconds}s`;
+        }
+        
+        // Format distance
+        const distanceText = details.distance_meters < 1000
+            ? `${Math.round(details.distance_meters)}m`
+            : `${(details.distance_meters / 1000).toFixed(1)}km`;
+        
+        // Format dominance
+        let dominanceText = 'Noch nicht geclaimed';
+        if (details.top_claimers.length > 0) {
+            dominanceText = details.top_claimers
+                .map((c, i) => `${i+1}. ${c.username} (${Math.round(c.claim_value)}pts)`)
+                .join('<br>');
+        }
+        
+        detailsDiv.innerHTML = `
+            <strong>Entfernung:</strong> ${distanceText}<br>
+            <strong>${cooldownText}</strong><br>
+            <strong>Meine Punkte:</strong> ${Math.round(details.my_claim_value)}<br>
+            <strong style="display: block; margin-top: 5px;">Top Claimer:</strong>
+            <small>${dominanceText}</small>
+        `;
+    } catch (error) {
+        const detailsDiv = document.getElementById(`spot-details-${spotId}`);
+        if (detailsDiv) {
+            detailsDiv.innerHTML = 'Fehler beim Laden der Details';
+        }
+    }
+}
+
 async function loadNearbySpots() {
     if (!currentPosition) {
         setTimeout(loadNearbySpots, 1000);
@@ -1190,11 +1254,10 @@ async function loadNearbySpots() {
                 })
             }).addTo(map);
             
-            marker.bindPopup(`
-                <b>${spot.name}</b><br>
-                ${spot.description || ''}<br>
-                <button onclick="logSpot(${spot.id})">Log Spot</button>
-            `);
+            // Bind popup with click handler to load details dynamically
+            marker.bindPopup(() => {
+                return createSpotPopupContent(spot);
+            });
             
             spotMarkers.set(spot.id, marker);
         });
