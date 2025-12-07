@@ -16,8 +16,8 @@ class SoundManager {
         this.unlocked = false; // NEW: Track if unlock button was pressed
         this.setupGlobalListeners();
         // Version tag for debugging
-        if (window.debugLog) window.debugLog('SoundManager init v1765059000');
-        console.log('SoundManager init v1765059000');
+        if (window.debugLog) window.debugLog('SoundManager init v1765059100');
+        console.log('SoundManager init v1765059100');
         // Do NOT auto-create AudioContext on load (iOS blocks it). Create lazily on first gesture or play.
         // Do NOT setup global listeners - only manual unlock button
     }
@@ -157,11 +157,15 @@ class SoundManager {
 
     playHaptic(pattern) {
         // Vibration API fallback for iOS
+        // Only try if user has already interacted (vibrate blocked otherwise)
         try {
             if (navigator.vibrate) {
                 const result = navigator.vibrate(pattern);
-                console.log('📳 Haptic triggered:', pattern, 'result:', result);
-                if (window.debugLog) window.debugLog('📳 Haptic: ' + JSON.stringify(pattern) + ' result: ' + result);
+                // Suppress logging for vibration since it often fails early in app lifecycle
+                if (result) {
+                    console.log('📳 Haptic triggered:', pattern);
+                    if (window.debugLog) window.debugLog('📳 Haptic: ' + JSON.stringify(pattern));
+                }
             } else {
                 console.log('📳 Vibration API not available');
                 if (window.debugLog) window.debugLog('📳 Vibration API not available');
@@ -1133,11 +1137,15 @@ async function loadStats() {
         const stats = await apiRequest('/stats');
         
         // Check for level-up
-        if (stats.level > currentLevel) {
+        if (stats.level > currentLevel && currentLevel > 0) {
+            // Only play sound if this is a real level-up (not on initial load)
             soundManager.playSound('levelup');
             showNotification('🎉 LEVEL UP!', `Du bist jetzt Level ${stats.level}!`, 'levelup');
             currentLevel = stats.level;
-        } else if (currentLevel === 0) {
+        } else {
+            // First load - just set level without sound
+            currentLevel = stats.level;
+        }
             currentLevel = stats.level; // Initialize on first load
         }
         
