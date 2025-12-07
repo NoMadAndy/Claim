@@ -16,8 +16,8 @@ class SoundManager {
         this.unlocked = false; // NEW: Track if unlock button was pressed
         this.setupGlobalListeners();
         // Version tag for debugging
-        if (window.debugLog) window.debugLog('SoundManager init v1765058700');
-        console.log('SoundManager init v1765058700');
+        if (window.debugLog) window.debugLog('SoundManager init v1765058800');
+        console.log('SoundManager init v1765058800');
         // Do NOT auto-create AudioContext on load (iOS blocks it). Create lazily on first gesture or play.
         // Do NOT setup global listeners - only manual unlock button
     }
@@ -295,18 +295,7 @@ class SoundManager {
                     }
                     break;
                 case 'levelup': // Ascending tones
-                    for (let i = 0; i < 3; i++) {
-                        const osc2 = this.audioContext.createOscillator();
-                        const gain2 = this.audioContext.createGain();
-                        osc2.connect(gain2);
-                        gain2.connect(this.audioContext.destination);
-                        osc2.frequency.value = 600 + (i * 200);
-                        gain2.gain.setValueAtTime(this.volume * 0.7, now + i * 0.1);
-                        gain2.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.15);
-                        osc2.start(now + i * 0.1);
-                        osc2.stop(now + i * 0.1 + 0.15);
-                    }
-                    if (window.debugLog) window.debugLog('♪ Playing LEVELUP sound (600-1000Hz)');
+                    await this.playLevelupSound(now);
                     this.playHaptic([100, 50, 100, 50, 100]);
                     break;
                 case 'error': // Low buzz
@@ -410,6 +399,40 @@ class SoundManager {
             source.start(now);
         } catch (e) {
             console.warn('🎵 Failed to play error sound:', e);
+            // No fallback - just fail silently if WAV doesn't load
+        }
+    }
+
+    // Play levelup sound from WAV file
+    async playLevelupSound(now) {
+        try {
+            // Load and play levelup sound
+            if (!this.levelupSoundBuffer) {
+                console.log('🎵 Loading levelup sound from /sounds/TR%20727%20Beat%203_125bpm.wav');
+                const response = await fetch('/sounds/TR%20727%20Beat%203_125bpm.wav');
+                if (!response.ok) {
+                    console.error(`🎵 Failed to load levelup sound: HTTP ${response.status}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                const arrayBuffer = await response.arrayBuffer();
+                console.log('🎵 Decoding levelup sound buffer...');
+                this.levelupSoundBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+                console.log('🎵 Levelup buffer loaded successfully, duration:', this.levelupSoundBuffer.duration);
+            }
+            
+            const source = this.audioContext.createBufferSource();
+            source.buffer = this.levelupSoundBuffer;
+            
+            const gain = this.audioContext.createGain();
+            gain.gain.setValueAtTime(this.volume, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + this.levelupSoundBuffer.duration);
+            
+            source.connect(gain);
+            gain.connect(this.audioContext.destination);
+            console.log('🎵 Playing levelup sound');
+            source.start(now);
+        } catch (e) {
+            console.warn('🎵 Failed to play levelup sound:', e);
             // No fallback - just fail silently if WAV doesn't load
         }
     }
