@@ -66,12 +66,13 @@ async def get_spot_logs(
         Log.spot_id == spot_id
     ).order_by(Log.timestamp.desc()).limit(limit).all()
     
-    # Manually add username to each log
+    # Manually add username and has_photo to each log
     result = []
     for log in logs:
         user = db.query(User).filter(User.id == log.user_id).first()
         log_dict = LogResponse.model_validate(log)
         log_dict.username = user.username if user else "Unknown"
+        log_dict.has_photo = log.photo_data is not None and len(log.photo_data) > 0
         result.append(log_dict)
     
     return result
