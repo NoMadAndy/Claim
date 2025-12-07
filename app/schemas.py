@@ -109,6 +109,7 @@ class LogResponse(BaseModel):
     timestamp: datetime
     notes: Optional[str] = None
     has_photo: bool = False  # Just indicate if photo exists, don't return binary data
+    username: str = ""  # Username from User table
     
     class Config:
         from_attributes = True

@@ -59,8 +59,22 @@ async def get_spot_logs(
     db: Session = Depends(get_db)
 ):
     """Get logs for a specific spot"""
-    logs = log_service.get_spot_logs(db, spot_id, limit)
-    return logs
+    from sqlalchemy.orm import joinedload
+    from app.models import Log
+    
+    logs = db.query(Log).filter(
+        Log.spot_id == spot_id
+    ).order_by(Log.timestamp.desc()).limit(limit).all()
+    
+    # Manually add username to each log
+    result = []
+    for log in logs:
+        user = db.query(User).filter(User.id == log.user_id).first()
+        log_dict = LogResponse.model_validate(log)
+        log_dict.username = user.username if user else "Unknown"
+        result.append(log_dict)
+    
+    return result
 
 
 @router.get("/{log_id}/photo")

@@ -2197,9 +2197,10 @@ window.showSpotLogs = async function(spotId) {
             
             logs.forEach((log, index) => {
                 const date = new Date(log.timestamp).toLocaleString('de-DE');
+                const username = log.username || 'Unknown';
                 logsHtml += `
                     <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 5px;">
-                        <strong>${log.username}</strong> - <small style="color: #666;">${date}</small><br>
+                        <strong>${username}</strong> - <small style="color: #666;">${date}</small><br>
                         <small style="color: #888;">+${log.xp_gained} XP, +${log.claim_points} Claims</small>
                 `;
                 
@@ -2208,7 +2209,14 @@ window.showSpotLogs = async function(spotId) {
                 }
                 
                 if (log.has_photo) {
-                    logsHtml += `<br><img id="log-photo-${log.id}" src="/api/logs/${log.id}/photo" style="max-width: 100%; max-height: 200px; margin-top: 8px; border-radius: 5px; cursor: pointer;" onclick="window.open('/api/logs/${log.id}/photo', '_blank')">`;
+                    logsHtml += `
+                        <div style="margin-top: 8px; text-align: center;">
+                            <img id="log-photo-${log.id}" 
+                                 data-log-id="${log.id}"
+                                 style="max-width: 100%; max-height: 150px; border-radius: 5px; cursor: pointer; object-fit: cover;"
+                                 onclick="openPhotoModal(${log.id})">
+                        </div>
+                    `;
                 }
                 
                 logsHtml += `</div>`;
@@ -2216,6 +2224,16 @@ window.showSpotLogs = async function(spotId) {
             
             logsHtml += `<button id="logs-close" style="margin-top: 10px; padding: 10px 20px; background: #007AFF; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%;">Schließen</button>`;
             dialog.innerHTML = logsHtml;
+            
+            // Load photo previews
+            logs.forEach(log => {
+                if (log.has_photo) {
+                    const img = dialog.querySelector(`#log-photo-${log.id}`);
+                    if (img) {
+                        img.src = `/api/logs/${log.id}/photo?t=${Date.now()}`;
+                    }
+                }
+            });
         }
         
         modal.appendChild(dialog);
@@ -2235,5 +2253,37 @@ window.showSpotLogs = async function(spotId) {
     } catch (error) {
         showNotification('Fehler', 'Logs konnten nicht geladen werden', 'error');
     }
+};
+
+// Open photo in fullscreen modal
+window.openPhotoModal = function(logId) {
+    const photoModal = document.createElement('div');
+    photoModal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+    `;
+    
+    const img = document.createElement('img');
+    img.src = `/api/logs/${logId}/photo?t=${Date.now()}`;
+    img.style.cssText = `
+        max-width: 95vw;
+        max-height: 95vh;
+        object-fit: contain;
+    `;
+    
+    photoModal.appendChild(img);
+    document.body.appendChild(photoModal);
+    
+    photoModal.onclick = () => {
+        photoModal.remove();
+    };
 };
 
