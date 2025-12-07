@@ -531,28 +531,18 @@ function getVersionTimestamp() {
 }
 
 function initVersionBadge() {
-    const versionBadgeBtn = document.getElementById('version-badge-btn');
     const timestampDisplay = document.getElementById('timestamp-display');
     
-    if (versionBadgeBtn || timestampDisplay) {
-        const version = getVersionInfo();
+    if (timestampDisplay) {
         const timestamp = getVersionTimestamp();
         
-        // Show version in button
-        if (versionBadgeBtn) {
-            versionBadgeBtn.textContent = version;
-        }
+        // Show timestamp in display box
+        // Extract time part only (HH:MM)
+        const timePart = timestamp.split(' ')[1] || timestamp;
+        const time = timePart.substring(0, 5); // HH:MM
+        timestampDisplay.textContent = time;
+        timestampDisplay.title = timestamp;
         
-        // Show timestamp in separate display box
-        if (timestampDisplay) {
-            // Extract time part only (HH:MM)
-            const timePart = timestamp.split(' ')[1] || timestamp;
-            const time = timePart.substring(0, 5); // HH:MM
-            timestampDisplay.textContent = `⏰ ${time}`;
-            timestampDisplay.title = timestamp;
-        }
-        
-        if (window.debugLog) window.debugLog(`🔖 Version: v${version}`);
         if (window.debugLog) window.debugLog(`📅 Deployed: ${timestamp}`);
     }
 }
