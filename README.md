@@ -2,6 +2,8 @@
 
 Ein ortsbasiertes Echtzeit-GPS-Spiel mit FastAPI, WebSockets, PostGIS und Leaflet.
 
+**Aktuelle Version:** v1.0.0
+
 ## 🎮 Spielprinzip
 
 **Claim** ist ein standortbasiertes GPS-Spiel, bei dem Spieler:
@@ -412,7 +414,33 @@ Bei Fragen oder Problemen:
 - GitHub Issues erstellen
 - [Kontakt-Info hier einfügen]
 
+## 🏷️ Versionen & Releases
+
+### Zurück zu einer früheren Version wechseln
+
+```bash
+# Verfügbare Versionen anzeigen
+git tag
+
+# Zu einer bestimmten Version wechseln
+git checkout v1.0.0
+
+# Zurück zur neuesten Version
+git checkout main
+```
+
+### Aktuelle Version (v1.0.0)
+- ✅ Auto-Login mit Retry-Logic
+- ✅ Case-insensitive Login mit Enter-Key-Support
+- ✅ Version & Timestamp Display (automatisch)
+- ✅ Portrait-Lock für Mobile (PWA)
+- ✅ Vereinfachte Heatmap (alle Player sichtbar)
+- ✅ Auto-Update Heatmap nach jedem Log
+- ✅ AutoLog Check jede Sekunde
+- ✅ Umfassendes Debug-Logging
+- ✅ Automatisches Cache-Busting
+- ✅ Git Hooks für Version-Injektion
+
 ---
 
 **Viel Spaß beim Claimen! 🗺️🎮**
-# Test
