@@ -16,8 +16,8 @@ class SoundManager {
         this.unlocked = false; // NEW: Track if unlock button was pressed
         this.setupGlobalListeners();
         // Version tag for debugging
-        if (window.debugLog) window.debugLog('SoundManager init v1765058000');
-        console.log('SoundManager init v1765058000');
+        if (window.debugLog) window.debugLog('SoundManager init v1765058100');
+        console.log('SoundManager init v1765058100');
         // Do NOT auto-create AudioContext on load (iOS blocks it). Create lazily on first gesture or play.
         // Do NOT setup global listeners - only manual unlock button
     }
@@ -264,7 +264,7 @@ class SoundManager {
 
             switch (type) {
                 case 'log': // Triumphales aufsteigendes Ding
-                    this.playLogSound(now);
+                    await this.playLogSound(now);
                     this.playHaptic([30, 30, 30]);
                     break;
                 case 'loot': // Ding
