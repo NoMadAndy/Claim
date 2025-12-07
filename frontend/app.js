@@ -885,6 +885,13 @@ async function initializeApp() {
 
 // Map Initialization
 function initMap() {
+    // Check if map is already initialized
+    if (map) {
+        console.log('Map already initialized, skipping initMap()');
+        if (window.debugLog) window.debugLog('🗺️ Map already initialized');
+        return;
+    }
+    
     // Start with default location (will be updated when GPS position arrives)
     map = L.map('map', {
         zoomControl: true,
