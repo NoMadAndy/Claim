@@ -99,6 +99,13 @@ do_sync() {
 
     ENTRY="${ENTRY}\n"
 
+    # Inject version information before commit
+    INJECT_SCRIPT="$PROJECT_ROOT/tools/inject-version.sh"
+    if [ -f "$INJECT_SCRIPT" ]; then
+        echo -e "${BLUE}Injecting version information...${NC}"
+        bash "$INJECT_SCRIPT" || echo -e "${YELLOW}⚠️  Version injection skipped${NC}"
+    fi
+
     # Update CHANGELOG.md
     if [ ! -f CHANGELOG.md ]; then
         echo "# Changelog" > CHANGELOG.md
