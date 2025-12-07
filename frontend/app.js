@@ -2212,37 +2212,49 @@ window.showSpotLogs = async function(spotId) {
             logs.forEach((log, index) => {
                 const date = new Date(log.timestamp).toLocaleString('de-DE');
                 const username = log.username || 'Unknown';
-                const autoBadge = log.is_auto ? '<span style="background: #FFB800; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-left: 5px; font-weight: bold;">Auto</span>' : '';
-                logsHtml += `
-                    <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 5px; background: ${log.is_auto ? '#FFF9E6' : '#fff'};">
-                        <strong>${username}</strong> ${autoBadge} - <small style="color: #666;">${date}</small><br>
-                        <small style="color: #888;">+${log.xp_gained} XP, +${log.claim_points} Claims</small>
-                `;
                 
-                if (log.notes) {
-                    logsHtml += `<br><em style="color: #555;">📝 ${log.notes}</em>`;
-                }
-                
-                if (log.has_photo) {
+                // Auto-Logs anzeigen: kompakt ohne Details
+                if (log.is_auto) {
                     logsHtml += `
-                        <div style="margin-top: 8px; text-align: center;">
-                            <img id="log-photo-${log.id}" 
-                                 data-log-id="${log.id}"
-                                 style="max-width: 100%; max-height: 150px; border-radius: 5px; cursor: pointer; object-fit: cover;"
-                                 onclick="openPhotoModal(${log.id})">
+                        <div style="border-left: 3px solid #FFB800; padding: 6px 10px; margin: 5px 0; background: #FFF9E6; font-size: 12px;">
+                            <span style="background: #FFB800; color: white; padding: 1px 4px; border-radius: 2px; font-weight: bold; font-size: 10px;">AUTO</span>
+                            <small style="color: #666; margin-left: 5px;">${date}</small>
+                            <small style="display: block; color: #888; margin-top: 2px;">+${log.xp_gained} XP, +${log.claim_points} Claims</small>
                         </div>
                     `;
+                } else {
+                    // Manuelle Logs anzeigen: mit Details, Foto, Notizen
+                    logsHtml += `
+                        <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 5px; background: #fff;">
+                            <strong>${username}</strong> - <small style="color: #666;">${date}</small><br>
+                            <small style="color: #888;">+${log.xp_gained} XP, +${log.claim_points} Claims</small>
+                    `;
+                    
+                    if (log.notes) {
+                        logsHtml += `<br><em style="color: #555;">📝 ${log.notes}</em>`;
+                    }
+                    
+                    if (log.has_photo) {
+                        logsHtml += `
+                            <div style="margin-top: 8px; text-align: center;">
+                                <img id="log-photo-${log.id}" 
+                                     data-log-id="${log.id}"
+                                     style="max-width: 100%; max-height: 150px; border-radius: 5px; cursor: pointer; object-fit: cover;"
+                                     onclick="openPhotoModal(${log.id})">
+                            </div>
+                        `;
+                    }
+                    
+                    logsHtml += `</div>`;
                 }
-                
-                logsHtml += `</div>`;
             });
             
             logsHtml += `<button id="logs-close" style="margin-top: 10px; padding: 10px 20px; background: #007AFF; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%;">Schließen</button>`;
             dialog.innerHTML = logsHtml;
             
-            // Load photo previews
+            // Load photo previews (nur für manuelle Logs)
             logs.forEach(log => {
-                if (log.has_photo) {
+                if (!log.is_auto && log.has_photo) {
                     const img = dialog.querySelector(`#log-photo-${log.id}`);
                     if (img) {
                         img.src = `/api/logs/${log.id}/photo?t=${Date.now()}`;
