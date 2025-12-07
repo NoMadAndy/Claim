@@ -51,7 +51,8 @@ def create_log(
         is_auto=is_auto,
         xp_gained=xp_gained,
         claim_points=claim_points,
-        photo_url=log_data.photo_url
+        photo_url=log_data.photo_url,
+        notes=log_data.notes
     )
     
     db.add(log)

@@ -1355,13 +1355,122 @@ async function performAutoLog(spotId) {
 window.logSpot = async function(spotId) {
     if (!currentPosition) return;
     
+    // Close the popup first
+    map.closePopup();
+    
+    // Show log dialog
+    showLogDialog(spotId);
+};
+
+function showLogDialog(spotId) {
+    // Create modal dialog
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    `;
+    
+    const dialog = document.createElement('div');
+    dialog.style.cssText = `
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        max-width: 400px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    `;
+    
+    dialog.innerHTML = `
+        <h2 style="margin-top: 0; color: #333;">Log Spot</h2>
+        
+        <div style="margin: 15px 0;">
+            <label for="log-notes" style="display: block; margin-bottom: 5px; font-weight: bold;">Notes (optional):</label>
+            <textarea id="log-notes" placeholder="Add notes about this spot..." 
+                style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; 
+                       font-family: Arial; min-height: 80px; box-sizing: border-box;"></textarea>
+        </div>
+        
+        <div style="margin: 15px 0;">
+            <label for="log-photo" style="display: block; margin-bottom: 5px; font-weight: bold;">Foto (optional):</label>
+            <input type="file" id="log-photo" accept="image/*" 
+                style="display: block; width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+            <small style="color: #666; display: block; margin-top: 5px;">Max 5 MB</small>
+        </div>
+        
+        <div style="margin-top: 20px; display: flex; gap: 10px;">
+            <button id="log-cancel" style="flex: 1; padding: 10px; background: #ddd; border: none; border-radius: 5px; cursor: pointer;">Abbrechen</button>
+            <button id="log-submit" style="flex: 1; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Log Spot</button>
+        </div>
+    `;
+    
+    modal.appendChild(dialog);
+    document.body.appendChild(modal);
+    
+    // Event handlers
+    document.getElementById('log-cancel').onclick = () => {
+        modal.remove();
+    };
+    
+    document.getElementById('log-submit').onclick = async () => {
+        const notes = document.getElementById('log-notes').value;
+        const photoFile = document.getElementById('log-photo').files[0];
+        
+        // Disable button while uploading
+        const submitBtn = document.getElementById('log-submit');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Lädt...';
+        
+        try {
+            await submitLog(spotId, notes, photoFile);
+            modal.remove();
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Log Spot';
+        }
+    };
+    
+    // Close on background click
+    modal.onclick = (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    };
+}
+
+async function submitLog(spotId, notes, photoFile) {
+    if (!currentPosition) return;
+    
     try {
+        let photo_url = null;
+        
+        // Upload photo if provided
+        if (photoFile) {
+            if (photoFile.size > 5 * 1024 * 1024) {
+                showNotification('Fehler', 'Foto ist zu groß (max 5 MB)', 'error');
+                return;
+            }
+            photo_url = await uploadPhoto(photoFile);
+        }
+        
+        // Send log
         const log = await apiRequest('/logs/', {
             method: 'POST',
             body: JSON.stringify({
                 spot_id: spotId,
                 latitude: currentPosition.lat,
-                longitude: currentPosition.lng
+                longitude: currentPosition.lng,
+                notes: notes || null,
+                photo_url: photo_url
             })
         });
         
@@ -1373,9 +1482,7 @@ window.logSpot = async function(spotId) {
         );
         
         loadStats();
-        map.closePopup();
     } catch (error) {
-        // Check for 429 Too Many Requests (rate limiting/cooldown)
         if (error.status === 429) {
             soundManager.playSound('error');
             showNotification(
@@ -1387,7 +1494,27 @@ window.logSpot = async function(spotId) {
             showNotification('Error', error.message || 'Failed to log spot', 'error');
         }
     }
-};
+}
+
+async function uploadPhoto(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch(`${API_BASE}/upload`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${authToken}`
+        },
+        body: formData
+    });
+    
+    if (!response.ok) {
+        throw new Error('Photo upload failed');
+    }
+    
+    const data = await response.json();
+    return data.url;
+}
 
 // Action Buttons
 function toggleTracking() {

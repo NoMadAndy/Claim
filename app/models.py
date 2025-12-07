@@ -84,8 +84,9 @@ class Log(Base):
     xp_gained = Column(Integer, default=0)
     claim_points = Column(Integer, default=0)
     
-    # Optional photo
+    # Optional photo and notes
     photo_url = Column(String(500), nullable=True)
+    notes = Column(Text, nullable=True)
     
     timestamp = Column(DateTime, default=datetime.utcnow, index=True)
     

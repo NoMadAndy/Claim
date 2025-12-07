@@ -94,6 +94,7 @@ class LogCreate(BaseModel):
     latitude: float = Field(..., ge=-90, le=90)
     longitude: float = Field(..., ge=-180, le=180)
     photo_url: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class LogResponse(BaseModel):
@@ -106,6 +107,7 @@ class LogResponse(BaseModel):
     claim_points: int
     timestamp: datetime
     photo_url: Optional[str] = None
+    notes: Optional[str] = None
     
     class Config:
         from_attributes = True

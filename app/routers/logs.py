@@ -1,6 +1,8 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
+import os
+import uuid
 from app.database import get_db
 from app.schemas import LogCreate, LogResponse
 from app.services import log_service, spot_service
@@ -61,3 +63,41 @@ async def get_spot_logs(
     """Get logs for a specific spot"""
     logs = log_service.get_spot_logs(db, spot_id, limit)
     return logs
+
+
+@router.post("/upload")
+async def upload_log_photo(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """Upload a photo for a log entry"""
+    # Validate file
+    if not file.content_type.startswith('image/'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File must be an image"
+        )
+    
+    # Check file size (5MB limit)
+    contents = await file.read()
+    if len(contents) > 5 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="File too large (max 5MB)"
+        )
+    
+    # Create uploads directory if it doesn't exist
+    upload_dir = "frontend/uploads"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    # Generate unique filename
+    ext = file.filename.split('.')[-1]
+    filename = f"{uuid.uuid4()}.{ext}"
+    filepath = os.path.join(upload_dir, filename)
+    
+    # Save file
+    with open(filepath, 'wb') as f:
+        f.write(contents)
+    
+    # Return URL
+    return {"url": f"/uploads/{filename}"}

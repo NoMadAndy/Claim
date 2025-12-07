@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, Depends, WebSocket
 from fastapi import Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
 import os
@@ -76,6 +77,12 @@ app.include_router(logs.router)
 app.include_router(claims.router)
 app.include_router(tracks.router)
 app.include_router(items.router)
+
+
+# Mount uploads directory for serving uploaded files
+upload_dir = os.path.join(os.path.dirname(__file__), "..", "frontend", "uploads")
+os.makedirs(upload_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
 
 
 # Lightweight client log sink for debugging (stdout only, no auth)
