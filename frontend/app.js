@@ -1862,12 +1862,7 @@ async function loadHeatmap() {
         // Update heatmap controls
         updateHeatmapControls();
         
-        // Ensure heatmap is on top
-        heatmapLayers.forEach((layer) => {
-            if (map.hasLayer(layer)) {
-                layer.bringToFront();
-            }
-        });
+        // Heatmap layers are automatically rendered, no need for bringToFront
     } catch (error) {
         console.error('Failed to load heatmap:', error);
     }
