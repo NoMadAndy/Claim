@@ -1116,18 +1116,13 @@ async function apiRequest(endpoint, options = {}) {
             // If response body is not JSON, use status text
         }
         
-        // Suppress 429 (rate limit) errors from console output
-        if (response.status !== 429) {
-            console.error(`API Error (${response.status}):`, errorDetail);
-        }
-        
         const error = new Error(`API Error: ${errorDetail}`);
         error.status = response.status;
         error.detail = errorDetail;
         
-        // Don't log 429 errors to console (rate limiting is expected)
+        // Only log non-429 errors to console (rate limiting is expected and silent)
         if (response.status !== 429) {
-            console.error(`${response.status} ${endpoint}:`, errorDetail);
+            console.error(`API Error (${response.status}):`, errorDetail);
         }
         
         throw error;
@@ -1223,28 +1218,64 @@ async function updateAutoLog() {
     });
 }
 
-async function performAutoLog(spotId) {
-    try {
-        const log = await apiRequest('/logs/', {
-            method: 'POST',
-            body: JSON.stringify({
-                spot_id: spotId,
-                latitude: currentPosition.lat,
-                longitude: currentPosition.lng
-            })
-        });
-        
-        soundManager.playSound('log');
-        showNotification(
-            'Auto Log!',
-            `+${log.xp_gained} XP, +${log.claim_points} Claims`,
-            'log-event'
-        );
-        
-        loadStats();
-    } catch (error) {
-        // Silently ignore all errors (including 429 rate limiting)
+// Silent 429-aware wrapper for auto-logging requests
+async function apiRequestSilent429(endpoint, options = {}) {
+    const url = `${API_BASE}${endpoint}`;
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+    
+    if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
     }
+    
+    // Use raw fetch with silent error handling to prevent browser console spam
+    const response = await fetch(url, {
+        ...options,
+        headers
+    }).catch(err => {
+        // Network errors - return dummy 429 to silence console
+        return { ok: false, status: 429 };
+    });
+    
+    if (!response.ok && response.status === 429) {
+        // Return silently for 429
+        return { status: 429 };
+    }
+    
+    if (!response.ok) {
+        // For other errors, use normal apiRequest error handling
+        throw new Error(`API Error: ${response.statusText}`);
+    }
+    
+    return response.json();
+}
+
+async function performAutoLog(spotId) {
+    const response = await apiRequestSilent429('/logs/', {
+        method: 'POST',
+        body: JSON.stringify({
+            spot_id: spotId,
+            latitude: currentPosition.lat,
+            longitude: currentPosition.lng
+        })
+    });
+    
+    // Check if we got rate limited (429)
+    if (response.status === 429) {
+        // Silent - rate limit is expected and handled by server
+        return;
+    }
+    
+    soundManager.playSound('log');
+    showNotification(
+        'Auto Log!',
+        `+${response.xp_gained} XP, +${response.claim_points} Claims`,
+        'log-event'
+    );
+    
+    loadStats();
 }
 
 window.logSpot = async function(spotId) {
