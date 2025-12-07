@@ -575,6 +575,9 @@ function initVersionBadge() {
 document.addEventListener('DOMContentLoaded', init);
 
 function init() {
+    // Lock screen orientation to portrait (if supported)
+    lockOrientationToPortrait();
+    
     // Initialize version badge
     initVersionBadge();
     
@@ -595,6 +598,71 @@ function init() {
     
     // Setup event listeners
     setupEventListeners();
+}
+
+function lockOrientationToPortrait() {
+    // Try to lock orientation using Screen Orientation API
+    if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('portrait').catch(err => {
+            console.log('Screen orientation lock not supported:', err.message);
+        });
+    }
+    
+    // For iOS devices in standalone mode (PWA)
+    if (window.navigator.standalone) {
+        // iOS locks orientation automatically in standalone mode
+        console.log('iOS standalone mode - orientation handled by system');
+    }
+    
+    // Fallback: Listen for orientation changes and warn user
+    window.addEventListener('orientationchange', () => {
+        if (Math.abs(window.orientation) === 90) {
+            // Device is in landscape mode
+            showRotationWarning();
+        } else {
+            // Device is in portrait mode
+            hideRotationWarning();
+        }
+    });
+}
+
+function showRotationWarning() {
+    let warning = document.getElementById('rotation-warning');
+    if (!warning) {
+        warning = document.createElement('div');
+        warning.id = 'rotation-warning';
+        warning.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            font-size: 18px;
+            text-align: center;
+            padding: 20px;
+        `;
+        warning.innerHTML = `
+            <div style="font-size: 80px; margin-bottom: 20px;">📱</div>
+            <div style="font-weight: bold; margin-bottom: 10px;">Bitte drehe dein Gerät</div>
+            <div>Diese App funktioniert am besten im Hochformat</div>
+        `;
+        document.body.appendChild(warning);
+    }
+    warning.style.display = 'flex';
+}
+
+function hideRotationWarning() {
+    const warning = document.getElementById('rotation-warning');
+    if (warning) {
+        warning.style.display = 'none';
+    }
 }
 
 function setupEventListeners() {

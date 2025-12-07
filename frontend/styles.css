@@ -14,6 +14,15 @@ body, html {
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
+    /* Lock orientation to portrait */
+    position: fixed;
+}
+
+/* Force portrait orientation */
+@media screen and (orientation: landscape) {
+    body {
+        transform-origin: top left;
+    }
 }
 
 /* Disable pinch zoom and double-tap zoom */
