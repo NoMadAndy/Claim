@@ -54,19 +54,25 @@ Ein ortsbasiertes Echtzeit-GPS-Spiel mit FastAPI, WebSockets, PostGIS und Leafle
    - Klicke auf "Code" → "Create codespace on main"
    - Warten bis Container erstellt wurde
 
-2. **Datenbank initialisieren:**
+2. **Git Hooks installieren (einmalig):**
+   ```bash
+   bash tools/setup-hooks.sh
+   ```
+   Dies installiert einen pre-commit Hook, der automatisch die Version und den Timestamp bei jedem Commit aktualisiert.
+
+3. **Datenbank initialisieren:**
    ```bash
    python app/database.py
    # oder
    python app/models.py
    ```
 
-3. **Server starten:**
+4. **Server starten:**
    ```bash
    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
    ```
 
-4. **Frontend aufrufen:**
+5. **Frontend aufrufen:**
    - Öffne die Port-Weiterleitung für Port 8000
    - Navigiere zu `https://your-codespace-url.github.dev`
 
