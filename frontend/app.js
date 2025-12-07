@@ -1194,13 +1194,14 @@ function startGPSTracking() {
             
             updatePlayerPosition();
             
-            // Reload spots if player moved significantly (every 50 meters)
-            if (!lastSpotReloadPosition || 
+            // Reload spots if player moved significantly (every 100 meters) AND in follow mode
+            // (When not in follow mode, map movement triggers reload already)
+            if (followMode && (!lastSpotReloadPosition || 
                 map.distance(
                     [lastSpotReloadPosition.lat, lastSpotReloadPosition.lng],
                     [currentPosition.lat, currentPosition.lng]
-                ) > 50) {
-                if (window.debugLog) window.debugLog('📍 Player moved significantly - reloading spots');
+                ) > 100)) {
+                if (window.debugLog) window.debugLog('📍 Player moved significantly in follow mode - reloading spots');
                 lastSpotReloadPosition = { lat: currentPosition.lat, lng: currentPosition.lng };
                 loadNearbySpots();
             }
@@ -1568,16 +1569,21 @@ async function loadSpotDetails(spotId, container) {
 }
 
 async function loadNearbySpots() {
-    if (!currentPosition) {
-        if (window.debugLog) window.debugLog('⏳ Spots: Waiting for GPS position...');
-        setTimeout(loadNearbySpots, 1000);
+    if (!map) {
+        if (window.debugLog) window.debugLog('⏳ Spots: Waiting for map initialization...');
         return;
     }
     
     try {
-        if (window.debugLog) window.debugLog('🗺️ Loading nearby spots...');
+        // Use map center instead of GPS position to show spots in visible area
+        const center = map.getCenter();
+        const lat = center.lat;
+        const lng = center.lng;
+        
+        if (window.debugLog) window.debugLog(`🗺️ Loading spots around map center (${lat.toFixed(6)}, ${lng.toFixed(6)})...`);
+        
         const spots = await apiRequest(
-            `/spots/nearby?latitude=${currentPosition.lat}&longitude=${currentPosition.lng}&radius=1000`
+            `/spots/nearby?latitude=${lat}&longitude=${lng}&radius=1000`
         );
         
         if (window.debugLog) window.debugLog(`📦 API returned ${spots.length} spots`);
