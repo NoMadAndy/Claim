@@ -37,9 +37,17 @@ def create_log(
     if distance > max_distance:
         return None
     
-    # Calculate rewards
-    xp_gained = 10 if is_auto else 25
-    claim_points = 5 if is_auto else 15
+    # Calculate rewards - manual logs get more reward
+    if is_auto:
+        xp_gained = 10
+        claim_points = 5
+    else:
+        # Manual logs with photos/notes get bonus
+        xp_gained = 50  # 5x auto log
+        claim_points = 25  # 5x auto log
+        if log_data.photo_data or log_data.notes:
+            xp_gained += 25  # +25 bonus for photo or notes
+            claim_points += 10
     
     # Create log
     log_point = f'POINT({log_data.longitude} {log_data.latitude})'

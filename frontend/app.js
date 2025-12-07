@@ -2198,9 +2198,10 @@ window.showSpotLogs = async function(spotId) {
             logs.forEach((log, index) => {
                 const date = new Date(log.timestamp).toLocaleString('de-DE');
                 const username = log.username || 'Unknown';
+                const autoBadge = log.is_auto ? '<span style="background: #FFB800; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-left: 5px; font-weight: bold;">Auto</span>' : '';
                 logsHtml += `
-                    <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 5px;">
-                        <strong>${username}</strong> - <small style="color: #666;">${date}</small><br>
+                    <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 5px; background: ${log.is_auto ? '#FFF9E6' : '#fff'};">
+                        <strong>${username}</strong> ${autoBadge} - <small style="color: #666;">${date}</small><br>
                         <small style="color: #888;">+${log.xp_gained} XP, +${log.claim_points} Claims</small>
                 `;
                 

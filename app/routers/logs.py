@@ -18,8 +18,8 @@ async def create_log(
     db: Session = Depends(get_db)
 ):
     """Create a log entry (manual or auto)"""
-    # Check cooldown
-    if not spot_service.can_log_spot(db, current_user.id, log_data.spot_id):
+    # Check cooldown (separate for auto vs manual logs)
+    if not spot_service.can_log_spot(db, current_user.id, log_data.spot_id, is_auto=is_auto):
         remaining = spot_service.get_cooldown_remaining(db, current_user.id, log_data.spot_id)
         minutes = remaining // 60
         seconds = remaining % 60

@@ -74,14 +74,37 @@ def get_cooldown_remaining(db: Session, user_id: int, spot_id: int) -> int:
     return remaining
 
 
-def can_log_spot(db: Session, user_id: int, spot_id: int) -> bool:
+def can_log_spot(db: Session, user_id: int, spot_id: int, is_auto: bool = False) -> bool:
     """
     Check if user can log this spot (per-spot cooldown).
     
-    Each player has a separate 5-minute cooldown per spot.
-    Example: Player A has cooldown on Spot 1, but Player B can log Spot 1 immediately.
+    - Auto logs: have separate cooldown, user can only auto-log once per spot per cooldown
+    - Manual logs: independent of auto logs, user can always manually log if no recent manual log
+    
+    Each player has a separate 5-minute cooldown per spot per log type.
     """
-    return get_cooldown_remaining(db, user_id, spot_id) == 0
+    if is_auto:
+        # Auto logs: check if there's a recent AUTO log
+        last_log = db.query(Log).filter(
+            and_(
+                Log.user_id == user_id,
+                Log.spot_id == spot_id,
+                Log.is_auto == True,
+                Log.timestamp > datetime.utcnow() - timedelta(seconds=settings.LOG_COOLDOWN)
+            )
+        ).first()
+        return last_log is None
+    else:
+        # Manual logs: check if there's a recent MANUAL log
+        last_log = db.query(Log).filter(
+            and_(
+                Log.user_id == user_id,
+                Log.spot_id == spot_id,
+                Log.is_auto == False,
+                Log.timestamp > datetime.utcnow() - timedelta(seconds=settings.LOG_COOLDOWN)
+            )
+        ).first()
+        return last_log is None
 
 
 def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
