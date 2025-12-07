@@ -376,6 +376,13 @@ class SoundManager {
     // Play error sound from WAV file
     async playErrorSound(now) {
         try {
+            // Ensure we have an AudioContext (may not be initialized yet on first error)
+            if (!this.audioContext || this.audioContext.state === 'closed') {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.audioContext = new AudioContext({ latencyHint: 'interactive' });
+                this.audioContext.resume().catch(() => {});
+            }
+            
             // Load and play error sound
             if (!this.errorSoundBuffer) {
                 console.log('🎵 Loading error sound from /sounds/Sound_LD_Bumpy_Reconstruction_keyC%23min.wav');
