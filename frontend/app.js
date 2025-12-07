@@ -1344,7 +1344,8 @@ async function performAutoLog(spotId) {
         body: JSON.stringify({
             spot_id: spotId,
             latitude: currentPosition.lat,
-            longitude: currentPosition.lng
+            longitude: currentPosition.lng,
+            is_auto: true
         })
     });
     
@@ -1485,6 +1486,7 @@ async function submitLog(spotId, notes, photoFile) {
                 spot_id: spotId,
                 latitude: currentPosition.lat,
                 longitude: currentPosition.lng,
+                is_auto: false,
                 notes: notes || null,
                 photo_data: photoData,
                 photo_mime: photoMime

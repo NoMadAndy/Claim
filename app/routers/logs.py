@@ -13,11 +13,12 @@ router = APIRouter(prefix="/api/logs", tags=["logs"])
 @router.post("/", response_model=LogResponse, status_code=status.HTTP_201_CREATED)
 async def create_log(
     log_data: LogCreate,
-    is_auto: bool = False,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Create a log entry (manual or auto)"""
+    is_auto = log_data.is_auto  # Get is_auto from request body
+    
     # Check cooldown (separate for auto vs manual logs)
     if not spot_service.can_log_spot(db, current_user.id, log_data.spot_id, is_auto=is_auto):
         remaining = spot_service.get_cooldown_remaining(db, current_user.id, log_data.spot_id)

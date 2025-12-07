@@ -93,6 +93,7 @@ class LogCreate(BaseModel):
     spot_id: int
     latitude: float = Field(..., ge=-90, le=90)
     longitude: float = Field(..., ge=-180, le=180)
+    is_auto: bool = False  # Whether this is an auto-log
     notes: Optional[str] = None
     photo_data: Optional[str] = None  # Base64 encoded binary data
     photo_mime: Optional[str] = None  # MIME type
