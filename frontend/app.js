@@ -494,6 +494,8 @@ const HEATMAP_COLORS = [
 // State
 let map, playerMarker, trackingLayer, heatmapLayer;
 let currentPosition = null;
+let lastSpotReloadPosition = null; // Track last position when spots were reloaded
+let spotReloadTimeout = null; // Debounce timeout for spot reloading
 let followMode = false;
 let trackingActive = false;
 let compassEnabled = false;
@@ -1054,6 +1056,23 @@ function initMap() {
     
     // Add click handler for creating spots
     map.on('click', handleMapClick);
+    
+    // Reload spots when map is moved or zoomed (with debouncing)
+    map.on('moveend', () => {
+        if (spotReloadTimeout) clearTimeout(spotReloadTimeout);
+        spotReloadTimeout = setTimeout(() => {
+            if (window.debugLog) window.debugLog('🗺️ Map moved - reloading spots');
+            loadNearbySpots();
+        }, 500); // Wait 500ms after movement stops
+    });
+    
+    map.on('zoomend', () => {
+        if (spotReloadTimeout) clearTimeout(spotReloadTimeout);
+        spotReloadTimeout = setTimeout(() => {
+            if (window.debugLog) window.debugLog('🔍 Zoom changed - reloading spots');
+            loadNearbySpots();
+        }, 500); // Wait 500ms after zoom stops
+    });
 }
 
 // Handle map click for spot creation
@@ -1174,6 +1193,17 @@ function startGPSTracking() {
             };
             
             updatePlayerPosition();
+            
+            // Reload spots if player moved significantly (every 50 meters)
+            if (!lastSpotReloadPosition || 
+                map.distance(
+                    [lastSpotReloadPosition.lat, lastSpotReloadPosition.lng],
+                    [currentPosition.lat, currentPosition.lng]
+                ) > 50) {
+                if (window.debugLog) window.debugLog('📍 Player moved significantly - reloading spots');
+                lastSpotReloadPosition = { lat: currentPosition.lat, lng: currentPosition.lng };
+                loadNearbySpots();
+            }
             
             if (followMode) {
                 map.setView([currentPosition.lat, currentPosition.lng], map.getZoom());
