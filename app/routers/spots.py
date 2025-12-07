@@ -77,6 +77,146 @@ async def get_nearby_spots(
     return result
 
 
+@router.get("/{spot_id}/details")
+async def get_spot_details(
+    spot_id: int,
+    latitude: float = Query(..., ge=-90, le=90),
+    longitude: float = Query(..., ge=-180, le=180),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get detailed info about a spot including cooldown, my claims, distance, and dominance"""
+    spot = spot_service.get_spot_by_id(db, spot_id)
+    if not spot:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Spot not found"
+        )
+    
+    # Get spot coordinates
+    lat = db.execute(func.ST_Y(spot.location)).scalar()
+    lon = db.execute(func.ST_X(spot.location)).scalar()
+    
+    # Calculate distance to spot
+    point = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
+    distance_meters = db.execute(
+        ST_Distance(spot.location, point)
+    ).scalar() or 0
+    
+    # Get cooldown remaining
+    cooldown_seconds = spot_service.get_cooldown_remaining(db, current_user.id, spot_id)
+    
+    # Get my claim value on this spot
+    my_claim = db.query(Claim).filter(
+        Claim.user_id == current_user.id,
+        Claim.spot_id == spot_id
+    ).first()
+    my_claim_value = my_claim.claim_value if my_claim else 0
+    
+    # Get top 3 claimers (dominance)
+    top_claimers = db.query(
+        User.username,
+        Claim.claim_value,
+        Claim.dominance
+    ).join(Claim, Claim.user_id == User.id).filter(
+        Claim.spot_id == spot_id
+    ).order_by(Claim.claim_value.desc()).limit(3).all()
+    
+    dominance_list = [
+        {
+            "username": claimer.username,
+            "claim_value": float(claimer.claim_value),
+            "dominance": float(claimer.dominance)
+        }
+        for claimer in top_claimers
+    ]
+    
+    return {
+        "spot_id": spot_id,
+        "name": spot.name,
+        "description": spot.description,
+        "latitude": lat,
+        "longitude": lon,
+        "distance_meters": float(distance_meters),
+        "cooldown_seconds": cooldown_seconds,
+        "my_claim_value": float(my_claim_value),
+        "top_claimers": dominance_list,
+        "is_loot": spot.is_loot,
+        "loot_xp": spot.loot_xp,
+        "loot_expires_at": spot.loot_expires_at
+    }
+
+
+@router.get("/{spot_id}/details")
+async def get_spot_details(
+    spot_id: int,
+    latitude: float = Query(..., ge=-90, le=90),
+    longitude: float = Query(..., ge=-180, le=180),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get detailed info about a spot including cooldown, my claims, distance, and dominance"""
+    spot = spot_service.get_spot_by_id(db, spot_id)
+    if not spot:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Spot not found"
+        )
+    
+    # Get spot coordinates
+    lat = db.execute(func.ST_Y(spot.location)).scalar()
+    lon = db.execute(func.ST_X(spot.location)).scalar()
+    
+    # Calculate distance to spot
+    point = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
+    distance_meters = db.execute(
+        ST_Distance(spot.location, point)
+    ).scalar() or 0
+    
+    # Get cooldown remaining
+    cooldown_seconds = spot_service.get_cooldown_remaining(db, current_user.id, spot_id)
+    
+    # Get my claim value on this spot
+    my_claim = db.query(Claim).filter(
+        Claim.user_id == current_user.id,
+        Claim.spot_id == spot_id
+    ).first()
+    my_claim_value = my_claim.claim_value if my_claim else 0
+    
+    # Get top 3 claimers (dominance)
+    top_claimers = db.query(
+        User.username,
+        Claim.claim_value,
+        Claim.dominance
+    ).join(Claim, Claim.user_id == User.id).filter(
+        Claim.spot_id == spot_id
+    ).order_by(Claim.claim_value.desc()).limit(3).all()
+    
+    dominance_list = [
+        {
+            "username": claimer.username,
+            "claim_value": float(claimer.claim_value),
+            "dominance": float(claimer.dominance)
+        }
+        for claimer in top_claimers
+    ]
+    
+    return {
+        "spot_id": spot_id,
+        "name": spot.name,
+        "description": spot.description,
+        "latitude": lat,
+        "longitude": lon,
+        "distance_meters": float(distance_meters),
+        "cooldown_seconds": cooldown_seconds,
+        "my_claim_value": float(my_claim_value),
+        "top_claimers": dominance_list,
+        "is_loot": spot.is_loot,
+        "loot_xp": spot.loot_xp,
+        "loot_expires_at": spot.loot_expires_at
+    }
+
+
 @router.get("/{spot_id}", response_model=SpotResponse)
 async def get_spot(
     spot_id: int,
