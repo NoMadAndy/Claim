@@ -18,7 +18,8 @@ if [[ -z "$COMMIT_HASH" ]]; then
 fi
 
 SHORT_HASH="${COMMIT_HASH:0:8}"
-TIMESTAMP=$(date '+%d.%m.%Y %H:%M:%S')
+# Use German timezone (Europe/Berlin) for timestamp
+TIMESTAMP=$(TZ='Europe/Berlin' date '+%d.%m.%Y %H:%M:%S')
 
 echo "[info] Injecting version: $SHORT_HASH"
 echo "[info] Timestamp: $TIMESTAMP"
