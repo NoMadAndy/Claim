@@ -608,22 +608,30 @@ function lockOrientationToPortrait() {
         });
     }
     
-    // For iOS devices in standalone mode (PWA)
-    if (window.navigator.standalone) {
-        // iOS locks orientation automatically in standalone mode
-        console.log('iOS standalone mode - orientation handled by system');
-    }
+    // Check orientation on load
+    checkOrientation();
     
-    // Fallback: Listen for orientation changes and warn user
-    window.addEventListener('orientationchange', () => {
-        if (Math.abs(window.orientation) === 90) {
-            // Device is in landscape mode
-            showRotationWarning();
-        } else {
-            // Device is in portrait mode
-            hideRotationWarning();
-        }
-    });
+    // Listen for orientation changes (iOS and Android)
+    window.addEventListener('orientationchange', checkOrientation);
+    window.addEventListener('resize', checkOrientation);
+    
+    // Also use matchMedia for more reliable detection
+    const portraitQuery = window.matchMedia('(orientation: portrait)');
+    portraitQuery.addEventListener('change', checkOrientation);
+}
+
+function checkOrientation() {
+    // Check multiple ways to detect landscape
+    const isLandscape = 
+        (window.orientation === 90 || window.orientation === -90) || // iOS orientationchange
+        (window.innerWidth > window.innerHeight) || // Dimension check
+        (window.matchMedia && window.matchMedia('(orientation: landscape)').matches); // Media query
+    
+    if (isLandscape) {
+        showRotationWarning();
+    } else {
+        hideRotationWarning();
+    }
 }
 
 function showRotationWarning() {
@@ -632,30 +640,45 @@ function showRotationWarning() {
         warning = document.createElement('div');
         warning.id = 'rotation-warning';
         warning.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.95);
-            color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 99999;
-            font-size: 18px;
-            text-align: center;
-            padding: 20px;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            background: rgba(0, 0, 0, 0.98) !important;
+            color: white !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            z-index: 999999 !important;
+            font-size: 18px !important;
+            text-align: center !important;
+            padding: 20px !important;
+            pointer-events: auto !important;
         `;
         warning.innerHTML = `
-            <div style="font-size: 80px; margin-bottom: 20px;">📱</div>
-            <div style="font-weight: bold; margin-bottom: 10px;">Bitte drehe dein Gerät</div>
-            <div>Diese App funktioniert am besten im Hochformat</div>
+            <div style="font-size: 100px; margin-bottom: 30px; animation: rotate 2s infinite;">📱</div>
+            <div style="font-weight: bold; font-size: 24px; margin-bottom: 15px;">Bitte drehe dein Gerät</div>
+            <div style="font-size: 16px; opacity: 0.8;">Diese App funktioniert nur im Hochformat</div>
         `;
+        // Add CSS animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes rotate {
+                0%, 100% { transform: rotate(0deg); }
+                25% { transform: rotate(-15deg); }
+                75% { transform: rotate(15deg); }
+            }
+        `;
+        document.head.appendChild(style);
         document.body.appendChild(warning);
     }
     warning.style.display = 'flex';
+    // Prevent any interaction with the app when in landscape
+    document.body.style.overflow = 'hidden';
+    document.body.style.pointerEvents = 'none';
+    warning.style.pointerEvents = 'auto';
 }
 
 function hideRotationWarning() {
@@ -663,6 +686,8 @@ function hideRotationWarning() {
     if (warning) {
         warning.style.display = 'none';
     }
+    // Re-enable interaction with the app
+    document.body.style.pointerEvents = 'auto';
 }
 
 function setupEventListeners() {
