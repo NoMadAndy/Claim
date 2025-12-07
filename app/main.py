@@ -155,11 +155,19 @@ async def serve_js():
 async def serve_sound(filename: str):
     """Serve sound files from frontend/sounds/"""
     # Security: Only allow specific filenames to prevent directory traversal
-    allowed_files = ["Yum_CMaj.wav"]
-    if filename not in allowed_files:
+    allowed_files = [
+        "Yum_CMaj.wav",
+        "Sound_LD_Bumpy_Reconstruction_keyC#min.wav"
+    ]
+    
+    # URL decode the filename (handle encoded characters like %23 for #)
+    import urllib.parse
+    decoded_filename = urllib.parse.unquote(filename)
+    
+    if decoded_filename not in allowed_files:
         return Response(content="Not Found", status_code=404)
     
-    sound_path = os.path.join(frontend_path, "sounds", filename)
+    sound_path = os.path.join(frontend_path, "sounds", decoded_filename)
     if os.path.exists(sound_path):
         with open(sound_path, "rb") as f:
             response = Response(content=f.read(), media_type="audio/wav")
