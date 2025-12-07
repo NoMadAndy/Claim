@@ -532,18 +532,24 @@ function getVersionTimestamp() {
 
 function initVersionBadge() {
     const timestampDisplay = document.getElementById('timestamp-display');
+    const toggleDebugBtn = document.getElementById('toggle-debug');
     
-    if (timestampDisplay) {
-        const timestamp = getVersionTimestamp();
+    if (timestampDisplay && toggleDebugBtn) {
+        const commit = toggleDebugBtn.getAttribute('data-commit');
+        const timestamp = toggleDebugBtn.getAttribute('data-timestamp');
         
-        // Show timestamp in display box
-        // Extract time part only (HH:MM)
-        const timePart = timestamp.split(' ')[1] || timestamp;
-        const time = timePart.substring(0, 5); // HH:MM
-        timestampDisplay.textContent = time;
-        timestampDisplay.title = timestamp;
-        
-        if (window.debugLog) window.debugLog(`📅 Deployed: ${timestamp}`);
+        if (commit && timestamp) {
+            // Format: commit hash + timestamp
+            // Example: 0def80fd • 07.12.2025 19:32:27
+            const displayText = `${commit.substring(0, 8)} • ${timestamp}`;
+            timestampDisplay.textContent = displayText;
+            timestampDisplay.title = `Commit: ${commit}\nDeployed: ${timestamp}`;
+            
+            if (window.debugLog) {
+                window.debugLog(`🔖 Commit: ${commit}`);
+                window.debugLog(`📅 Deployed: ${timestamp}`);
+            }
+        }
     }
 }
 
