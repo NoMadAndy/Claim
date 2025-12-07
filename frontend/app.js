@@ -482,6 +482,15 @@ const soundManager = new SoundManager();
 // Expose globally for debug/HTML button handlers
 window.soundManager = soundManager;
 
+// Heatmap color palette for different players
+const HEATMAP_COLORS = [
+    { user: 'Player1', gradient: {0.4: 'red', 0.65: 'orange', 1.0: 'yellow'} },
+    { user: 'Player2', gradient: {0.4: 'blue', 0.65: 'cyan', 1.0: 'lime'} },
+    { user: 'Player3', gradient: {0.4: 'purple', 0.65: 'magenta', 1.0: 'pink'} },
+    { user: 'Player4', gradient: {0.4: 'green', 0.65: 'lightgreen', 1.0: 'yellow'} },
+    { user: 'Player5', gradient: {0.4: 'brown', 0.65: 'orange', 1.0: 'gold'} }
+];
+
 // State
 let map, playerMarker, trackingLayer, heatmapLayer;
 let currentPosition = null;
@@ -497,6 +506,8 @@ let wakeLock = null;
 let wakeLockEnabled = false; // Initial aus
 let heatmapUpdateInterval = null; // Interval für Heatmap-Refresh
 let currentLevel = 0; // Track for level-up detection
+let activeHeatmaps = new Set(); // Track which player heatmaps are visible
+let heatmapLayers = new Map(); // Map of userId -> heatmapLayer
 
 // Map markers storage
 const spotMarkers = new Map();
@@ -1804,29 +1815,59 @@ async function toggleHeatmap() {
 
 async function loadHeatmap() {
     try {
-        const heatmaps = await apiRequest('/claims/heatmap/all?limit=5');
+        const heatmaps = await apiRequest('/claims/heatmap/all?limit=10');
         
-        heatmapLayer.clearLayers();
+        // Clear old heatmap layers
+        heatmapLayers.forEach((layer, userId) => {
+            if (map.hasLayer(layer)) {
+                map.removeLayer(layer);
+            }
+        });
+        heatmapLayers.clear();
         
         if (heatmaps && heatmaps.length > 0) {
-            heatmaps.forEach(heatmap => {
+            heatmaps.forEach((heatmap, index) => {
                 if (heatmap.points && heatmap.points.length > 0) {
                     const points = heatmap.points.map(p => [p.latitude, p.longitude, p.intensity]);
+                    
+                    // Get color for this heatmap (cycle through palette)
+                    const colorIndex = index % HEATMAP_COLORS.length;
+                    const colorConfig = HEATMAP_COLORS[colorIndex];
+                    
+                    // Create heatmap with specific color gradient
                     const heat = L.heatLayer(points, {
                         radius: 25,
                         blur: 35,
                         maxZoom: 17,
-                        minOpacity: 0.4
+                        minOpacity: 0.4,
+                        gradient: colorConfig.gradient
                     });
-                    heatmapLayer.addLayer(heat);
+                    
+                    // Store layer and add to map if active
+                    const userId = heatmap.user_id || `user_${index}`;
+                    heatmapLayers.set(userId, heat);
+                    
+                    // By default, show only current user
+                    if (!activeHeatmaps.has(userId)) {
+                        activeHeatmaps.add(currentUser?.id);
+                    }
+                    
+                    if (activeHeatmaps.has(userId)) {
+                        heat.addTo(map);
+                    }
                 }
             });
         }
         
+        // Update heatmap controls
+        updateHeatmapControls();
+        
         // Ensure heatmap is on top
-        if (map.hasLayer(heatmapLayer)) {
-            heatmapLayer.bringToFront();
-        }
+        heatmapLayers.forEach((layer) => {
+            if (map.hasLayer(layer)) {
+                layer.bringToFront();
+            }
+        });
     } catch (error) {
         console.error('Failed to load heatmap:', error);
     }
@@ -1836,6 +1877,48 @@ async function updateClaimHeatmap() {
     if (heatmapVisible) {
         await loadHeatmap();
     }
+}
+
+function updateHeatmapControls() {
+    // Update heatmap player toggles in the layer menu
+    const heatmapToggles = document.querySelector('.heatmap-toggles');
+    if (!heatmapToggles) return;
+    
+    const togglesHtml = Array.from(heatmapLayers.entries()).map(([userId, layer]) => {
+        const isActive = activeHeatmaps.has(userId);
+        const colorIndex = Array.from(heatmapLayers.keys()).indexOf(userId) % HEATMAP_COLORS.length;
+        const color = Object.values(HEATMAP_COLORS[colorIndex].gradient)[2]; // Last color in gradient
+        
+        return `
+            <label style="display: flex; align-items: center; gap: 8px; margin: 5px 0;">
+                <input type="checkbox" class="heatmap-toggle" data-user-id="${userId}" ${isActive ? 'checked' : ''}>
+                <span style="display: inline-block; width: 12px; height: 12px; background: ${color}; border-radius: 2px;"></span>
+                Spieler ${userId}
+            </label>
+        `;
+    }).join('');
+    
+    heatmapToggles.innerHTML = togglesHtml;
+    
+    // Add event listeners
+    document.querySelectorAll('.heatmap-toggle').forEach(toggle => {
+        toggle.addEventListener('change', (e) => {
+            const userId = parseInt(e.target.dataset.userId);
+            if (e.target.checked) {
+                activeHeatmaps.add(userId);
+                const layer = heatmapLayers.get(userId);
+                if (layer && heatmapVisible) {
+                    layer.addTo(map);
+                }
+            } else {
+                activeHeatmaps.delete(userId);
+                const layer = heatmapLayers.get(userId);
+                if (layer && map.hasLayer(layer)) {
+                    map.removeLayer(layer);
+                }
+            }
+        });
+    });
 }
 
 function showLayerMenu() {
@@ -1863,6 +1946,10 @@ function showLayerMenu() {
                 Tracks 📊
             </label>
         </div>
+        <div class="layer-section" id="heatmap-players-section" style="display: ${heatmapVisible ? 'block' : 'none'};">
+            <h4>Heatmap-Spieler</h4>
+            <div class="heatmap-toggles"></div>
+        </div>
         <button id="layer-close">Schließen</button>
     `;
     
@@ -1888,6 +1975,11 @@ function showLayerMenu() {
             toggleHeatmap();
         } else if (heatmapVisible) {
             toggleHeatmap();
+        }
+        // Toggle visibility of heatmap players section
+        const playersSection = menu.querySelector('#heatmap-players-section');
+        if (playersSection) {
+            playersSection.style.display = heatmapVisible ? 'block' : 'none';
         }
     });
     
