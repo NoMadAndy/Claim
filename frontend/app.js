@@ -403,7 +403,7 @@ class SoundManager {
             source.start(now);
         } catch (e) {
             console.warn('🎵 Failed to play error sound:', e);
-            // No fallback for error sound - just fail silently
+            // No fallback - just fail silently if WAV doesn't load
         }
     }
 
