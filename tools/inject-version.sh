@@ -23,13 +23,13 @@ TIMESTAMP=$(date '+%d.%m.%Y %H:%M:%S')
 echo "[info] Injecting version: $SHORT_HASH"
 echo "[info] Timestamp: $TIMESTAMP"
 
-# Update the version-hash element with both commit and timestamp attributes
-# Use awk to find and replace the version-hash line
+# Update the toggle-debug button element with both commit and timestamp attributes
+# Use awk to find and replace the button line
 awk -v commit="$SHORT_HASH" -v timestamp="$TIMESTAMP" '
-    /id="version-hash"/ {
+    /id="toggle-debug"/ {
         gsub(/data-commit="[^"]*"/, "data-commit=\"" commit "\"")
         gsub(/data-timestamp="[^"]*"/, "")
-        sub(/id="version-hash"/, "id=\"version-hash\" data-timestamp=\"" timestamp "\"")
+        sub(/id="toggle-debug"/, "id=\"toggle-debug\" data-commit=\"" commit "\" data-timestamp=\"" timestamp "\"")
     }
     { print }
 ' "$INDEX_FILE" > "${INDEX_FILE}.tmp"
