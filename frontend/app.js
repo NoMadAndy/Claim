@@ -1580,6 +1580,8 @@ async function loadNearbySpots() {
             `/spots/nearby?latitude=${currentPosition.lat}&longitude=${currentPosition.lng}&radius=1000`
         );
         
+        if (window.debugLog) window.debugLog(`📦 API returned ${spots.length} spots`);
+        
         // Clear existing markers
         spotMarkers.forEach(marker => marker.remove());
         spotMarkers.clear();
@@ -1593,8 +1595,6 @@ async function loadNearbySpots() {
                 })
             }).addTo(map);
             
-        if (window.debugLog && spots.length > 0) window.debugLog(`✅ Spots: ${spots.length} spots loaded`);
-            
             // Bind popup with click handler to load details dynamically
             marker.bindPopup(() => {
                 return createSpotPopupContent(spot);
@@ -1602,7 +1602,16 @@ async function loadNearbySpots() {
             
             spotMarkers.set(spot.id, marker);
         });
+        
+        if (window.debugLog) {
+            if (spots.length > 0) {
+                window.debugLog(`✅ Spots: ${spots.length} spots loaded and displayed`);
+            } else {
+                window.debugLog('⚠️ No spots in range (1000m radius)');
+            }
+        }
     } catch (error) {
+        if (window.debugLog) window.debugLog(`❌ Failed to load spots: ${error.message}`);
         console.error('Failed to load spots:', error);
     }
 }
