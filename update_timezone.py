@@ -39,9 +39,12 @@ def update_timestamps():
         # Update Track timestamps
         tracks = db.query(Track).all()
         for track in tracks:
-            if track.created_at and track.created_at.tzinfo is None:
-                utc_time = track.created_at.replace(tzinfo=pytz.UTC)
-                track.created_at = utc_time.astimezone(CET)
+            if track.started_at and track.started_at.tzinfo is None:
+                utc_time = track.started_at.replace(tzinfo=pytz.UTC)
+                track.started_at = utc_time.astimezone(CET)
+            if track.ended_at and track.ended_at.tzinfo is None:
+                utc_time = track.ended_at.replace(tzinfo=pytz.UTC)
+                track.ended_at = utc_time.astimezone(CET)
         
         # Update Spot timestamps
         spots = db.query(Spot).all()

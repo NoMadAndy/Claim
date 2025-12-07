@@ -135,7 +135,7 @@ class Track(Base):
     # Track as LineString
     path = Column(Geography(geometry_type='LINESTRING', srid=4326), nullable=True)
     
-    started_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime, default=get_cet_now)
     ended_at = Column(DateTime, nullable=True)
     
     # Stats
@@ -154,7 +154,7 @@ class TrackPoint(Base):
     track_id = Column(Integer, ForeignKey("tracks.id"), nullable=False)
     
     location = Column(Geography(geometry_type='POINT', srid=4326), nullable=False)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=get_cet_now)
     
     # Optional metadata
     altitude = Column(Float, nullable=True)
