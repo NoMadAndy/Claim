@@ -534,9 +534,16 @@ function initVersionBadge() {
     const timestampDisplay = document.getElementById('timestamp-display');
     const toggleDebugBtn = document.getElementById('toggle-debug');
     
+    console.log('initVersionBadge called');
+    console.log('timestampDisplay:', timestampDisplay);
+    console.log('toggleDebugBtn:', toggleDebugBtn);
+    
     if (timestampDisplay && toggleDebugBtn) {
         let commit = toggleDebugBtn.getAttribute('data-commit');
         let timestamp = toggleDebugBtn.getAttribute('data-timestamp');
+        
+        console.log('commit attribute:', commit);
+        console.log('timestamp attribute:', timestamp);
         
         // Fallback if not injected
         if (!commit) {
@@ -550,6 +557,7 @@ function initVersionBadge() {
             // Format: commit hash + timestamp
             // Example: 0def80fd • 07.12.2025 19:32:27
             const displayText = `${commit.substring(0, 8)} • ${timestamp}`;
+            console.log('displayText:', displayText);
             timestampDisplay.textContent = displayText;
             timestampDisplay.title = `Commit: ${commit}\nDeployed: ${timestamp}`;
             
@@ -558,6 +566,8 @@ function initVersionBadge() {
                 window.debugLog(`📅 Deployed: ${timestamp}`);
             }
         }
+    } else {
+        console.error('timestampDisplay or toggleDebugBtn not found');
     }
 }
 
