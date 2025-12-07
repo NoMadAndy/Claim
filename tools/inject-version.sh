@@ -24,8 +24,61 @@ TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 echo "[info] Injecting version: $SHORT_HASH (from $COMMIT_HASH)"
 echo "[info] Timestamp: $TIMESTAMP"
 
-# Update the version-hash element with data attribute
-sed -i "s/id=\"version-hash\" title=\"Click to copy version\"/id=\"version-hash\" data-commit=\"$COMMIT_HASH\" title=\"Click to copy version\"/g" "$INDEX_FILE"
+# Use Python for more reliable HTML manipulation
+python3 << 'PYTHON_SCRIPT'
+import sys
+import re
 
-echo "[success] Version injected successfully!"
-echo "[info] Updated: $INDEX_FILE"
+index_file = sys.argv[1] if len(sys.argv) > 1 else ""
+commit_hash = sys.argv[2] if len(sys.argv) > 2 else ""
+
+try:
+    with open(index_file, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    # Replace the version-hash element with data-commit attribute
+    pattern = r'id="version-hash"[^>]*title="Click to copy version"'
+    replacement = f'id="version-hash" data-commit="{commit_hash}" title="Click to copy version"'
+    
+    new_content = re.sub(pattern, replacement, content)
+    
+    if new_content != content:
+        with open(index_file, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+        print(f"[success] Version injected successfully!")
+        print(f"[info] Commit: {commit_hash[:8]}")
+    else:
+        print("[warn] No changes made (pattern not found)")
+except Exception as e:
+    print(f"[error] {e}")
+    sys.exit(1)
+PYTHON_SCRIPT
+
+# Run Python script
+python3 -c "
+import sys
+import re
+
+index_file = '$INDEX_FILE'
+commit_hash = '$COMMIT_HASH'
+
+try:
+    with open(index_file, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    # Replace the version-hash element with data-commit attribute
+    pattern = r'id=\"version-hash\"[^>]*title=\"Click to copy version\"'
+    replacement = f'id=\"version-hash\" data-commit=\"{commit_hash}\" title=\"Click to copy version\"'
+    
+    new_content = re.sub(pattern, replacement, content)
+    
+    if new_content != content:
+        with open(index_file, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+        print(f'[success] Version injected!')
+    else:
+        print('[warn] Pattern not found in HTML')
+except Exception as e:
+    print(f'[error] {e}')
+    exit(1)
+"
