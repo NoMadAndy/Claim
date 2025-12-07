@@ -16,8 +16,8 @@ class SoundManager {
         this.unlocked = false; // NEW: Track if unlock button was pressed
         this.setupGlobalListeners();
         // Version tag for debugging
-        if (window.debugLog) window.debugLog('SoundManager init v1765058800');
-        console.log('SoundManager init v1765058800');
+        if (window.debugLog) window.debugLog('SoundManager init v1765058900');
+        console.log('SoundManager init v1765058900');
         // Do NOT auto-create AudioContext on load (iOS blocks it). Create lazily on first gesture or play.
         // Do NOT setup global listeners - only manual unlock button
     }
@@ -278,21 +278,9 @@ class SoundManager {
                     await this.playLogSound(now);
                     this.playHaptic([30, 30, 30]);
                     break;
-                case 'loot': // Ding
-                    {
-                        const osc = this.audioContext.createOscillator();
-                        const gain = this.audioContext.createGain();
-                        osc.connect(gain);
-                        gain.connect(this.audioContext.destination);
-                        osc.frequency.setValueAtTime(1200, now);
-                        osc.frequency.setValueAtTime(1500, now + 0.05);
-                        gain.gain.setValueAtTime(this.volume, now);
-                        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-                        osc.start(now);
-                        osc.stop(now + 0.2);
-                        if (window.debugLog) window.debugLog('♪ Playing LOOT sound (1200-1500Hz)');
-                        this.playHaptic([50, 50, 50]);
-                    }
+                case 'loot': // Loot/Item sound
+                    await this.playLootSound(now);
+                    this.playHaptic([50, 50, 50]);
                     break;
                 case 'levelup': // Ascending tones
                     await this.playLevelupSound(now);
@@ -433,6 +421,40 @@ class SoundManager {
             source.start(now);
         } catch (e) {
             console.warn('🎵 Failed to play levelup sound:', e);
+            // No fallback - just fail silently if WAV doesn't load
+        }
+    }
+
+    // Play loot sound from WAV file
+    async playLootSound(now) {
+        try {
+            // Load and play loot sound
+            if (!this.lootSoundBuffer) {
+                console.log('🎵 Loading loot sound from /sounds/DN_DSV_Vocal_Yeah_02_KeyBmin_56bpm.wav');
+                const response = await fetch('/sounds/DN_DSV_Vocal_Yeah_02_KeyBmin_56bpm.wav');
+                if (!response.ok) {
+                    console.error(`🎵 Failed to load loot sound: HTTP ${response.status}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                const arrayBuffer = await response.arrayBuffer();
+                console.log('🎵 Decoding loot sound buffer...');
+                this.lootSoundBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+                console.log('🎵 Loot buffer loaded successfully, duration:', this.lootSoundBuffer.duration);
+            }
+            
+            const source = this.audioContext.createBufferSource();
+            source.buffer = this.lootSoundBuffer;
+            
+            const gain = this.audioContext.createGain();
+            gain.gain.setValueAtTime(this.volume, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + this.lootSoundBuffer.duration);
+            
+            source.connect(gain);
+            gain.connect(this.audioContext.destination);
+            console.log('🎵 Playing loot sound');
+            source.start(now);
+        } catch (e) {
+            console.warn('🎵 Failed to play loot sound:', e);
             // No fallback - just fail silently if WAV doesn't load
         }
     }

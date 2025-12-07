@@ -158,7 +158,8 @@ async def serve_sound(filename: str):
     allowed_files = [
         "Yum_CMaj.wav",
         "Sound LD Bumpy Reconstruction_keyC#min.wav",
-        "TR 727 Beat 3_125bpm.wav"
+        "TR 727 Beat 3_125bpm.wav",
+        "DN_DSV_Vocal_Yeah_02_KeyBmin_56bpm.wav"
     ]
     
     # URL decode the filename (handle encoded characters like %23 for # and %20 for space)
