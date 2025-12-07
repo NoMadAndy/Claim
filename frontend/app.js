@@ -606,14 +606,47 @@ async function handleLogin() {
         }
         
         const data = await response.json();
+        // Set token immediately and ensure it's available
         authToken = data.access_token;
         localStorage.setItem('claim_token', authToken);
         
         showMessage('Login successful!', 'success');
-        setTimeout(() => {
-            hideLoginModal();
-            initializeApp();
-        }, 500);
+        
+        // Give more time for token to be stored and available
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        hideLoginModal();
+        
+        // Make sure token is available before initializing
+        if (!authToken) {
+            console.error('Token not set after login');
+            showMessage('Token initialization failed, please login again', 'error');
+            showLoginModal();
+            return;
+        }
+        
+        // Initialize with retry logic
+        let retries = 3;
+        let lastError;
+        while (retries > 0) {
+            try {
+                await initializeApp();
+                break; // Success, exit retry loop
+            } catch (error) {
+                lastError = error;
+                retries--;
+                if (retries > 0) {
+                    console.warn(`App initialization failed, retrying... (${retries} attempts left)`, error);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+        }
+        
+        if (retries === 0) {
+            console.error('App initialization failed after retries:', lastError);
+            showMessage('Failed to initialize app after login. Please refresh the page.', 'error');
+            showLoginModal();
+        }
     } catch (error) {
         showMessage('Login failed: ' + error.message, 'error');
     }
