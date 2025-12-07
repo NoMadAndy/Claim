@@ -1116,6 +1116,11 @@ async function apiRequest(endpoint, options = {}) {
             // If response body is not JSON, use status text
         }
         
+        // Suppress 429 (rate limit) errors from console output
+        if (response.status !== 429) {
+            console.error(`API Error (${response.status}):`, errorDetail);
+        }
+        
         const error = new Error(`API Error: ${errorDetail}`);
         error.status = response.status;
         error.detail = errorDetail;
@@ -1238,12 +1243,7 @@ async function performAutoLog(spotId) {
         
         loadStats();
     } catch (error) {
-        // Only handle 429 (cooldown) - ignore other errors silently
-        if (error.status === 429) {
-            // Rate limited - don't show notification, it will trigger too often
-            console.log('⏱️ Auto-log rate limited (cooldown active)');
-        }
-        // Silently ignore other errors
+        // Silently ignore all errors (including 429 rate limiting)
     }
 }
 
