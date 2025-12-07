@@ -222,8 +222,24 @@
         line-height: 1.1;
     ">🔼 Debug
 <div style="font-size: 9px; margin-top: 3px;">v<span id="version-badge-btn">loading</span></div>
-<div id="timestamp-badge" style="font-size: 8px; margin-top: 2px; opacity: 0.8;">--:--</div>
 </button>
+
+    <div id="timestamp-display" style="
+        position: fixed;
+        top: 80px;
+        left: 165px;
+        background: rgba(0, 255, 0, 0.15);
+        color: #0f0;
+        border: 1px solid #0f0;
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 9px;
+        font-family: monospace;
+        z-index: 12000;
+        cursor: default;
+        white-space: nowrap;
+        font-weight: bold;
+    ">⏰ --:--</div>
 
     <button id="btn-enable-audio" style="
         display: none;
