@@ -33,8 +33,8 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 
 def authenticate_user(db: Session, username: str, password: str) -> Optional[User]:
-    """Authenticate a user"""
-    user = db.query(User).filter(User.username == username).first()
+    """Authenticate a user (case-insensitive username)"""
+    user = db.query(User).filter(User.username.ilike(username)).first()
     if not user:
         return None
     if not verify_password(password, user.hashed_password):
