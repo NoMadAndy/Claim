@@ -1,5 +1,11 @@
 # Changelog
 
+## 2025-12-07 03:27:22
+**Files:** 2fileschanged,0insertions(+),0deletions(-)
+**Modified:**
+- `app/routers/__pycache__/spots.cpython-312.pyc`
+- `app/services/__pycache__/spot_service.cpython-312.pyc`
+
 ## 2025-12-07 03:21:06
 **Files:** 2fileschanged,0insertions(+),0deletions(-)
 **Modified:**
