@@ -1015,7 +1015,7 @@ function initMap() {
         scrollWheelZoom: true,
         dragging: true,
         tap: false
-    }).setView([51.505, -0.09], 18);
+    }).setView([51.505, -0.09], 17);
     
     // Base layers
     const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1141,7 +1141,7 @@ function startGPSTracking() {
     // Use longer timeout for initial request (may need time to get first fix)
     navigator.geolocation.getCurrentPosition(
         (position) => {
-            map.setView([position.coords.latitude, position.coords.longitude], 18);
+            map.setView([position.coords.latitude, position.coords.longitude], 17);
             if (window.debugLog) window.debugLog(`📍 GPS: Initial fix - ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`);
             console.log('Initial GPS position acquired');
         },
