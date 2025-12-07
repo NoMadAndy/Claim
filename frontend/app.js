@@ -299,18 +299,8 @@ class SoundManager {
                     this.playHaptic([100, 50, 100, 50, 100]);
                     break;
                 case 'error': // Low buzz
-                    {
-                        const osc = this.audioContext.createOscillator();
-                        const gain = this.audioContext.createGain();
-                        osc.connect(gain);
-                        gain.connect(this.audioContext.destination);
-                        osc.frequency.setValueAtTime(300, now);
-                        osc.frequency.setValueAtTime(250, now + 0.1);
-                        osc.start(now);
-                        osc.stop(now + 0.25);
-                        if (window.debugLog) window.debugLog('♪ Playing ERROR sound (300-250Hz)');
-                        this.playHaptic([200]);
-                    }
+                    await this.playErrorSound(now);
+                    this.playHaptic([200]);
                     break;
             }
         } catch (e) {
