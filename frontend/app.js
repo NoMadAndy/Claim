@@ -515,10 +515,42 @@ const playerMarkers = new Map();
 const trackLayers = new Map(); // Store track polylines
 let activeTrackPoints = []; // Current track points for live drawing
 
+// Version information
+function getVersionInfo() {
+    // Get version from data attribute if injected during build, otherwise use timestamp
+    const versionElement = document.getElementById('version-hash');
+    const commitHash = versionElement?.dataset.commit || new Date().toISOString().split('T')[0];
+    return commitHash.substring(0, 8);
+}
+
+function initVersionBadge() {
+    const versionBadge = document.getElementById('version-badge');
+    const versionHash = document.getElementById('version-hash');
+    if (versionHash) {
+        const version = getVersionInfo();
+        versionHash.textContent = version;
+        
+        // Click to copy functionality
+        if (versionBadge) {
+            versionBadge.addEventListener('click', () => {
+                navigator.clipboard.writeText(version).then(() => {
+                    versionBadge.style.background = 'rgba(0,255,0,0.3)';
+                    setTimeout(() => {
+                        versionBadge.style.background = 'rgba(0,0,0,0.7)';
+                    }, 200);
+                });
+            });
+        }
+    }
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', init);
 
 function init() {
+    // Initialize version badge
+    initVersionBadge();
+    
     // Check for existing auth
     try {
         authToken = localStorage.getItem('claim_token');

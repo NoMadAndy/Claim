@@ -391,6 +391,24 @@
         });
     </script>
 
+    <!-- Version Badge -->
+    <div id="version-badge" style="
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        background: rgba(0,0,0,0.7);
+        color: #0f0;
+        padding: 4px 8px;
+        border-radius: 3px;
+        font-family: monospace;
+        font-size: 10px;
+        z-index: 5000;
+        cursor: help;
+        border: 1px solid #0f0;
+    " title="Click to copy version">
+        v<span id="version-hash" data-commit="6d83cb6">loading</span>
+    </div>
+    
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
