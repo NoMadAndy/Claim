@@ -1,6 +1,5 @@
 #!/bin/bash
-# Inject git commit hash into version badge
-# Run this before pushing to automatically update version info
+# Inject git commit hash and timestamp into version badge
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FRONTEND_DIR="$PROJECT_ROOT/frontend"
@@ -19,66 +18,24 @@ if [[ -z "$COMMIT_HASH" ]]; then
 fi
 
 SHORT_HASH="${COMMIT_HASH:0:8}"
-TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+TIMESTAMP=$(date '+%d.%m.%Y %H:%M:%S')
 
-echo "[info] Injecting version: $SHORT_HASH (from $COMMIT_HASH)"
+echo "[info] Injecting version: $SHORT_HASH"
 echo "[info] Timestamp: $TIMESTAMP"
 
-# Use Python for more reliable HTML manipulation
-python3 << 'PYTHON_SCRIPT'
-import sys
-import re
+# Update the version-hash element with both commit and timestamp attributes
+# Use awk to find and replace the version-hash line
+awk -v commit="$SHORT_HASH" -v timestamp="$TIMESTAMP" '
+    /id="version-hash"/ {
+        gsub(/data-commit="[^"]*"/, "data-commit=\"" commit "\"")
+        gsub(/data-timestamp="[^"]*"/, "")
+        sub(/id="version-hash"/, "id=\"version-hash\" data-timestamp=\"" timestamp "\"")
+    }
+    { print }
+' "$INDEX_FILE" > "${INDEX_FILE}.tmp"
 
-index_file = sys.argv[1] if len(sys.argv) > 1 else ""
-commit_hash = sys.argv[2] if len(sys.argv) > 2 else ""
+mv "${INDEX_FILE}.tmp" "$INDEX_FILE"
 
-try:
-    with open(index_file, 'r', encoding='utf-8') as f:
-        content = f.read()
-    
-    # Replace the version-hash element with data-commit attribute
-    pattern = r'id="version-hash"[^>]*title="Click to copy version"'
-    replacement = f'id="version-hash" data-commit="{commit_hash}" title="Click to copy version"'
-    
-    new_content = re.sub(pattern, replacement, content)
-    
-    if new_content != content:
-        with open(index_file, 'w', encoding='utf-8') as f:
-            f.write(new_content)
-        print(f"[success] Version injected successfully!")
-        print(f"[info] Commit: {commit_hash[:8]}")
-    else:
-        print("[warn] No changes made (pattern not found)")
-except Exception as e:
-    print(f"[error] {e}")
-    sys.exit(1)
-PYTHON_SCRIPT
-
-# Run Python script
-python3 -c "
-import sys
-import re
-
-index_file = '$INDEX_FILE'
-commit_hash = '$COMMIT_HASH'
-
-try:
-    with open(index_file, 'r', encoding='utf-8') as f:
-        content = f.read()
-    
-    # Replace the version-hash element with data-commit attribute
-    pattern = r'id=\"version-hash\"[^>]*title=\"Click to copy version\"'
-    replacement = f'id=\"version-hash\" data-commit=\"{commit_hash}\" title=\"Click to copy version\"'
-    
-    new_content = re.sub(pattern, replacement, content)
-    
-    if new_content != content:
-        with open(index_file, 'w', encoding='utf-8') as f:
-            f.write(new_content)
-        print(f'[success] Version injected!')
-    else:
-        print('[warn] Pattern not found in HTML')
-except Exception as e:
-    print(f'[error] {e}')
-    exit(1)
-"
+echo "[success] Version injected successfully!"
+echo "[info] Hash: $SHORT_HASH"
+echo "[info] Time: $TIMESTAMP"

@@ -523,17 +523,29 @@ function getVersionInfo() {
     return commitHash.substring(0, 8);
 }
 
+function getVersionTimestamp() {
+    // Get timestamp from data attribute if available
+    const versionElement = document.getElementById('version-hash');
+    const timestamp = versionElement?.dataset.timestamp;
+    return timestamp || new Date().toLocaleString('de-DE');
+}
+
 function initVersionBadge() {
     const versionBadge = document.getElementById('version-badge');
     const versionHash = document.getElementById('version-hash');
     if (versionHash) {
         const version = getVersionInfo();
+        const timestamp = getVersionTimestamp();
         versionHash.textContent = version;
         
-        // Click to copy functionality
+        // Set title to show timestamp on hover
         if (versionBadge) {
+            versionBadge.title = `v${version}\n${timestamp}`;
+            
+            // Click to copy functionality
             versionBadge.addEventListener('click', () => {
-                navigator.clipboard.writeText(version).then(() => {
+                const textToCopy = `v${version} (${timestamp})`;
+                navigator.clipboard.writeText(textToCopy).then(() => {
                     versionBadge.style.background = 'rgba(0,255,0,0.3)';
                     setTimeout(() => {
                         versionBadge.style.background = 'rgba(0,0,0,0.7)';
