@@ -1403,7 +1403,7 @@ async function apiRequest(endpoint, options = {}) {
 async function loadStats() {
     try {
         if (window.debugLog) window.debugLog('📊 Loading stats...');
-        const stats = await apiRequest('/stats');
+        const stats = await apiRequest('/items/stats');
         
         // Check for level-up
         if (stats.level > currentLevel && currentLevel > 0) {
