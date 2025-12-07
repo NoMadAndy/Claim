@@ -1504,7 +1504,7 @@ async function uploadPhoto(file) {
     const formData = new FormData();
     formData.append('file', file);
     
-    const response = await fetch(`${API_BASE}/upload`, {
+    const response = await fetch(`${API_BASE}/logs/upload`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${authToken}`
@@ -1517,7 +1517,7 @@ async function uploadPhoto(file) {
     }
     
     const data = await response.json();
-    return data.url;
+    return { photo_data: data.photo_data, mime_type: data.mime_type };
 }
 
 // Action Buttons
