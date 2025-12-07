@@ -405,9 +405,29 @@
         z-index: 5000;
         cursor: help;
         border: 1px solid #0f0;
-    " title="Version Badge">
-        v<span id="version-hash" data-timestamp="07.12.2025 16:36:07" data-commit="1e920885" >loading</span>
+        transition: all 0.2s;
+    " title="Click to copy version">
+        v<span id="version-hash" data-timestamp="07.12.2025 16:41:00"  data-commit="395012eb">loading</span>
     </div>
+    
+    <!-- Version Tooltip -->
+    <div id="version-tooltip" style="
+        position: fixed;
+        bottom: 35px;
+        right: 10px;
+        background: rgba(0,0,0,0.9);
+        color: #0f0;
+        padding: 6px 10px;
+        border-radius: 3px;
+        font-family: monospace;
+        font-size: 10px;
+        z-index: 5001;
+        border: 1px solid #0f0;
+        white-space: nowrap;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s;
+    "></div>
     
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
