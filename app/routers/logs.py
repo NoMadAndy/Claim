@@ -74,6 +74,7 @@ async def get_spot_logs(
         log_dict = LogResponse.model_validate(log)
         log_dict.username = user.username if user else "Unknown"
         log_dict.has_photo = log.photo_data is not None and len(log.photo_data) > 0
+        log_dict.is_auto = log.is_auto  # Ensure is_auto is set
         result.append(log_dict)
     
     return result

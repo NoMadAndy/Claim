@@ -78,10 +78,12 @@ def can_log_spot(db: Session, user_id: int, spot_id: int, is_auto: bool = False)
     """
     Check if user can log this spot (per-spot cooldown).
     
-    - Auto logs: can log if no recent MANUAL log (manual blocks auto)
-    - Manual logs: can always log (independent of auto logs)
+    - Auto logs: blocked only by recent MANUAL logs (manual has priority)
+    - Manual logs: blocked by recent MANUAL logs (can log after auto logs)
     
-    This means: manual log → blocks auto log, but auto log → doesn't block manual log
+    This means: 
+    - Manual log → blocks both auto and manual logs for 5 min
+    - Auto log → blocks only auto logs for 5 min, manual still possible
     """
     if is_auto:
         # Auto logs: blocked only by recent MANUAL logs
@@ -95,8 +97,16 @@ def can_log_spot(db: Session, user_id: int, spot_id: int, is_auto: bool = False)
         ).first()
         return last_manual_log is None
     else:
-        # Manual logs: always allowed (no cooldown check)
-        return True
+        # Manual logs: blocked by recent MANUAL logs (their own cooldown)
+        last_manual_log = db.query(Log).filter(
+            and_(
+                Log.user_id == user_id,
+                Log.spot_id == spot_id,
+                Log.is_auto == False,
+                Log.timestamp > datetime.utcnow() - timedelta(seconds=settings.LOG_COOLDOWN)
+            )
+        ).first()
+        return last_manual_log is None
 
 
 def get_log_status(db: Session, user_id: int, spot_id: int) -> dict:
