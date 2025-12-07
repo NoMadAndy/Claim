@@ -2,17 +2,17 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.schemas import ItemResponse, InventoryItemResponse, UserStats
+from app.schemas import ItemResponse, InventoryItemResponse, UserStats, UseItemResponse
 from app.services import item_service
 from app.routers.auth import get_current_user
 from app.models import User, UserRole
 from sqlalchemy import func
 
-router = APIRouter(prefix="/api", tags=["items", "stats"])
+router = APIRouter(prefix="/api/items", tags=["items", "stats"])
 
 
 # Items endpoints
-@router.get("/items", response_model=List[ItemResponse])
+@router.get("", response_model=List[ItemResponse])
 async def get_all_items(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -22,7 +22,7 @@ async def get_all_items(
     return items
 
 
-@router.get("/items/{item_id}", response_model=ItemResponse)
+@router.get("/{item_id}", response_model=ItemResponse)
 async def get_item(
     item_id: int,
     current_user: User = Depends(get_current_user),
@@ -47,6 +47,24 @@ async def get_my_inventory(
     """Get current user's inventory"""
     inventory = item_service.get_user_inventory(db, current_user.id)
     return inventory
+
+
+@router.post("/{item_id}/use", response_model=UseItemResponse)
+async def use_item(
+    item_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Use/consume an item from inventory"""
+    result = item_service.use_item(db, current_user.id, item_id)
+    
+    if not result["success"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result["error"]
+        )
+    
+    return UseItemResponse(**result)
 
 
 # Stats endpoint

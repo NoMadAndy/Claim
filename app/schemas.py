@@ -210,6 +210,14 @@ class InventoryItemResponse(BaseModel):
         from_attributes = True
 
 
+class UseItemResponse(BaseModel):
+    success: bool
+    error: str = None
+    item_name: str = None
+    effects: dict = None
+    remaining: int = 0
+
+
 # WebSocket Event Schemas
 class WSEvent(BaseModel):
     event_type: str
