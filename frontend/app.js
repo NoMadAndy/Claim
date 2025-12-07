@@ -211,10 +211,21 @@ class SoundManager {
         console.log(msg);
         if (window.debugLog) window.debugLog(msg);
 
-        // Check if unlocked
-        if (!this.unlocked) {
-            if (window.debugLog) window.debugLog('🔊 Not unlocked yet - press Unlock first!');
-            this.playHaptic([30]);
+        // Error sound can be played even if not fully unlocked (important for immediate feedback)
+        // Other sounds require unlock
+        if (!this.unlocked && type !== 'error') {
+            if (window.debugLog) window.debugLog('🔊 Not unlocked yet - using haptics');
+            switch (type) {
+                case 'log':
+                    this.playHaptic([30, 30, 30]);
+                    break;
+                case 'loot':
+                    this.playHaptic([50, 50, 50]);
+                    break;
+                case 'levelup':
+                    this.playHaptic([100, 50, 100, 50, 100]);
+                    break;
+            }
             return;
         }
         
