@@ -8,6 +8,14 @@ from geoalchemy2.types import Geography
 from app.models import Spot, User, Log, Claim
 from app.schemas import SpotCreate
 from app.config import settings
+import pytz
+
+# CET timezone
+CET = pytz.timezone('Europe/Berlin')
+
+def get_current_cet():
+    """Get current time in CET timezone (naive datetime for DB compatibility)"""
+    return datetime.now(CET).replace(tzinfo=None)
 
 
 def create_spot(db: Session, spot_data: SpotCreate, creator: User) -> Spot:
@@ -55,7 +63,7 @@ def get_cooldown_remaining(db: Session, user_id: int, spot_id: int) -> int:
     Get remaining cooldown time in seconds for a user on a specific spot.
     Returns 0 if no cooldown is active.
     """
-    cooldown_time = datetime.utcnow() - timedelta(seconds=settings.LOG_COOLDOWN)
+    cooldown_time = get_current_cet() - timedelta(seconds=settings.LOG_COOLDOWN)
     
     last_log = db.query(Log).filter(
         and_(
@@ -69,7 +77,7 @@ def get_cooldown_remaining(db: Session, user_id: int, spot_id: int) -> int:
         return 0
     
     # Calculate remaining cooldown
-    elapsed = (datetime.utcnow() - last_log.timestamp).total_seconds()
+    elapsed = (get_current_cet() - last_log.timestamp).total_seconds()
     remaining = max(0, settings.LOG_COOLDOWN - int(elapsed))
     return remaining
 
@@ -92,7 +100,7 @@ def can_log_spot(db: Session, user_id: int, spot_id: int, is_auto: bool = False)
                 Log.user_id == user_id,
                 Log.spot_id == spot_id,
                 Log.is_auto == False,
-                Log.timestamp > datetime.utcnow() - timedelta(seconds=settings.LOG_COOLDOWN)
+                Log.timestamp > get_current_cet() - timedelta(seconds=settings.LOG_COOLDOWN)
             )
         ).first()
         
@@ -101,7 +109,7 @@ def can_log_spot(db: Session, user_id: int, spot_id: int, is_auto: bool = False)
                 Log.user_id == user_id,
                 Log.spot_id == spot_id,
                 Log.is_auto == True,
-                Log.timestamp > datetime.utcnow() - timedelta(seconds=settings.LOG_COOLDOWN)
+                Log.timestamp > get_current_cet() - timedelta(seconds=settings.LOG_COOLDOWN)
             )
         ).first()
         
@@ -114,7 +122,7 @@ def can_log_spot(db: Session, user_id: int, spot_id: int, is_auto: bool = False)
                 Log.user_id == user_id,
                 Log.spot_id == spot_id,
                 Log.is_auto == False,
-                Log.timestamp > datetime.utcnow() - timedelta(seconds=settings.LOG_COOLDOWN)
+                Log.timestamp > get_current_cet() - timedelta(seconds=settings.LOG_COOLDOWN)
             )
         ).first()
         return last_manual_log is None
@@ -139,7 +147,7 @@ def get_log_status(db: Session, user_id: int, spot_id: int) -> dict:
             Log.user_id == user_id,
             Log.spot_id == spot_id,
             Log.is_auto == False,
-            Log.timestamp > datetime.utcnow() - timedelta(seconds=settings.LOG_COOLDOWN)
+            Log.timestamp > get_current_cet() - timedelta(seconds=settings.LOG_COOLDOWN)
         )
     ).order_by(Log.timestamp.desc()).first()
     
@@ -149,7 +157,7 @@ def get_log_status(db: Session, user_id: int, spot_id: int) -> dict:
             Log.user_id == user_id,
             Log.spot_id == spot_id,
             Log.is_auto == True,
-            Log.timestamp > datetime.utcnow() - timedelta(seconds=settings.LOG_COOLDOWN)
+            Log.timestamp > get_current_cet() - timedelta(seconds=settings.LOG_COOLDOWN)
         )
     ).order_by(Log.timestamp.desc()).first()
     
@@ -166,12 +174,12 @@ def get_log_status(db: Session, user_id: int, spot_id: int) -> dict:
     
     # Check manual log cooldown (blocks auto logs)
     if last_manual_log:
-        elapsed = (datetime.utcnow() - last_manual_log.timestamp).total_seconds()
+        elapsed = (get_current_cet() - last_manual_log.timestamp).total_seconds()
         auto_cooldown = max(0, int(settings.LOG_COOLDOWN - elapsed))
     
     # Also check auto log cooldown (blocks auto logs)
     if last_auto_log:
-        elapsed = (datetime.utcnow() - last_auto_log.timestamp).total_seconds()
+        elapsed = (get_current_cet() - last_auto_log.timestamp).total_seconds()
         auto_cooldown_from_auto = max(0, int(settings.LOG_COOLDOWN - elapsed))
         auto_cooldown = max(auto_cooldown, auto_cooldown_from_auto)
     
@@ -181,7 +189,7 @@ def get_log_status(db: Session, user_id: int, spot_id: int) -> dict:
     manual_cooldown = 0
     can_manual_log = True
     if last_manual_log:
-        elapsed = (datetime.utcnow() - last_manual_log.timestamp).total_seconds()
+        elapsed = (get_current_cet() - last_manual_log.timestamp).total_seconds()
         manual_cooldown = max(0, int(settings.LOG_COOLDOWN - elapsed))
         can_manual_log = (manual_cooldown == 0)
     
@@ -225,7 +233,7 @@ def create_loot_spot(
 ) -> Spot:
     """Create a loot spot for a specific player"""
     point = f'POINT({longitude} {latitude})'
-    expires_at = datetime.utcnow() + timedelta(hours=1)
+    expires_at = get_current_cet() + timedelta(hours=1)
     
     spot = Spot(
         name=f"Loot Spot",
@@ -246,7 +254,7 @@ def create_loot_spot(
 
 def cleanup_expired_loot(db: Session) -> int:
     """Remove expired loot spots"""
-    now = datetime.utcnow()
+    now = get_current_cet()
     result = db.query(Spot).filter(
         and_(
             Spot.is_loot == True,

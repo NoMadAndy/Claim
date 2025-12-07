@@ -8,6 +8,14 @@ from geoalchemy2.types import Geography
 from app.models import Log, Spot, User, Claim
 from app.schemas import LogCreate
 from app.config import settings
+import pytz
+
+# CET timezone
+CET = pytz.timezone('Europe/Berlin')
+
+def get_current_cet():
+    """Get current time in CET timezone (naive datetime for DB compatibility)"""
+    return datetime.now(CET).replace(tzinfo=None)
 from app.services.auth_service import update_user_xp
 
 
@@ -113,14 +121,14 @@ def update_claim(db: Session, user_id: int, spot_id: int, points: int):
     if claim:
         claim.claim_value += points
         claim.dominance += points * 0.1
-        claim.last_log = datetime.utcnow()
+        claim.last_log = get_current_cet()
     else:
         claim = Claim(
             user_id=user_id,
             spot_id=spot_id,
             claim_value=points,
             dominance=points * 0.1,
-            last_log=datetime.utcnow()
+            last_log=get_current_cet()
         )
         db.add(claim)
     
@@ -130,7 +138,7 @@ def update_claim(db: Session, user_id: int, spot_id: int, points: int):
 def apply_claim_decay(db: Session):
     """Apply time-based decay to all claims"""
     claims = db.query(Claim).all()
-    now = datetime.utcnow()
+    now = get_current_cet()
     
     for claim in claims:
         hours_since_decay = (now - claim.last_decay).total_seconds() / 3600
