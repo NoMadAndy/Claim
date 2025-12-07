@@ -601,6 +601,27 @@ function setupEventListeners() {
     // Auth buttons
     const btnLogin = document.getElementById('btn-login');
     if (btnLogin) btnLogin.addEventListener('click', handleLogin);
+    
+    // Enter key support for login fields
+    const loginUsername = document.getElementById('login-username');
+    const loginPassword = document.getElementById('login-password');
+    if (loginUsername) {
+        loginUsername.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleLogin();
+            }
+        });
+    }
+    if (loginPassword) {
+        loginPassword.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleLogin();
+            }
+        });
+    }
+    
     const btnRegister = document.getElementById('btn-register');
     if (btnRegister) btnRegister.addEventListener('click', handleRegister);
     const showRegister = document.getElementById('show-register');
@@ -642,7 +663,7 @@ function setupEventListeners() {
 
 // Authentication
 async function handleLogin() {
-    const username = document.getElementById('login-username').value;
+    const username = document.getElementById('login-username').value.toLowerCase().trim();
     const password = document.getElementById('login-password').value;
     
     if (!username || !password) {
