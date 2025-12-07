@@ -362,6 +362,40 @@ class SoundManager {
         }
     }
 
+    // Play error sound from WAV file
+    async playErrorSound(now) {
+        try {
+            // Load and play error sound
+            if (!this.errorSoundBuffer) {
+                console.log('🎵 Loading error sound from /sounds/Sound_LD_Bumpy_Reconstruction_keyC%23min.wav');
+                const response = await fetch('/sounds/Sound_LD_Bumpy_Reconstruction_keyC%23min.wav');
+                if (!response.ok) {
+                    console.error(`🎵 Failed to load error sound: HTTP ${response.status}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                const arrayBuffer = await response.arrayBuffer();
+                console.log('🎵 Decoding error sound buffer...');
+                this.errorSoundBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+                console.log('🎵 Error buffer loaded successfully, duration:', this.errorSoundBuffer.duration);
+            }
+            
+            const source = this.audioContext.createBufferSource();
+            source.buffer = this.errorSoundBuffer;
+            
+            const gain = this.audioContext.createGain();
+            gain.gain.setValueAtTime(this.volume, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + this.errorSoundBuffer.duration);
+            
+            source.connect(gain);
+            gain.connect(this.audioContext.destination);
+            console.log('🎵 Playing error sound');
+            source.start(now);
+        } catch (e) {
+            console.warn('🎵 Failed to play error sound:', e);
+            // No fallback for error sound - just fail silently
+        }
+    }
+
     toggle() {
         this.soundsEnabled = !this.soundsEnabled;
         localStorage.setItem('claim_sounds_enabled', this.soundsEnabled);
