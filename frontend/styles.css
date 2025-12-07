@@ -403,11 +403,25 @@ body {
 }
 
 .loot-marker {
-    background: #f59e0b;
-    border: 2px solid white;
+    background: gold;
+    border: 3px solid #ff6b00;
     border-radius: 50%;
-    width: 15px;
-    height: 15px;
+    width: 18px;
+    height: 18px;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+    animation: pulse-loot 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-loot {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+    }
+    50% {
+        transform: scale(1.2);
+        box-shadow: 0 0 20px rgba(255, 215, 0, 1);
+    }
+}
     animation: pulse 2s infinite;
 }
 

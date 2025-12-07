@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 
 from app.database import get_db
-from app.routers import auth, spots, logs, claims, tracks, items
+from app.routers import auth, spots, logs, claims, tracks, items, loot
 from app.ws.handlers import websocket_endpoint
 from app.config import settings
 
@@ -76,6 +76,7 @@ app.include_router(logs.router)
 app.include_router(claims.router)
 app.include_router(tracks.router)
 app.include_router(items.router)
+app.include_router(loot.router)
 
 
 # Lightweight client log sink for debugging (stdout only, no auth)

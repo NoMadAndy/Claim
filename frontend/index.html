@@ -26,7 +26,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.css" />
     
     <!-- Custom CSS with cache buster -->
-    <link rel="stylesheet" href="styles.css?v=1765142282">
+    <link rel="stylesheet" href="styles.css?v=1765143318">
 </head>
 <body>
     <!-- Stats Bar (Top) -->
@@ -68,6 +68,11 @@
         <div class="detail-row">
             <span>Inventory:</span>
             <span id="inventory-count">0</span>
+        </div>
+        <div class="detail-row">
+            <button id="btn-inventory" style="width: 100%; padding: 8px; background: #764ba2; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 5px;">
+                🎒 View Inventory
+            </button>
         </div>
         <div class="detail-row" style="border-top: 1px solid rgba(255,255,255,0.4); padding-top: 10px; margin-top: 10px;">
             <span>Compass Debug:</span>
@@ -189,6 +194,19 @@
         </div>
     </div>
     
+    <!-- Inventory Modal -->
+    <div id="inventory-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <h3>🎒 Inventory</h3>
+            <div id="inventory-list" style="margin: 20px 0; max-height: 60vh; overflow-y: auto;">
+                <p style="text-align: center; color: #666;">Loading...</p>
+            </div>
+            <button id="btn-close-inventory" style="padding: 10px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;">
+                Close
+            </button>
+        </div>
+    </div>
+    
     <!-- Debug Console Overlay -->
     <div id="debug-wrapper" style="
         position: fixed;
@@ -213,7 +231,7 @@
         ">Debug logs appear here...</div>
     </div>
 
-    <button id="toggle-debug" data-commit="fa521a6b" data-timestamp="07.12.2025 22:18:02" data-commit="fa521a6b"  data-commit="fa521a6b"  data-commit="fa521a6b"  data-commit="fa521a6b"  data-commit="fa521a6b"  data-commit="fa521a6b"  data-commit="fa521a6b"  data-commit="fa521a6b"  data-commit="fa521a6b"  data-commit="fa521a6b"  data-commit="fa521a6b"  data-commit="fa521a6b"  data-commit="fa521a6b"  data-commit="fa521a6b"  data-commit="fa521a6b"  data-commit="fa521a6b"  data-commit="fa521a6b"  data-commit="fa521a6b"  data-commit="fa521a6b"  data-commit="fa521a6b"  data-commit="fa521a6b"  style="
+    <button id="toggle-debug" data-commit="db3951db" data-timestamp="07.12.2025 22:35:18" data-commit="db3951db"  data-commit="db3951db"  data-commit="db3951db"  data-commit="db3951db"  data-commit="db3951db"  data-commit="db3951db"  data-commit="db3951db"  data-commit="db3951db"  data-commit="db3951db"  data-commit="db3951db"  data-commit="db3951db"  data-commit="db3951db"  data-commit="db3951db"  data-commit="db3951db"  data-commit="db3951db"  data-commit="db3951db"  data-commit="db3951db"  data-commit="db3951db"  data-commit="db3951db"  data-commit="db3951db"  data-commit="db3951db"  data-commit="db3951db"  style="
         position: fixed;
         top: 80px;
         left: 12px;
@@ -427,6 +445,6 @@
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     
     <!-- Custom JS with cache buster -->
-    <script src="app.js?v=1765142282"></script>
+    <script src="app.js?v=1765143318"></script>
 </body>
 </html>

@@ -744,11 +744,15 @@ function setupEventListeners() {
     document.getElementById('btn-create-spot')?.addEventListener('click', toggleSpotCreationMode);
     document.getElementById('btn-wakelock')?.addEventListener('click', toggleWakeLock);
     document.getElementById('btn-settings')?.addEventListener('click', showSettings);
+    document.getElementById('btn-inventory')?.addEventListener('click', showInventory);
     
     // Settings modal
     document.getElementById('btn-close-settings')?.addEventListener('click', closeSettings);
     document.getElementById('setting-sound-toggle')?.addEventListener('change', toggleSound);
     document.getElementById('setting-volume-slider')?.addEventListener('input', changeVolume);
+    
+    // Inventory modal
+    document.getElementById('btn-close-inventory')?.addEventListener('click', closeInventory);
     
     // Stats toggle
     document.getElementById('stats-toggle')?.addEventListener('click', toggleStatsDetail);
@@ -964,6 +968,7 @@ async function initializeApp() {
         // Load initial data
         loadStats();
         loadNearbySpots();
+        trySpawnLoot(); // Try to spawn initial loot
         if (window.debugLog) window.debugLog('📊 Initial data loaded');
         
         // Load heatmap if visible
@@ -976,7 +981,8 @@ async function initializeApp() {
         // Start update loops
         setInterval(updateAutoLog, 1000); // Check auto-log every 1 second
         setInterval(loadStats, 30000); // Update stats every 30 seconds
-        if (window.debugLog) window.debugLog('⏱️ Update loops started (AutoLog: 1s, Stats: 30s)');
+        setInterval(trySpawnLoot, 120000); // Try spawn loot every 2 minutes
+        if (window.debugLog) window.debugLog('⏱️ Update loops started (AutoLog: 1s, Stats: 30s, Loot: 2m)');
         
         // AGGRESSIVE: Periodically try to unlock audio on iOS (every 3 seconds for first 30 seconds)
         let unlockAttempts = 0;
@@ -1311,8 +1317,11 @@ function handleWebSocketMessage(message) {
             break;
             
         case 'loot_spawn':
-            if (window.debugLog) window.debugLog(`💰 Loot: ${data.item_type}`);
-            showLootSpawn(data);
+            if (window.debugLog) window.debugLog(`💎 Loot spawned: +${data.xp} XP ${data.item_name ? '+ ' + data.item_name : ''}`);
+            soundManager.playSound('collect');
+            showNotification('💎 Loot Spawned!', `New loot nearby! +${data.xp} XP`, 'success');
+            // Reload spots to show new loot
+            loadNearbySpots();
             break;
             
         case 'claim_update':
@@ -1431,6 +1440,28 @@ async function loadStats() {
 function createSpotPopupContent(spot) {
     const container = document.createElement('div');
     container.style.minWidth = '200px';
+    
+    // Special handling for loot spots
+    if (spot.is_loot) {
+        container.innerHTML = `
+            <div style="padding: 5px;">
+                <b style="font-size: 14px; color: gold;">💎 ${spot.name}</b><br>
+                ${spot.description ? `<small>${spot.description}</small><br>` : ''}
+                <div style="font-size: 12px; margin: 8px 0;">
+                    <strong>Belohnung:</strong> ${spot.loot_xp || 0} XP
+                    ${spot.loot_item ? '<br>+ Item 🎁' : ''}
+                </div>
+                <button onclick="collectLoot(${spot.id})" 
+                    style="width: 100%; padding: 8px; background: gold; color: black; 
+                    border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">
+                    Einsammeln
+                </button>
+            </div>
+        `;
+        return container;
+    }
+    
+    // Normal spot popup
     container.innerHTML = `
         <div style="padding: 5px;">
             <b style="font-size: 14px;">${spot.name}</b><br>
@@ -1813,6 +1844,90 @@ async function uploadPhoto(file) {
     
     const data = await response.json();
     return { photo_data: data.photo_data, mime_type: data.mime_type };
+}
+
+// Loot Functions
+window.collectLoot = async function(lootSpotId) {
+    if (!currentPosition) return;
+    
+    map.closePopup();
+    
+    try {
+        const result = await apiRequest('/loot/collect', {
+            method: 'POST',
+            body: JSON.stringify({
+                loot_spot_id: lootSpotId,
+                latitude: currentPosition.lat,
+                longitude: currentPosition.lng
+            })
+        });
+        
+        if (result.success) {
+            soundManager.playSound('collect');
+            
+            // Show rewards notification
+            let message = `+${result.rewards.xp} XP`;
+            if (result.rewards.items && result.rewards.items.length > 0) {
+                result.rewards.items.forEach(item => {
+                    message += `\n🎁 ${item.name}`;
+                });
+            }
+            
+            if (result.level_up) {
+                message += `\n🎉 Level Up! Jetzt Level ${result.new_level}`;
+                soundManager.playSound('levelup');
+            }
+            
+            showNotification('💎 Loot Collected!', message, 'success');
+            
+            // Update stats
+            loadStats();
+            
+            // Reload spots to remove collected loot
+            await loadNearbySpots();
+            
+            // Try to spawn new loot
+            await trySpawnLoot();
+        }
+    } catch (error) {
+        showNotification('Error', error.message || 'Failed to collect loot', 'error');
+    }
+};
+
+async function trySpawnLoot() {
+    if (!currentPosition) return;
+    
+    try {
+        const spots = await apiRequest('/loot/spawn', {
+            method: 'POST',
+            body: JSON.stringify({
+                latitude: currentPosition.lat,
+                longitude: currentPosition.lng,
+                radius_meters: 500
+            })
+        });
+        
+        if (spots && spots.length > 0) {
+            if (window.debugLog) window.debugLog(`💎 Spawned ${spots.length} loot spot(s)`);
+            await loadNearbySpots();
+        }
+    } catch (error) {
+        // Silently fail - loot spawning is not critical
+        console.error('Loot spawn failed:', error);
+    }
+}
+
+async function loadActiveLoot() {
+    try {
+        const lootSpots = await apiRequest('/loot/active');
+        if (window.debugLog && lootSpots.length > 0) {
+            window.debugLog(`💎 Active loot: ${lootSpots.length} spot(s)`);
+        }
+        return lootSpots;
+    } catch (error) {
+        console.error('Failed to load active loot:', error);
+        return [];
+    }
 }
 
 // Action Buttons
@@ -2454,6 +2569,128 @@ function closeSettings() {
     const settingsModal = document.getElementById('settings-modal');
     if (settingsModal) settingsModal.classList.add('hidden');
 }
+
+// Inventory Functions
+async function showInventory() {
+    const inventoryModal = document.getElementById('inventory-modal');
+    if (!inventoryModal) return;
+    inventoryModal.classList.remove('hidden');
+    
+    const inventoryList = document.getElementById('inventory-list');
+    if (!inventoryList) return;
+    
+    inventoryList.innerHTML = '<p style="text-align: center; color: #666;">Loading...</p>';
+    
+    try {
+        const inventory = await apiRequest('/items/inventory');
+        
+        if (!inventory || inventory.length === 0) {
+            inventoryList.innerHTML = '<p style="text-align: center; color: #666;">Dein Inventar ist leer.</p>';
+            return;
+        }
+        
+        // Group items by rarity
+        const rarityColors = {
+            common: '#9ca3af',
+            rare: '#3b82f6',
+            epic: '#a855f7',
+            legendary: '#f59e0b'
+        };
+        
+        inventoryList.innerHTML = inventory.map(inv => {
+            const item = inv.item;
+            const color = rarityColors[item.rarity] || '#666';
+            
+            return `
+                <div style="
+                    border: 2px solid ${color};
+                    border-radius: 8px;
+                    padding: 12px;
+                    margin-bottom: 10px;
+                    background: linear-gradient(135deg, white 0%, ${color}20 100%);
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: bold; font-size: 16px; color: ${color};">
+                                ${item.icon_url || '📦'} ${item.name}
+                            </div>
+                            <div style="font-size: 12px; color: #666; margin-top: 4px; text-transform: uppercase;">
+                                ${item.rarity}
+                            </div>
+                            <div style="font-size: 13px; margin-top: 8px; color: #444;">
+                                ${item.description}
+                            </div>
+                            ${item.xp_boost || item.claim_boost || item.range_boost ? `
+                                <div style="font-size: 12px; margin-top: 8px; color: #666;">
+                                    ${item.xp_boost ? `✨ XP +${Math.round(item.xp_boost * 100)}%<br>` : ''}
+                                    ${item.claim_boost ? `💎 Claim +${Math.round(item.claim_boost * 100)}%<br>` : ''}
+                                    ${item.range_boost ? `📡 Range +${item.range_boost}m` : ''}
+                                </div>
+                            ` : ''}
+                        </div>
+                        <div style="text-align: right; margin-left: 10px;">
+                            <div style="font-size: 20px; font-weight: bold; color: ${color};">
+                                x${inv.quantity}
+                            </div>
+                            ${item.item_type === 'consumable' ? `
+                                <button onclick="useInventoryItem(${item.id})" 
+                                    style="
+                                        margin-top: 8px;
+                                        padding: 6px 12px;
+                                        background: ${color};
+                                        color: white;
+                                        border: none;
+                                        border-radius: 4px;
+                                        cursor: pointer;
+                                        font-size: 12px;
+                                        font-weight: bold;
+                                    ">
+                                    Use
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+    } catch (error) {
+        inventoryList.innerHTML = '<p style="text-align: center; color: red;">Fehler beim Laden des Inventars.</p>';
+        console.error('Failed to load inventory:', error);
+    }
+}
+
+function closeInventory() {
+    const inventoryModal = document.getElementById('inventory-modal');
+    if (inventoryModal) inventoryModal.classList.add('hidden');
+}
+
+window.useInventoryItem = async function(itemId) {
+    try {
+        const result = await apiRequest(`/items/${itemId}/use`, {
+            method: 'POST'
+        });
+        
+        if (result.success) {
+            soundManager.playSound('collect');
+            
+            let message = `Used ${result.item_name}`;
+            if (result.effects) {
+                if (result.effects.xp_boost) message += `\n✨ XP +${Math.round(result.effects.xp_boost * 100)}%`;
+                if (result.effects.claim_boost) message += `\n💎 Claim +${Math.round(result.effects.claim_boost * 100)}%`;
+                if (result.effects.range_boost) message += `\n📡 Range +${result.effects.range_boost}m`;
+            }
+            
+            showNotification('Item Used', message, 'success');
+            
+            // Refresh inventory
+            await showInventory();
+            loadStats();
+        }
+    } catch (error) {
+        showNotification('Error', error.message || 'Failed to use item', 'error');
+    }
+};
 
 function toggleSound() {
     const enabled = soundManager.toggle();

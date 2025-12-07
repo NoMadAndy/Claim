@@ -78,3 +78,102 @@ def get_all_items(db: Session) -> List[Item]:
 def get_item_by_id(db: Session, item_id: int) -> Optional[Item]:
     """Get item by ID"""
     return db.query(Item).filter(Item.id == item_id).first()
+
+
+def use_item(db: Session, user_id: int, item_id: int) -> dict:
+    """
+    Use/consume an item from inventory.
+    Returns dict with effects applied.
+    """
+    inventory_item = db.query(InventoryItem).filter(
+        InventoryItem.user_id == user_id,
+        InventoryItem.item_id == item_id
+    ).first()
+    
+    if not inventory_item or inventory_item.quantity <= 0:
+        return {"success": False, "error": "Item not in inventory"}
+    
+    item = inventory_item.item
+    
+    # Apply effects (simplified - in real game would have temporary buffs, etc.)
+    effects = {
+        "xp_boost": item.xp_boost,
+        "claim_boost": item.claim_boost,
+        "range_boost": item.range_boost
+    }
+    
+    # Decrease quantity
+    inventory_item.quantity -= 1
+    if inventory_item.quantity <= 0:
+        db.delete(inventory_item)
+    
+    db.commit()
+    
+    return {
+        "success": True,
+        "item_name": item.name,
+        "effects": effects,
+        "remaining": inventory_item.quantity if inventory_item.quantity > 0 else 0
+    }
+
+
+def initialize_default_items(db: Session):
+    """Create default items for the game"""
+    default_items = [
+        {
+            "name": "XP Boost",
+            "description": "Increases XP gain by 50% for 1 hour",
+            "item_type": "consumable",
+            "rarity": "common",
+            "xp_boost": 0.5,
+            "icon_url": "⭐"
+        },
+        {
+            "name": "Mega XP Boost",
+            "description": "Doubles XP gain for 30 minutes",
+            "item_type": "consumable",
+            "rarity": "rare",
+            "xp_boost": 1.0,
+            "icon_url": "🌟"
+        },
+        {
+            "name": "Range Extender",
+            "description": "Increases log range by 50m",
+            "item_type": "consumable",
+            "rarity": "rare",
+            "range_boost": 50.0,
+            "icon_url": "📡"
+        },
+        {
+            "name": "Claim Amplifier",
+            "description": "Increases claim points by 100%",
+            "item_type": "consumable",
+            "rarity": "epic",
+            "claim_boost": 1.0,
+            "icon_url": "💎"
+        },
+        {
+            "name": "Lucky Charm",
+            "description": "Increases loot spawn rate",
+            "item_type": "passive",
+            "rarity": "legendary",
+            "icon_url": "🍀"
+        },
+        {
+            "name": "Health Potion",
+            "description": "Restores energy (future feature)",
+            "item_type": "consumable",
+            "rarity": "common",
+            "icon_url": "🧪"
+        }
+    ]
+    
+    for item_data in default_items:
+        # Check if item already exists
+        existing = db.query(Item).filter(Item.name == item_data["name"]).first()
+        if not existing:
+            item = Item(**item_data)
+            db.add(item)
+    
+    db.commit()
+    print(f"Initialized {len(default_items)} default items")
