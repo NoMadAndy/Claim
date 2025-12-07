@@ -187,6 +187,15 @@ async def serve_favicon():
             return Response(content=f.read(), media_type="image/svg+xml")
     return Response(content="", media_type="image/svg+xml", status_code=404)
 
+@app.get("/manifest.json")
+async def serve_manifest():
+    """Serve PWA manifest"""
+    manifest_path = os.path.join(frontend_path, "manifest.json")
+    if os.path.exists(manifest_path):
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            return Response(content=f.read(), media_type="application/json")
+    return Response(content="{}", media_type="application/json", status_code=404)
+
 
 # Health check endpoint
 @app.get("/api/health")
