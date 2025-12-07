@@ -533,9 +533,8 @@ function getVersionTimestamp() {
 function initVersionBadge() {
     const versionBadgeBtn = document.getElementById('version-badge-btn');
     const timestampBadge = document.getElementById('timestamp-badge');
-    const versionHash = document.getElementById('version-hash');
     
-    if (versionHash) {
+    if (versionBadgeBtn || timestampBadge) {
         const version = getVersionInfo();
         const timestamp = getVersionTimestamp();
         
