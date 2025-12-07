@@ -325,7 +325,8 @@ class SoundManager {
         try {
             // Load and play Yum_CMaj.wav
             if (!this.logSoundBuffer) {
-                const response = await fetch('./sounds/Yum_CMaj.wav');
+                const response = await fetch('/sounds/Yum_CMaj.wav');
+                if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 const arrayBuffer = await response.arrayBuffer();
                 this.logSoundBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
             }
