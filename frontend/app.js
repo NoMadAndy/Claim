@@ -532,16 +532,24 @@ function getVersionTimestamp() {
 
 function initVersionBadge() {
     const versionBadgeBtn = document.getElementById('version-badge-btn');
+    const timestampBadge = document.getElementById('timestamp-badge');
     const versionHash = document.getElementById('version-hash');
     
     if (versionHash) {
         const version = getVersionInfo();
         const timestamp = getVersionTimestamp();
         
-        // Show in button
+        // Show version in button
         if (versionBadgeBtn) {
             versionBadgeBtn.textContent = version;
-            versionBadgeBtn.title = `${timestamp}`;
+        }
+        
+        // Show timestamp in button
+        if (timestampBadge) {
+            // Extract time part only (HH:MM)
+            const timePart = timestamp.split(' ')[1] || timestamp;
+            timestampBadge.textContent = timePart.substring(0, 5); // HH:MM
+            timestampBadge.title = timestamp;
         }
         
         if (window.debugLog) window.debugLog(`🔖 Version: v${version}`);
