@@ -1547,6 +1547,9 @@ async function performAutoLog(spotId) {
     );
     
     loadStats();
+    
+    // Update heatmap after autolog
+    updateClaimHeatmap();
 }
 
 window.logSpot = async function(spotId) {
@@ -1684,6 +1687,9 @@ async function submitLog(spotId, notes, photoFile) {
         );
         
         loadStats();
+        
+        // Update heatmap after manual log
+        updateClaimHeatmap();
     } catch (error) {
         if (error.status === 429) {
             soundManager.playSound('error');
@@ -2007,26 +2013,19 @@ async function loadHeatmap() {
                         gradient: colorConfig.gradient
                     });
                     
-                    // Store layer and add to map if active
+                    // Store layer and always add to map if heatmap is visible
                     const userId = heatmap.user_id || `user_${index}`;
                     heatmapLayers.set(userId, heat);
                     
-                    // By default, show all heatmaps
-                    if (!activeHeatmaps.has(userId)) {
-                        activeHeatmaps.add(userId);
-                    }
-                    
-                    if (activeHeatmaps.has(userId)) {
+                    // Always show all heatmaps when heatmap layer is active
+                    if (heatmapVisible) {
                         heat.addTo(map);
                     }
                 }
             });
         }
         
-        // Update heatmap controls
-        updateHeatmapControls();
-        
-        // Heatmap layers are automatically rendered, no need for bringToFront
+        if (window.debugLog) window.debugLog(`🔥 Heatmap updated: ${heatmapLayers.size} players`);
     } catch (error) {
         console.error('Failed to load heatmap:', error);
     }
@@ -2036,51 +2035,6 @@ async function updateClaimHeatmap() {
     if (heatmapVisible) {
         await loadHeatmap();
     }
-}
-
-function updateHeatmapControls() {
-    // Update heatmap player toggles in the layer menu
-    const heatmapToggles = document.querySelector('.heatmap-toggles');
-    if (!heatmapToggles) return;
-    
-    const togglesHtml = Array.from(heatmapLayers.entries()).map(([userId, layer]) => {
-        const isActive = activeHeatmaps.has(userId);
-        const colorIndex = Array.from(heatmapLayers.keys()).indexOf(userId) % HEATMAP_COLORS.length;
-        const color = Object.values(HEATMAP_COLORS[colorIndex].gradient)[2]; // Last color in gradient
-        
-        return `
-            <label style="display: flex; align-items: center; gap: 8px; margin: 5px 0;">
-                <input type="checkbox" class="heatmap-toggle" data-user-id="${userId}" ${isActive ? 'checked' : ''}>
-                <span style="display: inline-block; width: 12px; height: 12px; background: ${color}; border-radius: 2px;"></span>
-                Spieler ${userId}
-            </label>
-        `;
-    }).join('');
-    
-    heatmapToggles.innerHTML = togglesHtml;
-    
-    // Add event listeners
-    document.querySelectorAll('.heatmap-toggle').forEach(toggle => {
-        toggle.addEventListener('change', (e) => {
-            const userId = e.target.dataset.userId;
-            // Try to parse as number if it looks like a number, otherwise keep as string
-            const userIdValue = /^\d+$/.test(userId) ? parseInt(userId) : userId;
-            
-            if (e.target.checked) {
-                activeHeatmaps.add(userIdValue);
-                const layer = heatmapLayers.get(userIdValue);
-                if (layer && heatmapVisible) {
-                    layer.addTo(map);
-                }
-            } else {
-                activeHeatmaps.delete(userIdValue);
-                const layer = heatmapLayers.get(userIdValue);
-                if (layer && map.hasLayer(layer)) {
-                    map.removeLayer(layer);
-                }
-            }
-        });
-    });
 }
 
 function showLayerMenu() {
@@ -2101,16 +2055,12 @@ function showLayerMenu() {
             <h4>Overlays</h4>
             <label>
                 <input type="checkbox" id="overlay-heatmap" ${heatmapVisible ? 'checked' : ''}>
-                Heatmap 🔥
+                Heatmap 🔥 (alle Spieler)
             </label>
             <label>
                 <input type="checkbox" id="overlay-tracks" ${trackLayers.size > (activeTrackId ? 1 : 0) ? 'checked' : ''}>
                 Tracks 📊
             </label>
-        </div>
-        <div class="layer-section" id="heatmap-players-section" style="display: ${heatmapVisible ? 'block' : 'none'};">
-            <h4>Heatmap-Spieler</h4>
-            <div class="heatmap-toggles"></div>
         </div>
         <button id="layer-close">Schließen</button>
     `;
