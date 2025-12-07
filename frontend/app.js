@@ -532,26 +532,57 @@ function getVersionTimestamp() {
 
 function initVersionBadge() {
     const versionBadge = document.getElementById('version-badge');
+    const versionTooltip = document.getElementById('version-tooltip');
     const versionHash = document.getElementById('version-hash');
+    
     if (versionHash) {
         const version = getVersionInfo();
         const timestamp = getVersionTimestamp();
         versionHash.textContent = version;
         
-        // Set title to show timestamp on hover
+        // Set title for fallback tooltip
         if (versionBadge) {
-            versionBadge.title = `v${version}\n${timestamp}`;
+            versionBadge.title = `v${version} - ${timestamp}`;
+            
+            // Show tooltip on hover
+            versionBadge.addEventListener('mouseenter', () => {
+                if (versionTooltip) {
+                    versionTooltip.textContent = `📅 ${timestamp}`;
+                    versionTooltip.style.opacity = '1';
+                }
+            });
+            
+            versionBadge.addEventListener('mouseleave', () => {
+                if (versionTooltip) {
+                    versionTooltip.style.opacity = '0';
+                }
+            });
             
             // Click to copy functionality
             versionBadge.addEventListener('click', () => {
                 const textToCopy = `v${version} (${timestamp})`;
                 navigator.clipboard.writeText(textToCopy).then(() => {
+                    // Show feedback
+                    const originalContent = versionBadge.innerHTML;
+                    versionBadge.innerHTML = '✓ copied';
                     versionBadge.style.background = 'rgba(0,255,0,0.3)';
+                    
                     setTimeout(() => {
+                        versionBadge.innerHTML = originalContent;
                         versionBadge.style.background = 'rgba(0,0,0,0.7)';
-                    }, 200);
+                        // Re-initialize the hash element
+                        const newHash = document.getElementById('version-hash');
+                        if (newHash) {
+                            newHash.dataset.timestamp = timestamp;
+                            newHash.dataset.commit = versionHash.dataset.commit;
+                        }
+                    }, 1500);
                 });
             });
+            
+            // Show version info in console
+            console.log(`%c📦 App Version: v${version}`, 'color: #0f0; font-weight: bold;');
+            console.log(`%c📅 Deployed: ${timestamp}`, 'color: #0f0; font-family: monospace;');
         }
     }
 }
