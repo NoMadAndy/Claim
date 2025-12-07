@@ -496,6 +496,7 @@ let map, playerMarker, trackingLayer, heatmapLayer;
 let currentPosition = null;
 let lastSpotReloadPosition = null; // Track last position when spots were reloaded
 let spotReloadTimeout = null; // Debounce timeout for spot reloading
+let lastGPSUpdateTime = null; // Track last GPS update for tracking pause detection
 let followMode = false;
 let trackingActive = false;
 let compassEnabled = false;
@@ -1191,6 +1192,9 @@ function startGPSTracking() {
                 heading: position.coords.heading,
                 accuracy: position.coords.accuracy
             };
+            
+            // Update last GPS update timestamp
+            lastGPSUpdateTime = Date.now();
             
             updatePlayerPosition();
             
@@ -2075,6 +2079,28 @@ async function endTrack() {
 async function addTrackPoint(position) {
     if (!activeTrackId) return;
     
+    // Check if GPS updates are recent (within last 10 seconds)
+    const now = Date.now();
+    const timeSinceLastUpdate = now - (lastGPSUpdateTime || 0);
+    
+    if (timeSinceLastUpdate > 10000) {
+        // GPS updates paused (probably screen off or no signal)
+        if (window.debugLog) window.debugLog('⏸️ Track recording paused - no recent GPS updates');
+        return;
+    }
+    
+    // Check if this point is too far from last point (indicates GPS jump/gap)
+    if (activeTrackPoints.length > 0) {
+        const lastPoint = activeTrackPoints[activeTrackPoints.length - 1];
+        const distance = map.distance(lastPoint, [position.lat, position.lng]);
+        
+        // If distance is more than 500m, it's probably a GPS gap/jump
+        if (distance > 500) {
+            if (window.debugLog) window.debugLog(`⚠️ Track point skipped - jump detected (${distance.toFixed(0)}m)`);
+            return;
+        }
+    }
+    
     try {
         await apiRequest(`/tracks/${activeTrackId}/points`, {
             method: 'POST',
@@ -2532,6 +2558,12 @@ function toggleWakeLock() {
 
 // Re-request wakelock when page becomes visible again
 document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'hidden') {
+        if (window.debugLog) window.debugLog('🌙 Display off - GPS updates may pause');
+    } else {
+        if (window.debugLog) window.debugLog('☀️ Display on - GPS updates resumed');
+    }
+    
     if (wakeLockEnabled && document.visibilityState === 'visible') {
         await requestWakeLock();
     }
