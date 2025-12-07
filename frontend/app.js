@@ -1684,7 +1684,7 @@ async function performAutoLog(spotId) {
         return;
     }
     
-    if (window.debugLog) window.debugLog(`📤 AutoLog POST: spot ${spotId.substring(0, 8)}`);
+    if (window.debugLog) window.debugLog(`📤 AutoLog POST: spot ${spotId}`);
     
     const response = await apiRequestSilent429('/logs/', {
         method: 'POST',
