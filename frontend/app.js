@@ -813,6 +813,7 @@ async function initializeApp() {
         // Fetch current user
         const response = await apiRequest('/auth/me');
         currentUser = response;
+        if (window.debugLog) window.debugLog(`👤 User loaded: ${currentUser.username} (${currentUser.role})`);
         
         // Update logout button with username
         const logoutBtn = document.getElementById('btn-logout');
@@ -830,9 +831,11 @@ async function initializeApp() {
         
         // Initialize map
         initMap();
+        if (window.debugLog) window.debugLog('🗺️ Map initialized');
         
         // Start GPS tracking
         startGPSTracking();
+        if (window.debugLog) window.debugLog('📍 GPS tracking started');
         
         // Enable follow mode initially
         followMode = true;
@@ -843,20 +846,24 @@ async function initializeApp() {
         
         // Connect WebSocket
         connectWebSocket();
+        if (window.debugLog) window.debugLog('🌐 WebSocket connecting...');
         
         // Load initial data
         loadStats();
         loadNearbySpots();
+        if (window.debugLog) window.debugLog('📊 Initial data loaded');
         
         // Load heatmap if visible
         if (heatmapVisible) {
             await loadHeatmap();
             heatmapLayer.addTo(map);
+            if (window.debugLog) window.debugLog('🔥 Heatmap loaded');
         }
         
         // Start update loops
         setInterval(updateAutoLog, 5000); // Check auto-log every 5 seconds
         setInterval(loadStats, 30000); // Update stats every 30 seconds
+        if (window.debugLog) window.debugLog('⏱️ Update loops started (AutoLog: 5s, Stats: 30s)');
         
         // AGGRESSIVE: Periodically try to unlock audio on iOS (every 3 seconds for first 30 seconds)
         let unlockAttempts = 0;
@@ -1003,19 +1010,24 @@ async function createSpotAtLocation(lat, lng, name) {
 // GPS Tracking
 function startGPSTracking() {
     if (!navigator.geolocation) {
+        if (window.debugLog) window.debugLog('❌ GPS: Geolocation not supported');
         showNotification('GPS Error', 'Geolocation not supported', 'error');
         return;
     }
+    
+    if (window.debugLog) window.debugLog('📍 GPS: Starting tracking');
     
     // Get initial position and center map
     // Use longer timeout for initial request (may need time to get first fix)
     navigator.geolocation.getCurrentPosition(
         (position) => {
             map.setView([position.coords.latitude, position.coords.longitude], 18);
+            if (window.debugLog) window.debugLog(`📍 GPS: Initial fix - ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`);
             console.log('Initial GPS position acquired');
         },
         (error) => {
             console.warn('Initial GPS error (code: ' + error.code + '):', error.message);
+            if (window.debugLog) window.debugLog(`⚠️ GPS: Initial error (code ${error.code})`);
             // Don't show error for initial position - it's not critical
             // The watchPosition will continue trying
         },
@@ -1134,9 +1146,12 @@ function updatePlayerPosition() {
 function connectWebSocket() {
     if (!authToken) return;
     
+    if (window.debugLog) window.debugLog('🌐 WebSocket: Connecting...');
+    
     ws = new WebSocket(`${WS_BASE}?token=${authToken}`);
     
     ws.onopen = () => {
+        if (window.debugLog) window.debugLog('✅ WebSocket: Connected');
         console.log('WebSocket connected');
     };
     
@@ -1146,10 +1161,12 @@ function connectWebSocket() {
     };
     
     ws.onerror = (error) => {
+        if (window.debugLog) window.debugLog('❌ WebSocket: Error');
         console.error('WebSocket error:', error);
     };
     
     ws.onclose = () => {
+        if (window.debugLog) window.debugLog('❌ WebSocket: Closed, reconnecting in 5s...');
         console.log('WebSocket closed, reconnecting...');
         setTimeout(connectWebSocket, 5000);
     };
@@ -1408,6 +1425,7 @@ async function updateAutoLog() {
         
         // Auto-log at 20m
         if (distance <= 20) {
+            if (window.debugLog) window.debugLog(`🎯 AutoLog triggered for spot ${spotId.substring(0, 8)}: ${distance.toFixed(1)}m`);
             performAutoLog(spotId);
         }
     });
@@ -1452,8 +1470,11 @@ async function performAutoLog(spotId) {
     const now = Date.now();
     if (now < autoLogCooldownUntil) {
         // Skip request during cooldown to prevent console spam
+        if (window.debugLog) window.debugLog(`⏳ AutoLog cooldown active for ${Math.round((autoLogCooldownUntil - now) / 1000)}s`);
         return;
     }
+    
+    if (window.debugLog) window.debugLog(`📤 AutoLog POST: spot ${spotId.substring(0, 8)}`);
     
     const response = await apiRequestSilent429('/logs/', {
         method: 'POST',
@@ -1469,8 +1490,11 @@ async function performAutoLog(spotId) {
     if (response.status === 429) {
         // Set cooldown for 5 minutes to prevent repeated requests
         autoLogCooldownUntil = now + (5 * 60 * 1000);
+        if (window.debugLog) window.debugLog(`⚠️ Rate limited (429) - cooldown 5m`);
         return;
     }
+    
+    if (window.debugLog) window.debugLog(`✅ AutoLog success: +${response.xp_gained}XP, +${response.claim_points}Claims`);
     
     soundManager.playSound('log');
     showNotification(
