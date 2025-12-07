@@ -117,7 +117,8 @@ def get_log_status(db: Session, user_id: int, spot_id: int) -> dict:
     {
         "can_auto_log": bool,
         "auto_cooldown_remaining": int (seconds, 0 if ready),
-        "can_manual_log": bool (always True),
+        "can_manual_log": bool,
+        "manual_cooldown_remaining": int (seconds, 0 if ready),
         "last_log_type": "auto" | "manual" | None
     }
     """
@@ -141,27 +142,34 @@ def get_log_status(db: Session, user_id: int, spot_id: int) -> dict:
         )
     ).order_by(Log.timestamp.desc()).first()
     
-    # Determine last log type and status
-    last_log = None
+    # Determine last log type
     last_log_type = None
-    
     if last_manual_log and (not last_auto_log or last_manual_log.timestamp > last_auto_log.timestamp):
-        last_log = last_manual_log
         last_log_type = "manual"
     elif last_auto_log:
-        last_log = last_auto_log
         last_log_type = "auto"
     
     # Calculate auto log cooldown (blocked by manual log)
     auto_cooldown = 0
+    can_auto_log = True
     if last_manual_log:
         elapsed = (datetime.utcnow() - last_manual_log.timestamp).total_seconds()
         auto_cooldown = max(0, int(settings.LOG_COOLDOWN - elapsed))
+        can_auto_log = (auto_cooldown == 0)
+    
+    # Calculate manual log cooldown (blocked by manual log)
+    manual_cooldown = 0
+    can_manual_log = True
+    if last_manual_log:
+        elapsed = (datetime.utcnow() - last_manual_log.timestamp).total_seconds()
+        manual_cooldown = max(0, int(settings.LOG_COOLDOWN - elapsed))
+        can_manual_log = (manual_cooldown == 0)
     
     return {
-        "can_auto_log": auto_cooldown == 0,
+        "can_auto_log": can_auto_log,
         "auto_cooldown_remaining": auto_cooldown,
-        "can_manual_log": True,  # Always True
+        "can_manual_log": can_manual_log,
+        "manual_cooldown_remaining": manual_cooldown,
         "last_log_type": last_log_type
     }
 

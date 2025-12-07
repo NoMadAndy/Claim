@@ -150,6 +150,7 @@ async def get_spot_details(
         "can_auto_log": log_status["can_auto_log"],
         "auto_cooldown_remaining": log_status["auto_cooldown_remaining"],
         "can_manual_log": log_status["can_manual_log"],
+        "manual_cooldown_remaining": log_status["manual_cooldown_remaining"],
         "last_log_type": log_status["last_log_type"]
     }
 

@@ -1203,7 +1203,9 @@ async function loadSpotDetails(spotId, container) {
         if (details.can_manual_log) {
             logStatusText += '✅ Manuelles Log: Bereit<br>';
         } else {
-            logStatusText += '⏱️ Manuelles Log: Cooldown<br>';
+            const manMinutes = Math.floor(details.manual_cooldown_remaining / 60);
+            const manSeconds = details.manual_cooldown_remaining % 60;
+            logStatusText += `⏱️ Manuelles Log: ${manMinutes}m ${manSeconds}s<br>`;
         }
         
         if (details.can_auto_log) {
