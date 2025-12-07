@@ -488,7 +488,7 @@ let currentPosition = null;
 let followMode = false;
 let trackingActive = false;
 let compassEnabled = false;
-let heatmapVisible = false;
+let heatmapVisible = true;  // Start with heatmap enabled
 let authToken = null;
 let ws = null;
 let currentUser = null;
@@ -739,6 +739,12 @@ async function initializeApp() {
         // Load initial data
         loadStats();
         loadNearbySpots();
+        
+        // Load heatmap if visible
+        if (heatmapVisible) {
+            await loadHeatmap();
+            heatmapLayer.addTo(map);
+        }
         
         // Start update loops
         setInterval(updateAutoLog, 5000); // Check auto-log every 5 seconds
