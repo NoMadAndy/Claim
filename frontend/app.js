@@ -3,6 +3,9 @@
 const API_BASE = window.location.origin + '/api';
 const WS_BASE = (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + window.location.host + '/ws';
 
+// Auto-log cooldown tracking to prevent spam in console
+let autoLogCooldownUntil = 0;
+
 // Sound Manager
 class SoundManager {
     constructor() {
@@ -1253,6 +1256,13 @@ async function apiRequestSilent429(endpoint, options = {}) {
 }
 
 async function performAutoLog(spotId) {
+    // Check if we're still in cooldown from server
+    const now = Date.now();
+    if (now < autoLogCooldownUntil) {
+        // Skip request during cooldown to prevent console spam
+        return;
+    }
+    
     const response = await apiRequestSilent429('/logs/', {
         method: 'POST',
         body: JSON.stringify({
@@ -1264,7 +1274,8 @@ async function performAutoLog(spotId) {
     
     // Check if we got rate limited (429)
     if (response.status === 429) {
-        // Silent - rate limit is expected and handled by server
+        // Set cooldown for 5 minutes to prevent repeated requests
+        autoLogCooldownUntil = now + (5 * 60 * 1000);
         return;
     }
     
