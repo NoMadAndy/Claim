@@ -325,10 +325,16 @@ class SoundManager {
         try {
             // Load and play Yum_CMaj.wav
             if (!this.logSoundBuffer) {
+                console.log('🎵 Loading Yum_CMaj.wav from /sounds/Yum_CMaj.wav');
                 const response = await fetch('/sounds/Yum_CMaj.wav');
-                if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                if (!response.ok) {
+                    console.error(`🎵 Failed to load: HTTP ${response.status}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
                 const arrayBuffer = await response.arrayBuffer();
+                console.log('🎵 Decoding audio buffer...');
                 this.logSoundBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+                console.log('🎵 Buffer loaded successfully, duration:', this.logSoundBuffer.duration);
             }
             
             const source = this.audioContext.createBufferSource();
@@ -340,9 +346,10 @@ class SoundManager {
             
             source.connect(gain);
             gain.connect(this.audioContext.destination);
+            console.log('🎵 Playing Yum_CMaj.wav');
             source.start(now);
         } catch (e) {
-            console.warn('Failed to play Yum sound, falling back to oscillator:', e);
+            console.warn('🎵 Failed to play Yum sound, falling back to oscillator:', e);
             // Fallback: Play E-G-C chord if file loading fails
             const frequencies = [330, 392, 523]; // E, G, C (triadic chord)
             const duration = 0.15;
