@@ -1197,12 +1197,21 @@ async function loadSpotDetails(spotId, container) {
         const detailsDiv = document.getElementById(`spot-details-${spotId}`);
         if (!detailsDiv) return;
         
-        // Format cooldown
-        let cooldownText = '✅ Bereit zum Loggen';
-        if (details.cooldown_seconds > 0) {
-            const minutes = Math.floor(details.cooldown_seconds / 60);
-            const seconds = details.cooldown_seconds % 60;
-            cooldownText = `⏱️ Cooldown: ${minutes}m ${seconds}s`;
+        // Format cooldown - show both auto and manual status
+        let logStatusText = '';
+        
+        if (details.can_manual_log) {
+            logStatusText += '✅ Manuelles Log: Bereit<br>';
+        } else {
+            logStatusText += '⏱️ Manuelles Log: Cooldown<br>';
+        }
+        
+        if (details.can_auto_log) {
+            logStatusText += '✅ Auto Log: Bereit';
+        } else {
+            const minutes = Math.floor(details.auto_cooldown_remaining / 60);
+            const seconds = details.auto_cooldown_remaining % 60;
+            logStatusText += `⏱️ Auto Log: ${minutes}m ${seconds}s`;
         }
         
         // Format distance
@@ -1220,8 +1229,9 @@ async function loadSpotDetails(spotId, container) {
         
         detailsDiv.innerHTML = `
             <strong>Entfernung:</strong> ${distanceText}<br>
-            <strong>${cooldownText}</strong><br>
-            <strong>Meine Punkte:</strong> ${Math.round(details.my_claim_value)}<br>
+            <strong>Status:</strong><br>
+            <small style="display: block; margin-left: 10px; line-height: 1.6;">${logStatusText}</small>
+            <strong style="display: block; margin-top: 5px;">Meine Punkte:</strong> ${Math.round(details.my_claim_value)}<br>
             <strong style="display: block; margin-top: 5px;">Top Claimer:</strong>
             <small>${dominanceText}</small>
         `;

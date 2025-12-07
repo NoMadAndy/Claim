@@ -78,25 +78,14 @@ def can_log_spot(db: Session, user_id: int, spot_id: int, is_auto: bool = False)
     """
     Check if user can log this spot (per-spot cooldown).
     
-    - Auto logs: have separate cooldown, user can only auto-log once per spot per cooldown
-    - Manual logs: independent of auto logs, user can always manually log if no recent manual log
+    - Auto logs: can log if no recent MANUAL log (manual blocks auto)
+    - Manual logs: can always log (independent of auto logs)
     
-    Each player has a separate 5-minute cooldown per spot per log type.
+    This means: manual log → blocks auto log, but auto log → doesn't block manual log
     """
     if is_auto:
-        # Auto logs: check if there's a recent AUTO log
-        last_log = db.query(Log).filter(
-            and_(
-                Log.user_id == user_id,
-                Log.spot_id == spot_id,
-                Log.is_auto == True,
-                Log.timestamp > datetime.utcnow() - timedelta(seconds=settings.LOG_COOLDOWN)
-            )
-        ).first()
-        return last_log is None
-    else:
-        # Manual logs: check if there's a recent MANUAL log
-        last_log = db.query(Log).filter(
+        # Auto logs: blocked only by recent MANUAL logs
+        last_manual_log = db.query(Log).filter(
             and_(
                 Log.user_id == user_id,
                 Log.spot_id == spot_id,
@@ -104,7 +93,67 @@ def can_log_spot(db: Session, user_id: int, spot_id: int, is_auto: bool = False)
                 Log.timestamp > datetime.utcnow() - timedelta(seconds=settings.LOG_COOLDOWN)
             )
         ).first()
-        return last_log is None
+        return last_manual_log is None
+    else:
+        # Manual logs: always allowed (no cooldown check)
+        return True
+
+
+def get_log_status(db: Session, user_id: int, spot_id: int) -> dict:
+    """
+    Get detailed cooldown status for both auto and manual logs.
+    
+    Returns:
+    {
+        "can_auto_log": bool,
+        "auto_cooldown_remaining": int (seconds, 0 if ready),
+        "can_manual_log": bool (always True),
+        "last_log_type": "auto" | "manual" | None
+    }
+    """
+    # Check for recent manual log
+    last_manual_log = db.query(Log).filter(
+        and_(
+            Log.user_id == user_id,
+            Log.spot_id == spot_id,
+            Log.is_auto == False,
+            Log.timestamp > datetime.utcnow() - timedelta(seconds=settings.LOG_COOLDOWN)
+        )
+    ).order_by(Log.timestamp.desc()).first()
+    
+    # Check for recent auto log
+    last_auto_log = db.query(Log).filter(
+        and_(
+            Log.user_id == user_id,
+            Log.spot_id == spot_id,
+            Log.is_auto == True,
+            Log.timestamp > datetime.utcnow() - timedelta(seconds=settings.LOG_COOLDOWN)
+        )
+    ).order_by(Log.timestamp.desc()).first()
+    
+    # Determine last log type and status
+    last_log = None
+    last_log_type = None
+    
+    if last_manual_log and (not last_auto_log or last_manual_log.timestamp > last_auto_log.timestamp):
+        last_log = last_manual_log
+        last_log_type = "manual"
+    elif last_auto_log:
+        last_log = last_auto_log
+        last_log_type = "auto"
+    
+    # Calculate auto log cooldown (blocked by manual log)
+    auto_cooldown = 0
+    if last_manual_log:
+        elapsed = (datetime.utcnow() - last_manual_log.timestamp).total_seconds()
+        auto_cooldown = max(0, int(settings.LOG_COOLDOWN - elapsed))
+    
+    return {
+        "can_auto_log": auto_cooldown == 0,
+        "auto_cooldown_remaining": auto_cooldown,
+        "can_manual_log": True,  # Always True
+        "last_log_type": last_log_type
+    }
 
 
 def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:

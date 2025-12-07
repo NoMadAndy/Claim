@@ -106,6 +106,9 @@ async def get_spot_details(
     # Get cooldown remaining
     cooldown_seconds = spot_service.get_cooldown_remaining(db, current_user.id, spot_id)
     
+    # Get detailed log status (auto/manual cooldowns)
+    log_status = spot_service.get_log_status(db, current_user.id, spot_id)
+    
     # Get my claim value on this spot
     my_claim = db.query(Claim).filter(
         Claim.user_id == current_user.id,
@@ -143,7 +146,11 @@ async def get_spot_details(
         "top_claimers": dominance_list,
         "is_loot": spot.is_loot,
         "loot_xp": spot.loot_xp,
-        "loot_expires_at": spot.loot_expires_at
+        "loot_expires_at": spot.loot_expires_at,
+        "can_auto_log": log_status["can_auto_log"],
+        "auto_cooldown_remaining": log_status["auto_cooldown_remaining"],
+        "can_manual_log": log_status["can_manual_log"],
+        "last_log_type": log_status["last_log_type"]
     }
 
 
