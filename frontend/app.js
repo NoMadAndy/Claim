@@ -1613,8 +1613,13 @@ async function loadNearbySpots() {
         spotMarkers.forEach(marker => marker.remove());
         spotMarkers.clear();
         
+        // Count loot spots for debugging
+        let lootCount = 0;
+        
         // Add new markers
         spots.forEach(spot => {
+            if (spot.is_loot) lootCount++;
+            
             const marker = L.marker([spot.latitude, spot.longitude], {
                 icon: L.divIcon({
                     className: spot.is_loot ? 'loot-marker' : 'spot-marker',
@@ -1632,7 +1637,7 @@ async function loadNearbySpots() {
         
         if (window.debugLog) {
             if (spots.length > 0) {
-                window.debugLog(`✅ Spots: ${spots.length} spots loaded and displayed`);
+                window.debugLog(`✅ Spots: ${spots.length} spots loaded (${lootCount} loot spots)`);
             } else {
                 window.debugLog('⚠️ No spots in range (5000m radius)');
             }
@@ -1961,9 +1966,14 @@ window.collectLoot = async function(lootSpotId) {
 };
 
 async function trySpawnLoot() {
-    if (!currentPosition) return;
+    if (!currentPosition) {
+        if (window.debugLog) window.debugLog('⏳ Loot: Waiting for GPS position...');
+        return;
+    }
     
     try {
+        if (window.debugLog) window.debugLog(`💎 Trying to spawn loot at (${currentPosition.lat.toFixed(6)}, ${currentPosition.lng.toFixed(6)})...`);
+        
         const spots = await apiRequest('/loot/spawn', {
             method: 'POST',
             body: JSON.stringify({
@@ -1974,11 +1984,14 @@ async function trySpawnLoot() {
         });
         
         if (spots && spots.length > 0) {
-            if (window.debugLog) window.debugLog(`💎 Spawned ${spots.length} loot spot(s)`);
+            if (window.debugLog) window.debugLog(`✅ Spawned ${spots.length} loot spot(s)`);
             await loadNearbySpots();
+        } else {
+            if (window.debugLog) window.debugLog('ℹ️ No loot spawned (max limit reached or cooldown active)');
         }
     } catch (error) {
         // Silently fail - loot spawning is not critical
+        if (window.debugLog) window.debugLog(`❌ Loot spawn error: ${error.message}`);
         console.error('Loot spawn failed:', error);
     }
 }
