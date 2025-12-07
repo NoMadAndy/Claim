@@ -43,6 +43,18 @@ def create_log(
     
     # Create log
     log_point = f'POINT({log_data.longitude} {log_data.latitude})'
+    
+    # Process photo if provided (convert base64 to binary)
+    photo_data = None
+    photo_mime = None
+    if log_data.photo_data and log_data.photo_mime:
+        import base64
+        try:
+            photo_data = base64.b64decode(log_data.photo_data)
+            photo_mime = log_data.photo_mime
+        except Exception:
+            pass  # Ignore photo errors, log without it
+    
     log = Log(
         user_id=user.id,
         spot_id=spot.id,
@@ -51,8 +63,9 @@ def create_log(
         is_auto=is_auto,
         xp_gained=xp_gained,
         claim_points=claim_points,
-        photo_url=log_data.photo_url,
-        notes=log_data.notes
+        notes=log_data.notes,
+        photo_data=photo_data,
+        photo_mime=photo_mime
     )
     
     db.add(log)

@@ -1451,18 +1451,21 @@ async function submitLog(spotId, notes, photoFile) {
     if (!currentPosition) return;
     
     try {
-        let photo_url = null;
+        let photoData = null;
+        let photoMime = null;
         
-        // Upload photo if provided
+        // Process photo if provided
         if (photoFile) {
             if (photoFile.size > 5 * 1024 * 1024) {
                 showNotification('Fehler', 'Foto ist zu groß (max 5 MB)', 'error');
                 return;
             }
-            photo_url = await uploadPhoto(photoFile);
+            const uploadResult = await uploadPhoto(photoFile);
+            photoData = uploadResult.photo_data;
+            photoMime = uploadResult.mime_type;
         }
         
-        // Send log
+        // Send log with binary photo data
         const log = await apiRequest('/logs/', {
             method: 'POST',
             body: JSON.stringify({
@@ -1470,7 +1473,8 @@ async function submitLog(spotId, notes, photoFile) {
                 latitude: currentPosition.lat,
                 longitude: currentPosition.lng,
                 notes: notes || null,
-                photo_url: photo_url
+                photo_data: photoData,
+                photo_mime: photoMime
             })
         });
         

@@ -93,8 +93,9 @@ class LogCreate(BaseModel):
     spot_id: int
     latitude: float = Field(..., ge=-90, le=90)
     longitude: float = Field(..., ge=-180, le=180)
-    photo_url: Optional[str] = None
     notes: Optional[str] = None
+    photo_data: Optional[str] = None  # Base64 encoded binary data
+    photo_mime: Optional[str] = None  # MIME type
 
 
 class LogResponse(BaseModel):
@@ -106,8 +107,8 @@ class LogResponse(BaseModel):
     xp_gained: int
     claim_points: int
     timestamp: datetime
-    photo_url: Optional[str] = None
     notes: Optional[str] = None
+    has_photo: bool = False  # Just indicate if photo exists, don't return binary data
     
     class Config:
         from_attributes = True

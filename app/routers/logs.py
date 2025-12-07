@@ -1,8 +1,6 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
-import os
-import uuid
 from app.database import get_db
 from app.schemas import LogCreate, LogResponse
 from app.services import log_service, spot_service
@@ -65,12 +63,37 @@ async def get_spot_logs(
     return logs
 
 
+@router.get("/{log_id}/photo")
+async def get_log_photo(
+    log_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get photo from a log entry"""
+    from app.models import Log
+    from fastapi.responses import StreamingResponse
+    import io
+    
+    log = db.query(Log).filter(Log.id == log_id).first()
+    if not log or not log.photo_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Photo not found"
+        )
+    
+    # Return image with correct mime type
+    return StreamingResponse(
+        io.BytesIO(log.photo_data),
+        media_type=log.photo_mime or "image/jpeg"
+    )
+
+
 @router.post("/upload")
 async def upload_log_photo(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user)
 ):
-    """Upload a photo for a log entry"""
+    """Upload a photo for a log entry (returns base64 encoded data)"""
     # Validate file
     if not file.content_type.startswith('image/'):
         raise HTTPException(
@@ -86,18 +109,10 @@ async def upload_log_photo(
             detail="File too large (max 5MB)"
         )
     
-    # Create uploads directory if it doesn't exist
-    upload_dir = "frontend/uploads"
-    os.makedirs(upload_dir, exist_ok=True)
-    
-    # Generate unique filename
-    ext = file.filename.split('.')[-1]
-    filename = f"{uuid.uuid4()}.{ext}"
-    filepath = os.path.join(upload_dir, filename)
-    
-    # Save file
-    with open(filepath, 'wb') as f:
-        f.write(contents)
-    
-    # Return URL
-    return {"url": f"/uploads/{filename}"}
+    # Return binary data - frontend will include this directly with the log submission
+    import base64
+    return {
+        "photo_data": base64.b64encode(contents).decode('utf-8'),
+        "mime_type": file.content_type,
+        "size": len(contents)
+    }

@@ -84,8 +84,9 @@ class Log(Base):
     xp_gained = Column(Integer, default=0)
     claim_points = Column(Integer, default=0)
     
-    # Optional photo and notes
-    photo_url = Column(String(500), nullable=True)
+    # Optional photo (stored as binary data) and notes
+    photo_data = Column(LargeBinary, nullable=True)  # BLOB for image binary data
+    photo_mime = Column(String(50), nullable=True)  # MIME type (image/jpeg, image/png, etc)
     notes = Column(Text, nullable=True)
     
     timestamp = Column(DateTime, default=datetime.utcnow, index=True)
