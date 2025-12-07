@@ -2011,9 +2011,9 @@ async function loadHeatmap() {
                     const userId = heatmap.user_id || `user_${index}`;
                     heatmapLayers.set(userId, heat);
                     
-                    // By default, show only current user
+                    // By default, show all heatmaps
                     if (!activeHeatmaps.has(userId)) {
-                        activeHeatmaps.add(currentUser?.id);
+                        activeHeatmaps.add(userId);
                     }
                     
                     if (activeHeatmaps.has(userId)) {
@@ -2062,16 +2062,19 @@ function updateHeatmapControls() {
     // Add event listeners
     document.querySelectorAll('.heatmap-toggle').forEach(toggle => {
         toggle.addEventListener('change', (e) => {
-            const userId = parseInt(e.target.dataset.userId);
+            const userId = e.target.dataset.userId;
+            // Try to parse as number if it looks like a number, otherwise keep as string
+            const userIdValue = /^\d+$/.test(userId) ? parseInt(userId) : userId;
+            
             if (e.target.checked) {
-                activeHeatmaps.add(userId);
-                const layer = heatmapLayers.get(userId);
+                activeHeatmaps.add(userIdValue);
+                const layer = heatmapLayers.get(userIdValue);
                 if (layer && heatmapVisible) {
                     layer.addTo(map);
                 }
             } else {
-                activeHeatmaps.delete(userId);
-                const layer = heatmapLayers.get(userId);
+                activeHeatmaps.delete(userIdValue);
+                const layer = heatmapLayers.get(userIdValue);
                 if (layer && map.hasLayer(layer)) {
                     map.removeLayer(layer);
                 }
