@@ -151,6 +151,22 @@ async def serve_js():
             return response
     return Response(content="/* JS not found */", media_type="application/javascript", status_code=404)
 
+@app.get("/sounds/{filename}")
+async def serve_sound(filename: str):
+    """Serve sound files from frontend/sounds/"""
+    # Security: Only allow specific filenames to prevent directory traversal
+    allowed_files = ["Yum_CMaj.wav"]
+    if filename not in allowed_files:
+        return Response(content="Not Found", status_code=404)
+    
+    sound_path = os.path.join(frontend_path, "sounds", filename)
+    if os.path.exists(sound_path):
+        with open(sound_path, "rb") as f:
+            response = Response(content=f.read(), media_type="audio/wav")
+            response.headers["Cache-Control"] = "public, max-age=86400"
+            return response
+    return Response(content="Not Found", status_code=404)
+
 @app.get("/favicon.svg")
 async def serve_favicon():
     """Serve favicon"""
