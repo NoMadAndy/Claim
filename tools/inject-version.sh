@@ -20,17 +20,26 @@ fi
 SHORT_HASH="${COMMIT_HASH:0:8}"
 # Use German timezone (Europe/Berlin) for timestamp
 TIMESTAMP=$(TZ='Europe/Berlin' date '+%d.%m.%Y %H:%M:%S')
+# Unix timestamp for cache busting
+CACHE_BUST=$(date +%s)
 
 echo "[info] Injecting version: $SHORT_HASH"
 echo "[info] Timestamp: $TIMESTAMP"
+echo "[info] Cache bust: $CACHE_BUST"
 
 # Update the toggle-debug button element with both commit and timestamp attributes
-# Use awk to find and replace the button line
-awk -v commit="$SHORT_HASH" -v timestamp="$TIMESTAMP" '
+# Also update cache busting for CSS and JS files
+awk -v commit="$SHORT_HASH" -v timestamp="$TIMESTAMP" -v cachebust="$CACHE_BUST" '
     /id="toggle-debug"/ {
         gsub(/data-commit="[^"]*"/, "data-commit=\"" commit "\"")
         gsub(/data-timestamp="[^"]*"/, "")
         sub(/id="toggle-debug"/, "id=\"toggle-debug\" data-commit=\"" commit "\" data-timestamp=\"" timestamp "\"")
+    }
+    /styles\.css\?v=/ {
+        gsub(/styles\.css\?v=[0-9]+/, "styles.css?v=" cachebust)
+    }
+    /app\.js\?v=/ {
+        gsub(/app\.js\?v=[0-9]+/, "app.js?v=" cachebust)
     }
     { print }
 ' "$INDEX_FILE" > "${INDEX_FILE}.tmp"
@@ -40,3 +49,4 @@ mv "${INDEX_FILE}.tmp" "$INDEX_FILE"
 echo "[success] Version injected successfully!"
 echo "[info] Hash: $SHORT_HASH"
 echo "[info] Time: $TIMESTAMP"
+echo "[info] Cache: $CACHE_BUST"

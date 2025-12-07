@@ -1960,7 +1960,6 @@ async function toggleHeatmap() {
     
     if (heatmapVisible) {
         await loadHeatmap();
-        heatmapLayer.addTo(map);
         
         // Starte Auto-Refresh der Heatmap (alle 30 Sekunden)
         if (heatmapUpdateInterval) {
@@ -1969,11 +1968,16 @@ async function toggleHeatmap() {
         heatmapUpdateInterval = setInterval(async () => {
             if (heatmapVisible) {
                 await loadHeatmap();
-                console.log('🔥 Heatmap aktualisiert');
+                if (window.debugLog) window.debugLog('🔥 Heatmap aktualisiert');
             }
         }, 30000); // 30 Sekunden
     } else {
-        map.removeLayer(heatmapLayer);
+        // Remove all heatmap layers from map
+        heatmapLayers.forEach((layer, userId) => {
+            if (map.hasLayer(layer)) {
+                map.removeLayer(layer);
+            }
+        });
         
         // Stoppe Auto-Refresh
         if (heatmapUpdateInterval) {
@@ -2084,14 +2088,13 @@ function showLayerMenu() {
     // Handle heatmap overlay
     menu.querySelector('#overlay-heatmap').addEventListener('change', (e) => {
         if (e.target.checked) {
-            toggleHeatmap();
-        } else if (heatmapVisible) {
-            toggleHeatmap();
-        }
-        // Toggle visibility of heatmap players section
-        const playersSection = menu.querySelector('#heatmap-players-section');
-        if (playersSection) {
-            playersSection.style.display = heatmapVisible ? 'block' : 'none';
+            if (!heatmapVisible) {
+                toggleHeatmap();
+            }
+        } else {
+            if (heatmapVisible) {
+                toggleHeatmap();
+            }
         }
     });
     
