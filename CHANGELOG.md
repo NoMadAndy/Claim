@@ -1,5 +1,10 @@
 # Changelog
 
+## 2025-12-08 18:25:22
+**Files:** 1filechanged,0insertions(+),0deletions(-)
+**Modified:**
+- `app/routers/__pycache__/logs.cpython-312.pyc`
+
 ## 2025-12-08 17:05:20
 **Files:** 2fileschanged,0insertions(+),0deletions(-)
 **Modified:**
