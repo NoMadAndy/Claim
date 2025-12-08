@@ -968,6 +968,14 @@ async function initializeApp() {
         connectWebSocket();
         if (window.debugLog) window.debugLog('🌐 WebSocket connecting...');
         
+        // Cleanup expired loot before loading
+        try {
+            await apiRequest('/loot/cleanup', { method: 'POST' });
+            if (window.debugLog) window.debugLog('🧹 Expired loot cleaned up');
+        } catch (cleanupError) {
+            console.error('Loot cleanup failed:', cleanupError);
+        }
+        
         // Load initial data
         loadStats();
         loadNearbySpots();

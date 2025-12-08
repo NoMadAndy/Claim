@@ -34,8 +34,8 @@ def spawn_loot_spots_for_user(db: Session, user_id: int, latitude: float, longit
         )
     ).all()
     
-    # Limit to max 3 active loot spots per user
-    if len(existing_loot) >= 3:
+    # Limit to max 10 active loot spots per user
+    if len(existing_loot) >= 10:
         return []
     
     # Spawn 1-2 loot spots randomly around user
@@ -241,6 +241,24 @@ def cleanup_expired_loot(db: Session):
     current_time = get_current_cet()
     expired_loot = db.query(Spot).filter(
         and_(
+            Spot.is_loot == True,
+            Spot.loot_expires_at < current_time
+        )
+    ).all()
+    
+    for loot in expired_loot:
+        db.delete(loot)
+    
+    db.commit()
+    return len(expired_loot)
+
+
+def cleanup_expired_loot_for_user(db: Session, user_id: int):
+    """Remove expired loot spots for a specific user"""
+    current_time = get_current_cet()
+    expired_loot = db.query(Spot).filter(
+        and_(
+            Spot.owner_id == user_id,
             Spot.is_loot == True,
             Spot.loot_expires_at < current_time
         )

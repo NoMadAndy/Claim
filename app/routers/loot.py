@@ -134,10 +134,6 @@ async def cleanup_expired(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Cleanup expired loot spots (Admin only)"""
-    # Check if user is admin
-    if current_user.role.value != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
-    
-    count = loot_service.cleanup_expired_loot(db)
+    """Cleanup expired loot spots for current user"""
+    count = loot_service.cleanup_expired_loot_for_user(db, current_user.id)
     return {"removed": count}
