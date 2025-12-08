@@ -1632,7 +1632,8 @@ async function loadNearbySpots() {
                 icon: L.divIcon({
                     className: spot.is_loot ? 'loot-marker' : 'spot-marker',
                     iconSize: [15, 15],
-                    iconAnchor: [7.5, 7.5]  // Center the icon on the coordinate
+                    iconAnchor: [7, 7],  // Center the icon on the coordinate (half of iconSize)
+                    popupAnchor: [0, -7]  // Position popup above the icon
                 })
             }).addTo(map);
             
@@ -1642,7 +1643,7 @@ async function loadNearbySpots() {
             }, {
                 autoPan: true,
                 autoPanPadding: [50, 50],
-                offset: [0, -7]  // Position popup above marker
+                maxWidth: 250
             });
             
             spotMarkers.set(spot.id, marker);
