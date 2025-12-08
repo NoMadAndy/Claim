@@ -1553,11 +1553,23 @@ function createSpotPopupContent(spot) {
     
     // Special handling for loot spots
     if (spot.is_loot) {
+        // Calculate distance to loot spot
+        const distance = calculateDistance(
+            currentPosition.lat, 
+            currentPosition.lng, 
+            spot.latitude, 
+            spot.longitude
+        );
+        const distanceText = distance < 1000 
+            ? `${Math.round(distance)}m` 
+            : `${(distance / 1000).toFixed(1)}km`;
+        
         container.innerHTML = `
             <div style="padding: 5px;">
                 <b style="font-size: 14px; color: gold;">💎 ${spot.name}</b><br>
                 ${spot.description ? `<small>${spot.description}</small><br>` : ''}
                 <div style="font-size: 12px; margin: 8px 0;">
+                    <strong>Entfernung:</strong> ${distanceText}<br>
                     <strong>Belohnung:</strong> ${spot.loot_xp || 0} XP
                     ${spot.loot_item ? '<br>+ Item 🎁' : ''}
                 </div>
@@ -2108,7 +2120,9 @@ window.collectLoot = async function(lootSpotId) {
         if (message.startsWith('API Error: ')) {
             message = message.replace('API Error: ', '');
         }
-        showNotification('Error', message, 'error');
+        // Don't show 'Error' title for distance-related errors
+        const title = message.includes('Too far away') || message.includes('too far') ? '📍' : 'Error';
+        showNotification(title, message, 'error');
     }
 };
 
