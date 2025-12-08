@@ -121,18 +121,17 @@ class SoundManager {
                 osc.connect(gain);
                 gain.connect(ctx.destination);
                 gain.gain.setValueAtTime(0.00001, now);
-                    gain.gain.exponentialRampToValueAtTime(0.000001, now + 0.01);
-                    osc.frequency.value = 440;
-                    osc.start(now);
-                    osc.stop(now + 0.01);
-                    
-                    this.audioContext = ctx;
-                    this.unlocked = true;
-                    this.audioInitialized = true;
-                    
-                    console.log('🔊 AutoUnlock: Oscillator fallback used');
-                    if (window.debugLog) window.debugLog('🔊 AutoUnlock: Oscillator fallback');
-                }
+                gain.gain.exponentialRampToValueAtTime(0.000001, now + 0.01);
+                osc.frequency.value = 440;
+                osc.start(now);
+                osc.stop(now + 0.01);
+                
+                this.audioContext = ctx;
+                this.unlocked = true;
+                this.audioInitialized = true;
+                
+                console.log('🔊 AutoUnlock: Oscillator fallback used');
+                if (window.debugLog) window.debugLog('🔊 AutoUnlock: Oscillator fallback');
             } catch (e2) {
                 console.log('🔊 AutoUnlock completely failed:', e2.message);
             }
