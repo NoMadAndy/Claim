@@ -1403,6 +1403,15 @@ function handleWebSocketMessage(message) {
 function updateOtherPlayerPosition(data) {
     const { user_id, username, latitude, longitude } = data;
     
+    // Validate coordinates
+    if (!latitude || !longitude || 
+        isNaN(latitude) || isNaN(longitude) ||
+        latitude < -90 || latitude > 90 ||
+        longitude < -180 || longitude > 180) {
+        console.error('Invalid player position:', data);
+        return;
+    }
+    
     if (playerMarkers.has(user_id)) {
         playerMarkers.get(user_id).setLatLng([latitude, longitude]);
     } else {
@@ -1626,6 +1635,15 @@ async function loadNearbySpots() {
         
         // Add new markers
         spots.forEach(spot => {
+            // Validate coordinates before creating marker
+            if (!spot.latitude || !spot.longitude || 
+                isNaN(spot.latitude) || isNaN(spot.longitude) ||
+                spot.latitude < -90 || spot.latitude > 90 ||
+                spot.longitude < -180 || spot.longitude > 180) {
+                if (window.debugLog) window.debugLog(`⚠️ Invalid coordinates for spot ${spot.id}: lat=${spot.latitude}, lng=${spot.longitude}`);
+                return; // Skip this spot
+            }
+            
             if (spot.is_loot) lootCount++;
             
             const marker = L.marker([spot.latitude, spot.longitude], {
@@ -2471,6 +2489,15 @@ function showLogNotification(data) {
 }
 
 function showLootSpawn(data) {
+    // Validate coordinates
+    if (!data.latitude || !data.longitude || 
+        isNaN(data.latitude) || isNaN(data.longitude) ||
+        data.latitude < -90 || data.latitude > 90 ||
+        data.longitude < -180 || data.longitude > 180) {
+        console.error('Invalid loot spawn coordinates:', data);
+        return;
+    }
+    
     const marker = L.marker([data.latitude, data.longitude], {
         icon: L.divIcon({
             className: 'loot-marker',

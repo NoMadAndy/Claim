@@ -2,7 +2,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from geoalchemy2.functions import ST_X, ST_Y
+from geoalchemy2.functions import ST_X, ST_Y, ST_GeomFromWKB
 from app.database import get_db
 from app.schemas import TrackCreate, TrackResponse, TrackPointCreate, TrackWithPoints, TrackPointResponse
 from app.services import tracking_service
@@ -47,9 +47,9 @@ async def add_point_to_track(
             detail="Track not found or not active"
         )
     
-    # Extract coordinates for response
-    lat = db.execute(func.ST_Y(track_point.location)).scalar()
-    lon = db.execute(func.ST_X(track_point.location)).scalar()
+    # Extract coordinates for response (cast Geography to Geometry)
+    lat = db.execute(func.ST_Y(func.ST_GeomFromWKB(track_point.location))).scalar()
+    lon = db.execute(func.ST_X(func.ST_GeomFromWKB(track_point.location))).scalar()
     
     return TrackPointResponse(
         id=track_point.id,
@@ -123,8 +123,8 @@ async def get_track_details(
     # Convert points to response format
     points = []
     for point in track.points:
-        lat = db.execute(func.ST_Y(point.location)).scalar()
-        lon = db.execute(func.ST_X(point.location)).scalar()
+        lat = db.execute(func.ST_Y(func.ST_GeomFromWKB(point.location))).scalar()
+        lon = db.execute(func.ST_X(func.ST_GeomFromWKB(point.location))).scalar()
         
         points.append(TrackPointResponse(
             id=point.id,

@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from geoalchemy2.functions import ST_X, ST_Y, ST_DistanceSphere, ST_MakePoint, ST_SetSRID
+from geoalchemy2.functions import ST_X, ST_Y, ST_DistanceSphere, ST_MakePoint, ST_SetSRID, ST_GeomFromWKB
 from app.database import get_db
 from app.schemas import SpotCreate, SpotResponse
 from app.services import spot_service
@@ -27,9 +27,9 @@ async def create_spot(
     
     spot = spot_service.create_spot(db, spot_data, current_user)
     
-    # Extract coordinates for response
-    lat = db.execute(func.ST_Y(spot.location)).scalar()
-    lon = db.execute(func.ST_X(spot.location)).scalar()
+    # Extract coordinates for response (cast Geography to Geometry)
+    lat = db.execute(func.ST_Y(func.ST_GeomFromWKB(spot.location))).scalar()
+    lon = db.execute(func.ST_X(func.ST_GeomFromWKB(spot.location))).scalar()
     
     return SpotResponse(
         id=spot.id,
@@ -57,8 +57,8 @@ async def get_nearby_spots(
     
     result = []
     for spot, distance in spots_with_distance:
-        lat = db.execute(func.ST_Y(spot.location)).scalar()
-        lon = db.execute(func.ST_X(spot.location)).scalar()
+        lat = db.execute(func.ST_Y(func.ST_GeomFromWKB(spot.location))).scalar()
+        lon = db.execute(func.ST_X(func.ST_GeomFromWKB(spot.location))).scalar()
         
         result.append(SpotResponse(
             id=spot.id,
@@ -93,9 +93,9 @@ async def get_spot_details(
             detail="Spot not found"
         )
     
-    # Get spot coordinates
-    lat = db.execute(func.ST_Y(spot.location)).scalar()
-    lon = db.execute(func.ST_X(spot.location)).scalar()
+    # Get spot coordinates (cast Geography to Geometry)
+    lat = db.execute(func.ST_Y(func.ST_GeomFromWKB(spot.location))).scalar()
+    lon = db.execute(func.ST_X(func.ST_GeomFromWKB(spot.location))).scalar()
     
     # Calculate distance to spot using ST_DistanceSphere for accurate meters
     point = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
@@ -169,8 +169,8 @@ async def get_spot(
             detail="Spot not found"
         )
     
-    lat = db.execute(func.ST_Y(spot.location)).scalar()
-    lon = db.execute(func.ST_X(spot.location)).scalar()
+    lat = db.execute(func.ST_Y(func.ST_GeomFromWKB(spot.location))).scalar()
+    lon = db.execute(func.ST_X(func.ST_GeomFromWKB(spot.location))).scalar()
     
     return SpotResponse(
         id=spot.id,
