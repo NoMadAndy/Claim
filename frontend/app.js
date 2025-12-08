@@ -708,9 +708,9 @@ function showRotationWarning() {
             pointer-events: auto !important;
         `;
         warning.innerHTML = `
-            <div style="font-size: 100px; margin-bottom: 30px; animation: rotate 2s infinite;">📱</div>
-            <div style="font-weight: bold; font-size: 24px; margin-bottom: 15px;">Bitte drehe dein Gerät</div>
-            <div style="font-size: 16px; opacity: 0.8;">Diese App funktioniert nur im Hochformat</div>
+            <div style="font-size: 100px; margin-bottom: 30px; animation: rotate 2s infinite;">🗺️</div>
+            <div style="font-weight: bold; font-size: 24px; margin-bottom: 15px;">Bitte hochformat</div>
+            <div style="font-size: 16px; opacity: 0.8;">Das Claim-Abenteuer wartet!</div>
         `;
         // Add CSS animation
         const style = document.createElement('style');
