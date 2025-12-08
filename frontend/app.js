@@ -1035,7 +1035,8 @@ function initMap() {
         doubleClickZoom: true,
         scrollWheelZoom: true,
         dragging: true,
-        tap: false
+        tap: false,
+        closePopupOnClick: true  // Close only on map click, not on move
     }).setView([51.505, -0.09], 17);
     
     // Base layers
@@ -1097,7 +1098,11 @@ function handleMapClick(e) {
         window.soundManager.performUnlock();
     }
     
-    if (!spotCreationMode) return;
+    // Close popup when clicking on empty map area (not in spot creation mode)
+    if (!spotCreationMode) {
+        map.closePopup();
+        return;
+    }
     
     const lat = e.latlng.lat;
     const lng = e.latlng.lng;
@@ -1672,7 +1677,9 @@ async function loadNearbySpots() {
                 autoPanPadding: [50, 50],
                 maxWidth: 250,
                 autoClose: false,
-                closeOnClick: false
+                closeOnClick: false,
+                closeOnEscapeKey: false,
+                keepInView: true
             });
             
             spotMarkers.set(spot.id, marker);
