@@ -135,18 +135,18 @@ def spawn_loot_spots_for_user(db: Session, user_id: int, latitude: float, longit
 def collect_loot(db: Session, user_id: int, loot_spot_id: int, user_lat: float, user_lng: float) -> dict:
     """
     Collect a loot spot if user is close enough and it's still valid.
+    First-come-first-serve: Any user can collect any loot spot.
     Returns dict with rewards.
     """
     loot_spot = db.query(Spot).filter(
         and_(
             Spot.id == loot_spot_id,
-            Spot.is_loot == True,
-            Spot.owner_id == user_id
+            Spot.is_loot == True
         )
     ).first()
     
     if not loot_spot:
-        return {"success": False, "error": "Loot spot not found or not owned by you"}
+        return {"success": False, "error": "Loot spot not found or already collected"}
     
     # Check if expired
     current_time = get_current_cet()
