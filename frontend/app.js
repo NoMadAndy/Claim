@@ -670,6 +670,18 @@ function checkOrientation() {
     } else {
         hideRotationWarning();
     }
+    
+    // Invalidate map size after orientation change to recenter view
+    if (map) {
+        // Small delay to allow DOM to finish resizing
+        setTimeout(() => {
+            map.invalidateSize();
+            // Re-center on player if in follow mode
+            if (currentPosition && map.getZoom() >= 15) {
+                map.setView([currentPosition.lat, currentPosition.lng], map.getZoom());
+            }
+        }, 100);
+    }
 }
 
 function showRotationWarning() {
