@@ -5,6 +5,7 @@ from geoalchemy2.elements import WKTElement
 from app.models import Spot, User, Item, InventoryItem, get_cet_now
 from app.config import settings
 import random
+import math
 from typing import List, Optional
 
 
@@ -45,14 +46,14 @@ def spawn_loot_spots_for_user(db: Session, user_id: int, latitude: float, longit
     
     for _ in range(num_spots):
         # Random offset within radius (20-150m around player)
-        angle = random.uniform(0, 360)
+        angle = random.uniform(0, 2 * math.pi)  # Random angle in radians
         distance = random.uniform(20, min(150, radius_meters))
         
-        # Calculate offset lat/lng (rough approximation)
-        lat_offset = (distance / 111000) * random.choice([-1, 1])
-        # Prevent division by zero/very small numbers near equator
-        lat_factor = max(abs(latitude), 0.0001)
-        lng_offset = (distance / (111000 * lat_factor)) * random.choice([-1, 1])
+        # Calculate offset lat/lng using proper trigonometry
+        # 1 degree latitude = ~111,000 meters
+        # 1 degree longitude = ~111,000 * cos(latitude) meters
+        lat_offset = (distance * math.cos(angle)) / 111000
+        lng_offset = (distance * math.sin(angle)) / (111000 * math.cos(math.radians(latitude)))
         
         loot_lat = latitude + lat_offset
         loot_lng = longitude + lng_offset
