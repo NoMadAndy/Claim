@@ -1098,6 +1098,18 @@ function handleMapClick(e) {
         window.soundManager.performUnlock();
     }
     
+    // Close layer menu if open
+    const layerMenu = document.querySelector('.layer-menu');
+    if (layerMenu) {
+        layerMenu.remove();
+    }
+    
+    // Close stats detail if open
+    const statsDetail = document.getElementById('stats-detail');
+    if (statsDetail && !statsDetail.classList.contains('hidden')) {
+        statsDetail.classList.add('hidden');
+    }
+    
     // Close popup when clicking on empty map area (not in spot creation mode)
     if (!spotCreationMode) {
         map.closePopup();
@@ -2430,6 +2442,13 @@ async function updateClaimHeatmap() {
 }
 
 function showLayerMenu() {
+    // Check if menu already exists - remove it (toggle behavior)
+    const existingMenu = document.querySelector('.layer-menu');
+    if (existingMenu) {
+        existingMenu.remove();
+        return;
+    }
+    
     const menu = document.createElement('div');
     menu.className = 'layer-menu';
     menu.innerHTML = `
