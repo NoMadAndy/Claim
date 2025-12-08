@@ -5,6 +5,10 @@ const WS_BASE = (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' 
 
 // Auto-log cooldown tracking to prevent spam in console
 let autoLogCooldownUntil = 0;
+// Track spots already being logged to prevent duplicate requests
+const spotsBeingLogged = new Set();
+// Track last auto-log time per spot to prevent rapid re-triggering
+const lastAutoLogTime = new Map();
 
 // Sound Manager
 class SoundManager {
@@ -1691,7 +1695,20 @@ async function loadNearbySpots() {
 async function updateAutoLog() {
     if (!currentPosition) return;
     
+    const now = Date.now();
+    
     spotMarkers.forEach((marker, spotId) => {
+        // Skip if already logging this spot
+        if (spotsBeingLogged.has(spotId)) {
+            return;
+        }
+        
+        // Skip if logged this spot recently (within 60 seconds)
+        const lastLog = lastAutoLogTime.get(spotId);
+        if (lastLog && now - lastLog < 60000) {
+            return;
+        }
+        
         const spotPos = marker.getLatLng();
         const distance = map.distance(
             [currentPosition.lat, currentPosition.lng],
@@ -1741,47 +1758,58 @@ async function apiRequestSilent429(endpoint, options = {}) {
 }
 
 async function performAutoLog(spotId) {
-    // Check if we're still in cooldown from server
-    const now = Date.now();
-    if (now < autoLogCooldownUntil) {
-        // Skip request during cooldown to prevent console spam
-        if (window.debugLog) window.debugLog(`⏳ AutoLog cooldown active for ${Math.round((autoLogCooldownUntil - now) / 1000)}s`);
-        return;
+    // Mark spot as being logged
+    spotsBeingLogged.add(spotId);
+    
+    try {
+        // Check if we're still in cooldown from server
+        const now = Date.now();
+        if (now < autoLogCooldownUntil) {
+            // Skip request during cooldown to prevent console spam
+            if (window.debugLog) window.debugLog(`⏳ AutoLog cooldown active for ${Math.round((autoLogCooldownUntil - now) / 1000)}s`);
+            return;
+        }
+        
+        if (window.debugLog) window.debugLog(`📤 AutoLog POST: spot ${spotId}`);
+        
+        const response = await apiRequestSilent429('/logs/', {
+            method: 'POST',
+            body: JSON.stringify({
+                spot_id: spotId,
+                latitude: currentPosition.lat,
+                longitude: currentPosition.lng,
+                is_auto: true
+            })
+        });
+        
+        // Check if we got rate limited (429)
+        if (response.status === 429) {
+            // Set cooldown for 5 minutes to prevent repeated requests
+            autoLogCooldownUntil = now + (5 * 60 * 1000);
+            if (window.debugLog) window.debugLog(`⚠️ Rate limited (429) - cooldown 5m`);
+            return;
+        }
+        
+        if (window.debugLog) window.debugLog(`✅ AutoLog success: +${response.xp_gained}XP, +${response.claim_points}Claims`);
+        
+        // Record successful log time
+        lastAutoLogTime.set(spotId, now);
+        
+        soundManager.playSound('log');
+        showNotification(
+            'Auto Log!',
+            `+${response.xp_gained} XP, +${response.claim_points} Claims`,
+            'log-event'
+        );
+        
+        loadStats();
+        
+        // Update heatmap after autolog
+        updateClaimHeatmap();
+    } finally {
+        // Always remove from being logged set
+        spotsBeingLogged.delete(spotId);
     }
-    
-    if (window.debugLog) window.debugLog(`📤 AutoLog POST: spot ${spotId}`);
-    
-    const response = await apiRequestSilent429('/logs/', {
-        method: 'POST',
-        body: JSON.stringify({
-            spot_id: spotId,
-            latitude: currentPosition.lat,
-            longitude: currentPosition.lng,
-            is_auto: true
-        })
-    });
-    
-    // Check if we got rate limited (429)
-    if (response.status === 429) {
-        // Set cooldown for 5 minutes to prevent repeated requests
-        autoLogCooldownUntil = now + (5 * 60 * 1000);
-        if (window.debugLog) window.debugLog(`⚠️ Rate limited (429) - cooldown 5m`);
-        return;
-    }
-    
-    if (window.debugLog) window.debugLog(`✅ AutoLog success: +${response.xp_gained}XP, +${response.claim_points}Claims`);
-    
-    soundManager.playSound('log');
-    showNotification(
-        'Auto Log!',
-        `+${response.xp_gained} XP, +${response.claim_points} Claims`,
-        'log-event'
-    );
-    
-    loadStats();
-    
-    // Update heatmap after autolog
-    updateClaimHeatmap();
 }
 
 window.logSpot = async function(spotId) {

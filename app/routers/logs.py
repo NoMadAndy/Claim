@@ -19,26 +19,42 @@ async def create_log(
     """Create a log entry (manual or auto)"""
     is_auto = log_data.is_auto  # Get is_auto from request body
     
-    # Check cooldown (separate for auto vs manual logs)
-    if not spot_service.can_log_spot(db, current_user.id, log_data.spot_id, is_auto=is_auto):
-        remaining = spot_service.get_cooldown_remaining(db, current_user.id, log_data.spot_id)
-        minutes = remaining // 60
-        seconds = remaining % 60
+    try:
+        # Use transaction with row-level locking to prevent race conditions
+        # This ensures multiple simultaneous log requests are serialized
+        db.execute("SELECT pg_advisory_xact_lock(:key)", {"key": current_user.id * 1000000 + log_data.spot_id})
+        
+        # Check cooldown (separate for auto vs manual logs)
+        if not spot_service.can_log_spot(db, current_user.id, log_data.spot_id, is_auto=is_auto):
+            remaining = spot_service.get_cooldown_remaining(db, current_user.id, log_data.spot_id)
+            minutes = remaining // 60
+            seconds = remaining % 60
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Cooldown active: {minutes}m {seconds}s remaining"
+            )
+        
+        # Create log
+        log = log_service.create_log(db, current_user, log_data, is_auto)
+        
+        if not log:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot log: spot not found or too far away"
+            )
+        
+        return log
+    except HTTPException:
+        # Re-raise HTTP exceptions (cooldown, not found, etc.)
+        raise
+    except Exception as e:
+        # Log unexpected errors
+        print(f"[ERROR] Unexpected error in create_log: {e}")
+        db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Cooldown active: {minutes}m {seconds}s remaining"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
         )
-    
-    # Create log
-    log = log_service.create_log(db, current_user, log_data, is_auto)
-    
-    if not log:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot log: spot not found or too far away"
-        )
-    
-    return log
 
 
 @router.get("/me", response_model=List[LogResponse])
