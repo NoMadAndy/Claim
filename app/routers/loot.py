@@ -58,8 +58,10 @@ async def spawn_loot(
     # Extract coordinates from PostGIS POINT (cast Geography to Geometry)
     result = []
     for spot in spots:
-        lat = db.execute(func.ST_Y(func.ST_GeomFromWKB(spot.location))).scalar()
-        lon = db.execute(func.ST_X(func.ST_GeomFromWKB(spot.location))).scalar()
+        from sqlalchemy import cast
+        from geoalchemy2 import Geometry
+        lat = db.scalar(func.ST_Y(cast(spot.location, Geometry)))
+        lon = db.scalar(func.ST_X(cast(spot.location, Geometry)))
         
         result.append(SpotResponse(
             id=spot.id,
@@ -110,8 +112,10 @@ async def get_active_loot(
     # Extract coordinates from PostGIS POINT (cast Geography to Geometry)
     result = []
     for spot in spots:
-        lat = db.execute(func.ST_Y(func.ST_GeomFromWKB(spot.location))).scalar()
-        lon = db.execute(func.ST_X(func.ST_GeomFromWKB(spot.location))).scalar()
+        from sqlalchemy import cast
+        from geoalchemy2 import Geometry
+        lat = db.scalar(func.ST_Y(cast(spot.location, Geometry)))
+        lon = db.scalar(func.ST_X(cast(spot.location, Geometry)))
         
         result.append(SpotResponse(
             id=spot.id,
