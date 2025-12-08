@@ -42,12 +42,26 @@ class SoundManager {
     }
 
     performUnlock() {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        const ctx = new AudioContext({ latencyHint: 'interactive' });
-        
-        // Don't play beeps - just create context silently
-        ctx.resume().catch(() => {});
-        this.setUnlocked(ctx);
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) {
+                console.warn('AudioContext not supported');
+                return;
+            }
+            
+            const ctx = new AudioContext({ latencyHint: 'interactive' });
+            
+            // Don't play beeps - just create context silently
+            ctx.resume().catch(err => {
+                console.warn('AudioContext resume failed:', err);
+            });
+            this.setUnlocked(ctx);
+        } catch (error) {
+            console.error('AudioContext creation failed:', error);
+            // Don't crash - just disable audio
+            this.unlocked = false;
+            this.audioInitialized = false;
+        }
     }
 
     // Called by unlock button to mark audio as unlocked
@@ -70,7 +84,10 @@ class SoundManager {
             }
             
             const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContext) return;
+            if (!AudioContext) {
+                console.warn('AudioContext not supported');
+                return;
+            }
             
             const ctx = new AudioContext({ latencyHint: 'interactive' });
             const audioBuffer = await ctx.decodeAudioData(bytes.buffer);
@@ -93,14 +110,17 @@ class SoundManager {
             // Fallback: try oscillator method
             try {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (AudioContext) {
-                    const ctx = new AudioContext({ latencyHint: 'interactive' });
-                    const now = ctx.currentTime;
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    osc.connect(gain);
-                    gain.connect(ctx.destination);
-                    gain.gain.setValueAtTime(0.00001, now);
+                if (!AudioContext) {
+                    console.warn('AudioContext not supported - audio disabled');
+                    return;
+                }
+                const ctx = new AudioContext({ latencyHint: 'interactive' });
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                gain.gain.setValueAtTime(0.00001, now);
                     gain.gain.exponentialRampToValueAtTime(0.000001, now + 0.01);
                     osc.frequency.value = 440;
                     osc.start(now);
