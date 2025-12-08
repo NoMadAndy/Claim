@@ -1618,10 +1618,15 @@ async function loadNearbySpots() {
         const lat = center.lat;
         const lng = center.lng;
         
-        if (window.debugLog) window.debugLog(`🗺️ Loading spots around map center (${lat.toFixed(6)}, ${lng.toFixed(6)})...`);
+        // Calculate radius based on zoom level (visible area)
+        // At zoom 17: ~300m, zoom 15: ~1000m, zoom 13: ~5000m
+        const zoom = map.getZoom();
+        const radius = Math.min(5000, Math.max(300, Math.pow(2, 18 - zoom) * 100));
+        
+        if (window.debugLog) window.debugLog(`🗺️ Loading spots around map center (${lat.toFixed(6)}, ${lng.toFixed(6)}) with radius ${radius.toFixed(0)}m (zoom: ${zoom})...`);
         
         const spots = await apiRequest(
-            `/spots/nearby?latitude=${lat}&longitude=${lng}&radius=5000`
+            `/spots/nearby?latitude=${lat}&longitude=${lng}&radius=${radius}`
         );
         
         if (window.debugLog) window.debugLog(`📦 API returned ${spots.length} spots`);
