@@ -1,6 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from app.database import get_db
 from app.schemas import LogCreate, LogResponse
 from app.services import log_service, spot_service
@@ -22,7 +23,7 @@ async def create_log(
     try:
         # Use transaction with row-level locking to prevent race conditions
         # This ensures multiple simultaneous log requests are serialized
-        db.execute("SELECT pg_advisory_xact_lock(:key)", {"key": current_user.id * 1000000 + log_data.spot_id})
+        db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": current_user.id * 1000000 + log_data.spot_id})
         
         # Check cooldown (separate for auto vs manual logs)
         if not spot_service.can_log_spot(db, current_user.id, log_data.spot_id, is_auto=is_auto):
