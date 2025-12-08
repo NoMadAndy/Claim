@@ -2022,7 +2022,12 @@ async function submitLog(spotId, notes, photoFile) {
                 'warning'
             );
         } else {
-            showNotification('Error', error.message || 'Failed to log spot', 'error');
+            // Remove "API Error: " prefix for cleaner display
+            let message = error.detail || error.message || 'Failed to log spot';
+            if (message.startsWith('API Error: ')) {
+                message = message.replace('API Error: ', '');
+            }
+            showNotification('Error', message, 'error');
         }
     }
 }
@@ -2098,7 +2103,12 @@ window.collectLoot = async function(lootSpotId) {
             await trySpawnLoot();
         }
     } catch (error) {
-        showNotification('Error', error.message || 'Failed to collect loot', 'error');
+        // Remove "API Error: " prefix for cleaner display
+        let message = error.detail || error.message || 'Failed to collect loot';
+        if (message.startsWith('API Error: ')) {
+            message = message.replace('API Error: ', '');
+        }
+        showNotification('Error', message, 'error');
     }
 };
 
