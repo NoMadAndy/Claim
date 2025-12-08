@@ -1655,11 +1655,11 @@ async function loadNearbySpots() {
         
         // Save currently open popup's spot ID
         let openPopupSpotId = null;
-        if (map.isPopupOpen()) {
-            const popup = map._popup;
+        const currentPopup = map._popup;
+        if (currentPopup && currentPopup.isOpen()) {
             // Find which marker has this popup
             spotMarkers.forEach((marker, spotId) => {
-                if (marker.getPopup() === popup) {
+                if (marker.getPopup() === currentPopup) {
                     openPopupSpotId = spotId;
                 }
             });
