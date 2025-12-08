@@ -59,8 +59,8 @@ async def spawn_loot(
     result = []
     for spot in spots:
         from sqlalchemy import text
-        lat = db.execute(text(\"SELECT ST_Y(location::geometry) FROM spots WHERE id = :id\"), {\"id\": spot.id}).scalar()
-        lon = db.execute(text(\"SELECT ST_X(location::geometry) FROM spots WHERE id = :id\"), {\"id\": spot.id}).scalar()
+        lat = db.execute(text("SELECT ST_Y(location::geometry) FROM spots WHERE id = :id"), {"id": spot.id}).scalar()
+        lon = db.execute(text("SELECT ST_X(location::geometry) FROM spots WHERE id = :id"), {"id": spot.id}).scalar()
         
         result.append(SpotResponse(
             id=spot.id,
@@ -112,8 +112,8 @@ async def get_active_loot(
     result = []
     for spot in spots:
         from sqlalchemy import text
-        lat = db.execute(text(\"SELECT ST_Y(location::geometry) FROM spots WHERE id = :id\"), {\"id\": spot.id}).scalar()
-        lon = db.execute(text(\"SELECT ST_X(location::geometry) FROM spots WHERE id = :id\"), {\"id\": spot.id}).scalar()
+        lat = db.execute(text("SELECT ST_Y(location::geometry) FROM spots WHERE id = :id"), {"id": spot.id}).scalar()
+        lon = db.execute(text("SELECT ST_X(location::geometry) FROM spots WHERE id = :id"), {"id": spot.id}).scalar()
         
         result.append(SpotResponse(
             id=spot.id,
