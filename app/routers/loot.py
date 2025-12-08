@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from geoalchemy2.functions import ST_GeomFromWKB, ST_X, ST_Y
 from typing import List
 from app.database import get_db
 from app.services import loot_service
@@ -54,11 +55,12 @@ async def spawn_loot(
         request.radius_meters
     )
     
-    # Extract coordinates from PostGIS POINT
+    # Extract coordinates from PostGIS POINT (cast Geography to Geometry)
     result = []
     for spot in spots:
-        lat = db.execute(func.ST_Y(spot.location)).scalar()
-        lon = db.execute(func.ST_X(spot.location)).scalar()
+        from sqlalchemy import text
+        lat = db.execute(text("SELECT ST_Y(location::geometry) FROM spots WHERE id = :id"), {"id": spot.id}).scalar()
+        lon = db.execute(text("SELECT ST_X(location::geometry) FROM spots WHERE id = :id"), {"id": spot.id}).scalar()
         
         result.append(SpotResponse(
             id=spot.id,
@@ -106,11 +108,12 @@ async def get_active_loot(
     """Get all active loot spots for current user"""
     spots = loot_service.get_active_loot_spots(db, current_user.id)
     
-    # Extract coordinates from PostGIS POINT
+    # Extract coordinates from PostGIS POINT (cast Geography to Geometry)
     result = []
     for spot in spots:
-        lat = db.execute(func.ST_Y(spot.location)).scalar()
-        lon = db.execute(func.ST_X(spot.location)).scalar()
+        from sqlalchemy import text
+        lat = db.execute(text("SELECT ST_Y(location::geometry) FROM spots WHERE id = :id"), {"id": spot.id}).scalar()
+        lon = db.execute(text("SELECT ST_X(location::geometry) FROM spots WHERE id = :id"), {"id": spot.id}).scalar()
         
         result.append(SpotResponse(
             id=spot.id,

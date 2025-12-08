@@ -5,6 +5,10 @@ const WS_BASE = (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' 
 
 // Auto-log cooldown tracking to prevent spam in console
 let autoLogCooldownUntil = 0;
+// Track spots already being logged to prevent duplicate requests
+const spotsBeingLogged = new Set();
+// Track last auto-log time per spot to prevent rapid re-triggering
+const lastAutoLogTime = new Map();
 
 // Sound Manager
 class SoundManager {
@@ -993,8 +997,7 @@ async function initializeApp() {
         setInterval(updateAutoLog, 1000); // Check auto-log every 1 second
         setInterval(loadStats, 30000); // Update stats every 30 seconds
         setInterval(trySpawnLoot, 120000); // Try spawn loot every 2 minutes
-        setInterval(checkServerConnection, 30000); // Check server connection every 30 seconds
-        if (window.debugLog) window.debugLog('⏱️ Update loops started (AutoLog: 1s, Stats: 30s, Loot: 2m, Health: 30s)');
+        if (window.debugLog) window.debugLog('⏱️ Update loops started (AutoLog: 1s, Stats: 30s, Loot: 2m)');
         
         // AGGRESSIVE: Periodically try to unlock audio on iOS (every 3 seconds for first 30 seconds)
         let unlockAttempts = 0;
@@ -1032,7 +1035,8 @@ function initMap() {
         doubleClickZoom: true,
         scrollWheelZoom: true,
         dragging: true,
-        tap: false
+        tap: false,
+        closePopupOnClick: true  // Close only on map click, not on move
     }).setView([51.505, -0.09], 17);
     
     // Base layers
@@ -1094,7 +1098,23 @@ function handleMapClick(e) {
         window.soundManager.performUnlock();
     }
     
-    if (!spotCreationMode) return;
+    // Close layer menu if open
+    const layerMenu = document.querySelector('.layer-menu');
+    if (layerMenu) {
+        layerMenu.remove();
+    }
+    
+    // Close stats detail if open
+    const statsDetail = document.getElementById('stats-detail');
+    if (statsDetail && !statsDetail.classList.contains('hidden')) {
+        statsDetail.classList.add('hidden');
+    }
+    
+    // Close popup when clicking on empty map area (not in spot creation mode)
+    if (!spotCreationMode) {
+        map.closePopup();
+        return;
+    }
     
     const lat = e.latlng.lat;
     const lng = e.latlng.lng;
@@ -1404,6 +1424,15 @@ function handleWebSocketMessage(message) {
 function updateOtherPlayerPosition(data) {
     const { user_id, username, latitude, longitude } = data;
     
+    // Validate coordinates
+    if (!latitude || !longitude || 
+        isNaN(latitude) || isNaN(longitude) ||
+        latitude < -90 || latitude > 90 ||
+        longitude < -180 || longitude > 180) {
+        console.error('Invalid player position:', data);
+        return;
+    }
+    
     if (playerMarkers.has(user_id)) {
         playerMarkers.get(user_id).setLatLng([latitude, longitude]);
     } else {
@@ -1494,72 +1523,6 @@ async function loadStats() {
     } catch (error) {
         if (window.debugLog) window.debugLog(`❌ Stats failed: ${error.message}`);
         console.error('Failed to load stats:', error);
-    }
-}
-
-// Server Connection Health Check
-let lastServerCheck = Date.now();
-let serverConnectionLost = false;
-
-async function checkServerConnection() {
-    try {
-        const startTime = Date.now();
-        const response = await fetch(`${API_BASE}/auth/me`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${authToken}`
-            },
-            signal: AbortSignal.timeout(10000) // 10 second timeout
-        });
-        
-        const responseTime = Date.now() - startTime;
-        
-        if (!response.ok) {
-            throw new Error(`Server returned ${response.status}`);
-        }
-        
-        // Server is healthy
-        lastServerCheck = Date.now();
-        
-        // Update UI status indicator
-        const statusEl = document.getElementById('server-status');
-        if (statusEl) {
-            statusEl.textContent = '● Online';
-            statusEl.style.color = '#0f0';
-        }
-        
-        // If connection was lost before, show recovery notification
-        if (serverConnectionLost) {
-            serverConnectionLost = false;
-            if (window.debugLog) window.debugLog('✅ Server connection restored');
-            showNotification('✅ Connection Restored', `Server is reachable again (${responseTime}ms)`, 'success');
-        } else {
-            if (window.debugLog) window.debugLog(`💚 Server healthy (${responseTime}ms)`);
-        }
-        
-    } catch (error) {
-        const timeSinceLastCheck = Date.now() - lastServerCheck;
-        
-        // Update UI status indicator
-        const statusEl = document.getElementById('server-status');
-        if (statusEl) {
-            const minutesDown = Math.floor(timeSinceLastCheck / 60000);
-            statusEl.textContent = `● Offline (${minutesDown}m)`;
-            statusEl.style.color = '#ff4444';
-        }
-        
-        if (!serverConnectionLost) {
-            serverConnectionLost = true;
-            const errorMsg = error.name === 'AbortError' ? 'Timeout (>10s)' : error.message;
-            if (window.debugLog) window.debugLog(`❌ Server connection lost: ${errorMsg}`);
-            showNotification('⚠️ Server Unreachable', `Cannot connect to server: ${errorMsg}`, 'error');
-        } else {
-            // Still down
-            const minutesDown = Math.floor(timeSinceLastCheck / 60000);
-            if (window.debugLog) window.debugLog(`❌ Server still down (${minutesDown}m): ${error.message}`);
-        }
-        
-        console.error('Server health check failed:', error);
     }
 }
 
@@ -1676,10 +1639,15 @@ async function loadNearbySpots() {
         const lat = center.lat;
         const lng = center.lng;
         
-        if (window.debugLog) window.debugLog(`🗺️ Loading spots around map center (${lat.toFixed(6)}, ${lng.toFixed(6)})...`);
+        // Calculate radius based on zoom level (visible area)
+        // At zoom 17: ~300m, zoom 15: ~1000m, zoom 13: ~5000m
+        const zoom = map.getZoom();
+        const radius = Math.min(5000, Math.max(300, Math.pow(2, 18 - zoom) * 100));
+        
+        if (window.debugLog) window.debugLog(`🗺️ Loading spots around map center (${lat.toFixed(6)}, ${lng.toFixed(6)}) with radius ${radius.toFixed(0)}m (zoom: ${zoom})...`);
         
         const spots = await apiRequest(
-            `/spots/nearby?latitude=${lat}&longitude=${lng}&radius=5000`
+            `/spots/nearby?latitude=${lat}&longitude=${lng}&radius=${radius}`
         );
         
         if (window.debugLog) window.debugLog(`📦 API returned ${spots.length} spots`);
@@ -1693,6 +1661,15 @@ async function loadNearbySpots() {
         
         // Add new markers
         spots.forEach(spot => {
+            // Validate coordinates before creating marker
+            if (!spot.latitude || !spot.longitude || 
+                isNaN(spot.latitude) || isNaN(spot.longitude) ||
+                spot.latitude < -90 || spot.latitude > 90 ||
+                spot.longitude < -180 || spot.longitude > 180) {
+                if (window.debugLog) window.debugLog(`⚠️ Invalid coordinates for spot ${spot.id}: lat=${spot.latitude}, lng=${spot.longitude}`);
+                return; // Skip this spot
+            }
+            
             if (spot.is_loot) lootCount++;
             
             const marker = L.marker([spot.latitude, spot.longitude], {
@@ -1712,7 +1689,9 @@ async function loadNearbySpots() {
                 autoPanPadding: [50, 50],
                 maxWidth: 250,
                 autoClose: false,
-                closeOnClick: false
+                closeOnClick: false,
+                closeOnEscapeKey: false,
+                keepInView: true
             });
             
             spotMarkers.set(spot.id, marker);
@@ -1735,7 +1714,20 @@ async function loadNearbySpots() {
 async function updateAutoLog() {
     if (!currentPosition) return;
     
+    const now = Date.now();
+    
     spotMarkers.forEach((marker, spotId) => {
+        // Skip if already logging this spot
+        if (spotsBeingLogged.has(spotId)) {
+            return;
+        }
+        
+        // Skip if logged this spot recently (within 60 seconds)
+        const lastLog = lastAutoLogTime.get(spotId);
+        if (lastLog && now - lastLog < 60000) {
+            return;
+        }
+        
         const spotPos = marker.getLatLng();
         const distance = map.distance(
             [currentPosition.lat, currentPosition.lng],
@@ -1785,47 +1777,58 @@ async function apiRequestSilent429(endpoint, options = {}) {
 }
 
 async function performAutoLog(spotId) {
-    // Check if we're still in cooldown from server
-    const now = Date.now();
-    if (now < autoLogCooldownUntil) {
-        // Skip request during cooldown to prevent console spam
-        if (window.debugLog) window.debugLog(`⏳ AutoLog cooldown active for ${Math.round((autoLogCooldownUntil - now) / 1000)}s`);
-        return;
+    // Mark spot as being logged
+    spotsBeingLogged.add(spotId);
+    
+    try {
+        // Check if we're still in cooldown from server
+        const now = Date.now();
+        if (now < autoLogCooldownUntil) {
+            // Skip request during cooldown to prevent console spam
+            if (window.debugLog) window.debugLog(`⏳ AutoLog cooldown active for ${Math.round((autoLogCooldownUntil - now) / 1000)}s`);
+            return;
+        }
+        
+        if (window.debugLog) window.debugLog(`📤 AutoLog POST: spot ${spotId}`);
+        
+        const response = await apiRequestSilent429('/logs/', {
+            method: 'POST',
+            body: JSON.stringify({
+                spot_id: spotId,
+                latitude: currentPosition.lat,
+                longitude: currentPosition.lng,
+                is_auto: true
+            })
+        });
+        
+        // Check if we got rate limited (429)
+        if (response.status === 429) {
+            // Set cooldown for 5 minutes to prevent repeated requests
+            autoLogCooldownUntil = now + (5 * 60 * 1000);
+            if (window.debugLog) window.debugLog(`⚠️ Rate limited (429) - cooldown 5m`);
+            return;
+        }
+        
+        if (window.debugLog) window.debugLog(`✅ AutoLog success: +${response.xp_gained}XP, +${response.claim_points}Claims`);
+        
+        // Record successful log time
+        lastAutoLogTime.set(spotId, now);
+        
+        soundManager.playSound('log');
+        showNotification(
+            'Auto Log!',
+            `+${response.xp_gained} XP, +${response.claim_points} Claims`,
+            'log-event'
+        );
+        
+        loadStats();
+        
+        // Update heatmap after autolog
+        updateClaimHeatmap();
+    } finally {
+        // Always remove from being logged set
+        spotsBeingLogged.delete(spotId);
     }
-    
-    if (window.debugLog) window.debugLog(`📤 AutoLog POST: spot ${spotId}`);
-    
-    const response = await apiRequestSilent429('/logs/', {
-        method: 'POST',
-        body: JSON.stringify({
-            spot_id: spotId,
-            latitude: currentPosition.lat,
-            longitude: currentPosition.lng,
-            is_auto: true
-        })
-    });
-    
-    // Check if we got rate limited (429)
-    if (response.status === 429) {
-        // Set cooldown for 5 minutes to prevent repeated requests
-        autoLogCooldownUntil = now + (5 * 60 * 1000);
-        if (window.debugLog) window.debugLog(`⚠️ Rate limited (429) - cooldown 5m`);
-        return;
-    }
-    
-    if (window.debugLog) window.debugLog(`✅ AutoLog success: +${response.xp_gained}XP, +${response.claim_points}Claims`);
-    
-    soundManager.playSound('log');
-    showNotification(
-        'Auto Log!',
-        `+${response.xp_gained} XP, +${response.claim_points} Claims`,
-        'log-event'
-    );
-    
-    loadStats();
-    
-    // Update heatmap after autolog
-    updateClaimHeatmap();
 }
 
 window.logSpot = async function(spotId) {
@@ -2018,6 +2021,13 @@ window.collectLoot = async function(lootSpotId) {
         
         if (result.success) {
             soundManager.playSound('collect');
+            
+            // Remove marker immediately from map
+            const marker = spotMarkers.get(lootSpotId);
+            if (marker) {
+                map.removeLayer(marker);
+                spotMarkers.delete(lootSpotId);
+            }
             
             // Show rewards notification
             let message = `+${result.rewards.xp} XP`;
@@ -2432,6 +2442,13 @@ async function updateClaimHeatmap() {
 }
 
 function showLayerMenu() {
+    // Check if menu already exists - remove it (toggle behavior)
+    const existingMenu = document.querySelector('.layer-menu');
+    if (existingMenu) {
+        existingMenu.remove();
+        return;
+    }
+    
     const menu = document.createElement('div');
     menu.className = 'layer-menu';
     menu.innerHTML = `
@@ -2538,6 +2555,15 @@ function showLogNotification(data) {
 }
 
 function showLootSpawn(data) {
+    // Validate coordinates
+    if (!data.latitude || !data.longitude || 
+        isNaN(data.latitude) || isNaN(data.longitude) ||
+        data.latitude < -90 || data.latitude > 90 ||
+        data.longitude < -180 || data.longitude > 180) {
+        console.error('Invalid loot spawn coordinates:', data);
+        return;
+    }
+    
     const marker = L.marker([data.latitude, data.longitude], {
         icon: L.divIcon({
             className: 'loot-marker',
