@@ -1,5 +1,11 @@
 # Changelog
 
+## 2025-12-08 16:57:52
+**Files:** 2fileschanged,0insertions(+),0deletions(-)
+**Modified:**
+- `app/routers/__pycache__/spots.cpython-312.pyc`
+- `app/routers/__pycache__/tracks.cpython-312.pyc`
+
 ## 2025-12-08 16:17:14
 **Files:** 2fileschanged,0insertions(+),0deletions(-)
 **Modified:**
