@@ -27,11 +27,10 @@ async def create_spot(
     
     spot = spot_service.create_spot(db, spot_data, current_user)
     
-    # Extract coordinates for response (cast Geography to Geometry)
-    from sqlalchemy import cast, type_coerce
-    from geoalchemy2 import Geometry
-    lat = db.scalar(func.ST_Y(cast(spot.location, Geometry)))
-    lon = db.scalar(func.ST_X(cast(spot.location, Geometry)))
+    # Extract coordinates for response (cast Geography to Geometry using PostgreSQL syntax)
+    from sqlalchemy import text
+    lat = db.execute(text("SELECT ST_Y(location::geometry) FROM spots WHERE id = :id"), {"id": spot.id}).scalar()
+    lon = db.execute(text("SELECT ST_X(location::geometry) FROM spots WHERE id = :id"), {"id": spot.id}).scalar()
     
     return SpotResponse(
         id=spot.id,
@@ -59,10 +58,9 @@ async def get_nearby_spots(
     
     result = []
     for spot, distance in spots_with_distance:
-        from sqlalchemy import cast
-        from geoalchemy2 import Geometry
-        lat = db.scalar(func.ST_Y(cast(spot.location, Geometry)))
-        lon = db.scalar(func.ST_X(cast(spot.location, Geometry)))
+        from sqlalchemy import text
+        lat = db.execute(text("SELECT ST_Y(location::geometry) FROM spots WHERE id = :id"), {"id": spot.id}).scalar()
+        lon = db.execute(text("SELECT ST_X(location::geometry) FROM spots WHERE id = :id"), {"id": spot.id}).scalar()
         
         result.append(SpotResponse(
             id=spot.id,
@@ -97,11 +95,10 @@ async def get_spot_details(
             detail="Spot not found"
         )
     
-    # Get spot coordinates (cast Geography to Geometry)
-    from sqlalchemy import cast
-    from geoalchemy2 import Geometry
-    lat = db.scalar(func.ST_Y(cast(spot.location, Geometry)))
-    lon = db.scalar(func.ST_X(cast(spot.location, Geometry)))
+    # Get spot coordinates (cast Geography to Geometry using PostgreSQL syntax)
+    from sqlalchemy import text
+    lat = db.execute(text("SELECT ST_Y(location::geometry) FROM spots WHERE id = :id"), {"id": spot.id}).scalar()
+    lon = db.execute(text("SELECT ST_X(location::geometry) FROM spots WHERE id = :id"), {"id": spot.id}).scalar()
     
     # Calculate distance to spot using ST_DistanceSphere for accurate meters
     point = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
@@ -175,10 +172,9 @@ async def get_spot(
             detail="Spot not found"
         )
     
-    from sqlalchemy import cast
-    from geoalchemy2 import Geometry
-    lat = db.scalar(func.ST_Y(cast(spot.location, Geometry)))
-    lon = db.scalar(func.ST_X(cast(spot.location, Geometry)))
+    from sqlalchemy import text
+    lat = db.execute(text("SELECT ST_Y(location::geometry) FROM spots WHERE id = :id"), {"id": spot.id}).scalar()
+    lon = db.execute(text("SELECT ST_X(location::geometry) FROM spots WHERE id = :id"), {"id": spot.id}).scalar()
     
     return SpotResponse(
         id=spot.id,

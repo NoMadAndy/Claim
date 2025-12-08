@@ -48,10 +48,9 @@ async def add_point_to_track(
         )
     
     # Extract coordinates for response (cast Geography to Geometry)
-    from sqlalchemy import cast
-    from geoalchemy2 import Geometry
-    lat = db.scalar(func.ST_Y(cast(track_point.location, Geometry)))
-    lon = db.scalar(func.ST_X(cast(track_point.location, Geometry)))
+    from sqlalchemy import text
+    lat = db.execute(text("SELECT ST_Y(location::geometry) FROM track_points WHERE id = :id"), {"id": track_point.id}).scalar()
+    lon = db.execute(text("SELECT ST_X(location::geometry) FROM track_points WHERE id = :id"), {"id": track_point.id}).scalar()
     
     return TrackPointResponse(
         id=track_point.id,
@@ -125,10 +124,9 @@ async def get_track_details(
     # Convert points to response format
     points = []
     for point in track.points:
-        from sqlalchemy import cast
-        from geoalchemy2 import Geometry
-        lat = db.scalar(func.ST_Y(cast(point.location, Geometry)))
-        lon = db.scalar(func.ST_X(cast(point.location, Geometry)))
+        from sqlalchemy import text
+        lat = db.execute(text("SELECT ST_Y(location::geometry) FROM track_points WHERE id = :id"), {"id": point.id}).scalar()
+        lon = db.execute(text("SELECT ST_X(location::geometry) FROM track_points WHERE id = :id"), {"id": point.id}).scalar()
         
         points.append(TrackPointResponse(
             id=point.id,
