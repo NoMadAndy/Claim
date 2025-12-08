@@ -36,18 +36,18 @@ def spawn_loot_spots_for_user(db: Session, user_id: int, latitude: float, longit
         )
     ).all()
     
-    # Limit to max 10 active loot spots per user
-    if len(existing_loot) >= 10:
+    # Limit to max 5 active loot spots per user
+    if len(existing_loot) >= 5:
         return []
     
-    # Spawn 1-2 loot spots randomly around user
-    num_spots = random.randint(1, 2)
+    # Spawn only 1 loot spot randomly around user
+    num_spots = 1
     spawned_spots = []
     
     for _ in range(num_spots):
-        # Random offset within radius (20-150m around player)
+        # Random offset within radius (50-300m around player)
         angle = random.uniform(0, 2 * math.pi)  # Random angle in radians
-        distance = random.uniform(20, min(150, radius_meters))
+        distance = random.uniform(50, min(300, radius_meters))
         
         # Calculate offset lat/lng using proper trigonometry
         # 1 degree latitude = ~111,000 meters

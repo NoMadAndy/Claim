@@ -1975,6 +1975,13 @@ window.collectLoot = async function(lootSpotId) {
         if (result.success) {
             soundManager.playSound('collect');
             
+            // Remove marker immediately from map
+            const marker = spotMarkers.get(lootSpotId);
+            if (marker) {
+                map.removeLayer(marker);
+                spotMarkers.delete(lootSpotId);
+            }
+            
             // Show rewards notification
             let message = `+${result.rewards.xp} XP`;
             if (result.rewards.items && result.rewards.items.length > 0) {
