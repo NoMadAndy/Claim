@@ -1653,6 +1653,18 @@ async function loadNearbySpots() {
         
         if (window.debugLog) window.debugLog(`📦 API returned ${spots.length} spots`);
         
+        // Save currently open popup's spot ID
+        let openPopupSpotId = null;
+        if (map.isPopupOpen()) {
+            const popup = map._popup;
+            // Find which marker has this popup
+            spotMarkers.forEach((marker, spotId) => {
+                if (marker.getPopup() === popup) {
+                    openPopupSpotId = spotId;
+                }
+            });
+        }
+        
         // Clear existing markers
         spotMarkers.forEach(marker => marker.remove());
         spotMarkers.clear();
@@ -1697,6 +1709,13 @@ async function loadNearbySpots() {
             
             spotMarkers.set(spot.id, marker);
         });
+        
+        // Re-open popup if it was open before reload
+        if (openPopupSpotId && spotMarkers.has(openPopupSpotId)) {
+            const marker = spotMarkers.get(openPopupSpotId);
+            marker.openPopup();
+            if (window.debugLog) window.debugLog(`🔄 Re-opened popup for spot ${openPopupSpotId}`);
+        }
         
         if (window.debugLog) {
             if (spots.length > 0) {
