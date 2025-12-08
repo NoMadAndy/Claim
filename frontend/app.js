@@ -3,6 +3,18 @@
 const API_BASE = window.location.origin + '/api';
 const WS_BASE = (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + window.location.host + '/ws';
 
+// Utility function: Calculate distance between two coordinates in meters (Haversine formula)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // Earth's radius in meters
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
 // Auto-log cooldown tracking to prevent spam in console
 let autoLogCooldownUntil = 0;
 // Track spots already being logged to prevent duplicate requests
@@ -1553,16 +1565,19 @@ function createSpotPopupContent(spot) {
     
     // Special handling for loot spots
     if (spot.is_loot) {
-        // Calculate distance to loot spot
-        const distance = calculateDistance(
-            currentPosition.lat, 
-            currentPosition.lng, 
-            spot.latitude, 
-            spot.longitude
-        );
-        const distanceText = distance < 1000 
-            ? `${Math.round(distance)}m` 
-            : `${(distance / 1000).toFixed(1)}km`;
+        // Calculate distance to loot spot if we have a current position
+        let distanceText = 'Ort wird bestimmt...';
+        if (currentPosition) {
+            const distance = calculateDistance(
+                currentPosition.lat, 
+                currentPosition.lng, 
+                spot.latitude, 
+                spot.longitude
+            );
+            distanceText = distance < 1000 
+                ? `${Math.round(distance)}m` 
+                : `${(distance / 1000).toFixed(1)}km`;
+        }
         
         container.innerHTML = `
             <div style="padding: 5px;">
