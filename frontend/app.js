@@ -1110,27 +1110,28 @@ function handleMapClick(e) {
         statsDetail.classList.add('hidden');
     }
     
-    // Close popup when clicking on empty map area (not in spot creation mode)
-    if (!spotCreationMode) {
-        map.closePopup();
+    // Don't close popup in spot creation mode - let user place spot
+    if (spotCreationMode) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+        
+        // Generate random spot name
+        const adjectives = ['Mystischer', 'Geheimer', 'Verlassener', 'Alter', 'Neuer', 'Wilder', 'Ruhiger', 'Dunkler', 'Heller', 'Magischer'];
+        const nouns = ['Ort', 'Platz', 'Punkt', 'Spot', 'Bereich', 'Zone', 'Fleck', 'Winkel', 'Ecke', 'Stelle'];
+        const randomName = `${adjectives[Math.floor(Math.random() * adjectives.length)]} ${nouns[Math.floor(Math.random() * nouns.length)]} ${Math.floor(Math.random() * 1000)}`;
+        
+        // Create spot directly
+        createSpotAtLocation(lat, lng, randomName);
+        
+        // Exit spot creation mode
+        spotCreationMode = false;
+        document.getElementById('btn-create-spot').classList.remove('active');
+        showNotification('Spot erstellt', randomName, 'success');
         return;
     }
     
-    const lat = e.latlng.lat;
-    const lng = e.latlng.lng;
-    
-    // Generate random spot name
-    const adjectives = ['Mystischer', 'Geheimer', 'Verlassener', 'Alter', 'Neuer', 'Wilder', 'Ruhiger', 'Dunkler', 'Heller', 'Magischer'];
-    const nouns = ['Ort', 'Platz', 'Punkt', 'Spot', 'Bereich', 'Zone', 'Fleck', 'Winkel', 'Ecke', 'Stelle'];
-    const randomName = `${adjectives[Math.floor(Math.random() * adjectives.length)]} ${nouns[Math.floor(Math.random() * nouns.length)]} ${Math.floor(Math.random() * 1000)}`;
-    
-    // Create spot directly
-    createSpotAtLocation(lat, lng, randomName);
-    
-    // Exit spot creation mode
-    spotCreationMode = false;
-    document.getElementById('btn-create-spot').classList.remove('active');
-    showNotification('Spot erstellt', randomName, 'success');
+    // Close popup when clicking on empty map area (not on a marker)
+    map.closePopup();
 }
 
 // Toggle spot creation mode
