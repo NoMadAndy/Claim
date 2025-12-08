@@ -1377,9 +1377,9 @@ function handleWebSocketMessage(message) {
             break;
             
         case 'loot_spawn':
-            if (window.debugLog) window.debugLog(`💎 Loot spawned: +${data.xp} XP ${data.item_name ? '+ ' + data.item_name : ''}`);
+            if (window.debugLog) window.debugLog(`💎 Loot spawned: ${data.xp} XP available ${data.item_name ? '+ ' + data.item_name : ''}`);
             soundManager.playSound('collect');
-            showNotification('💎 Loot Spawned!', `New loot nearby! +${data.xp} XP`, 'success');
+            showNotification('💎 Loot Spawned!', `New loot nearby! (${data.xp} XP available)`, 'success');
             // Reload spots to show new loot
             loadNearbySpots();
             break;
@@ -2472,13 +2472,13 @@ function showLootSpawn(data) {
     
     marker.bindPopup(`
         <b>Loot Spot!</b><br>
-        +${data.xp} XP<br>
+        ${data.xp} XP available<br>
         ${data.item_name ? `Item: ${data.item_name}` : ''}<br>
         <button onclick="logSpot(${data.spot_id})">Collect</button>
     `);
     
     soundManager.playSound('loot');
-    showNotification('Loot Spawned!', `+${data.xp} XP nearby`, 'loot-event');
+    showNotification('Loot Spawned!', `${data.xp} XP available nearby`, 'loot-event');
     
     spotMarkers.set(data.spot_id, marker);
 }

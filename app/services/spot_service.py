@@ -43,16 +43,20 @@ def get_spots_in_radius(
     radius_meters: float = 1000
 ) -> List[Tuple[Spot, float]]:
     """Get all spots within radius of a point, with distances"""
+    from app.models import get_cet_now
     point = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
+    current_time = get_cet_now()
     
-    # Query spots within radius
+    # Query spots within radius (permanent spots OR active loot)
     spots = db.query(
         Spot,
         ST_Distance(Spot.location, point).label('distance')
     ).filter(
         ST_DWithin(Spot.location, point, radius_meters)
     ).filter(
-        Spot.is_permanent == True
+        # Either permanent spot OR active loot (not expired)
+        (Spot.is_permanent == True) | 
+        ((Spot.is_loot == True) & (Spot.loot_expires_at > current_time))
     ).all()
     
     return spots
