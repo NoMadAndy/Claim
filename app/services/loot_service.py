@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, text, func
 from datetime import datetime, timedelta
+from geoalchemy2.elements import WKTElement
 from app.models import Spot, User, Item, InventoryItem, get_cet_now
 from app.config import settings
 import random
@@ -71,10 +72,11 @@ def spawn_loot_spots_for_user(db: Session, user_id: int, latitude: float, longit
                 item_name = item.name
         
         # Create loot spot
+        point = f'POINT({loot_lng} {loot_lat})'
         loot_spot = Spot(
             name=f"Loot ({loot_xp} XP)",
             description="Mysterious loot appeared!",
-            location=f"SRID=4326;POINT({loot_lng} {loot_lat})",
+            location=WKTElement(point, srid=4326),
             is_permanent=False,
             is_loot=True,
             owner_id=user_id,

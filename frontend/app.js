@@ -1643,7 +1643,9 @@ async function loadNearbySpots() {
             }, {
                 autoPan: true,
                 autoPanPadding: [50, 50],
-                maxWidth: 250
+                maxWidth: 250,
+                autoClose: false,
+                closeOnClick: false
             });
             
             spotMarkers.set(spot.id, marker);
