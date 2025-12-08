@@ -1597,8 +1597,12 @@ async function loadSpotDetails(spotId, container) {
             `/spots/${spotId}/details?latitude=${currentPosition.lat}&longitude=${currentPosition.lng}`
         );
         
-        const detailsDiv = document.getElementById(`spot-details-${spotId}`);
-        if (!detailsDiv) return;
+        // Check if container still exists and is in the DOM
+        const detailsDiv = container.querySelector(`#spot-details-${spotId}`);
+        if (!detailsDiv || !document.body.contains(detailsDiv)) {
+            // Popup was closed or recreated - abort
+            return;
+        }
         
         // Format cooldown - show both auto and manual status
         let logStatusText = '';
@@ -1641,8 +1645,9 @@ async function loadSpotDetails(spotId, container) {
             <small>${dominanceText}</small>
         `;
     } catch (error) {
-        const detailsDiv = document.getElementById(`spot-details-${spotId}`);
-        if (detailsDiv) {
+        // Check if container and element still exist before updating
+        const detailsDiv = container.querySelector(`#spot-details-${spotId}`);
+        if (detailsDiv && document.body.contains(detailsDiv)) {
             detailsDiv.innerHTML = 'Fehler beim Laden der Details';
         }
     }
