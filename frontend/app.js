@@ -1631,13 +1631,18 @@ async function loadNearbySpots() {
             const marker = L.marker([spot.latitude, spot.longitude], {
                 icon: L.divIcon({
                     className: spot.is_loot ? 'loot-marker' : 'spot-marker',
-                    iconSize: [15, 15]
+                    iconSize: [15, 15],
+                    iconAnchor: [7.5, 7.5]  // Center the icon on the coordinate
                 })
             }).addTo(map);
             
             // Bind popup with click handler to load details dynamically
             marker.bindPopup(() => {
                 return createSpotPopupContent(spot);
+            }, {
+                autoPan: true,
+                autoPanPadding: [50, 50],
+                offset: [0, -7]  // Position popup above marker
             });
             
             spotMarkers.set(spot.id, marker);

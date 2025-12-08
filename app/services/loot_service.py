@@ -43,9 +43,9 @@ def spawn_loot_spots_for_user(db: Session, user_id: int, latitude: float, longit
     spawned_spots = []
     
     for _ in range(num_spots):
-        # Random offset within radius
+        # Random offset within radius (20-150m around player)
         angle = random.uniform(0, 360)
-        distance = random.uniform(50, radius_meters)
+        distance = random.uniform(20, min(150, radius_meters))
         
         # Calculate offset lat/lng (rough approximation)
         lat_offset = (distance / 111000) * random.choice([-1, 1])
