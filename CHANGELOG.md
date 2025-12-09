@@ -1,5 +1,14 @@
 # Changelog
 
+## 2025-12-09 Feature Release: Loot Spots & Logging
+**Highlights:**
+- Neue Loot-Spots: Temporäre, sammelbare Spots mit XP/Items, serverseitig generiert
+- Verbesserte Logging-Mechanik: Zuverlässigeres Auto- und Manual-Logging, Cooldown-Handling, Feedback
+- Multi-User-Heatmap: Gleichzeitige Anzeige mehrerer Spieler-Heatmaps, UI-Toggles
+- Diverse Bugfixes und UI-Verbesserungen
+**Wichtige Dateien:**
+- `frontend/app.js`, `frontend/index.html`, Backend: `app/routers/loot.py`, `app/routers/logs.py`, `app/services/loot_service.py`, `app/services/log_service.py`
+
 ## 2025-12-09 18:24:01
 **Files:** 2fileschanged,0insertions(+),0deletions(-)
 **Modified:**
