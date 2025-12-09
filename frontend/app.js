@@ -1309,12 +1309,31 @@ function startGPSTracking() {
             }
             
             if (followMode) {
-                // Smooth pan instead of instant setView
-                map.panTo([currentPosition.lat, currentPosition.lng], {
-                    animate: true,
-                    duration: 0.5, // 500ms smooth animation
-                    easeLinearity: 0.25
-                });
+                // GPS-Drift bei Stillstand ignorieren
+                if (position.coords.speed !== null && position.coords.speed < 0.5) {
+                    // Geschwindigkeit < 0.5 m/s = Stillstand, keine Kartenbewegung
+                    if (window.debugLog) window.debugLog('🛑 Stillstand erkannt, Karte bleibt ruhig');
+                } else {
+                    // Für große Sprünge flyTo, sonst panTo
+                    const mapCenter = map.getCenter();
+                    const dist = map.distance([currentPosition.lat, currentPosition.lng], [mapCenter.lat, mapCenter.lng]);
+                    if (dist > 100) {
+                        // Großer Sprung: flyTo mit längerer Animation
+                        map.flyTo([currentPosition.lat, currentPosition.lng], map.getZoom(), {
+                            animate: true,
+                            duration: 1.2,
+                            easeLinearity: 0.2
+                        });
+                        if (window.debugLog) window.debugLog(`🛫 flyTo wegen großem Sprung (${dist.toFixed(1)}m)`);
+                    } else {
+                        // Normale Bewegung: sanftes panTo
+                        map.panTo([currentPosition.lat, currentPosition.lng], {
+                            animate: true,
+                            duration: 0.7,
+                            easeLinearity: 0.25
+                        });
+                    }
+                }
             }
             
             // Send position via WebSocket
