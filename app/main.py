@@ -102,6 +102,55 @@ async def client_log(payload: dict = Body(...)):
     return {"ok": True}
 
 
+# Connection diagnostics endpoint
+@app.post("/api/connection-diagnostics")
+async def connection_diagnostics(payload: dict = Body(...)):
+    """Receive connection diagnostics from client"""
+    timestamp = datetime.now().isoformat()
+    
+    try:
+        log_dir = os.path.join(os.path.dirname(__file__), "..", "logs")
+        os.makedirs(log_dir, exist_ok=True)
+        log_file = os.path.join(log_dir, "connection-diagnostics.log")
+        
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(f"\n{'='*80}\n")
+            f.write(f"[{timestamp}] Connection Diagnostics Report\n")
+            f.write(f"{'='*80}\n")
+            
+            # Client info
+            if "clientInfo" in payload:
+                f.write(f"User: {payload['clientInfo'].get('user', 'N/A')}\n")
+                f.write(f"URL: {payload['clientInfo'].get('url', 'N/A')}\n")
+            
+            # Status
+            if "status" in payload:
+                f.write(f"\nConnection Status:\n")
+                for key, value in payload["status"].items():
+                    f.write(f"  {key}: {value}\n")
+            
+            # Recent errors
+            if "recent" in payload:
+                f.write(f"\nRecent Errors:\n")
+                if payload["recent"].get("apiErrors"):
+                    f.write(f"  API Errors ({len(payload['recent']['apiErrors'])}):\n")
+                    for err in payload["recent"]["apiErrors"][-3:]:
+                        f.write(f"    - {err}\n")
+                if payload["recent"].get("wsErrors"):
+                    f.write(f"  WebSocket Errors ({len(payload['recent']['wsErrors'])}):\n")
+                    for err in payload["recent"]["wsErrors"][-3:]:
+                        f.write(f"    - {err}\n")
+            
+            f.flush()
+        
+        print(f"[{timestamp}] Received connection diagnostics from client")
+        
+    except Exception as e:
+        print(f"ERROR writing diagnostics: {e}")
+    
+    return {"ok": True}
+
+
 # WebSocket endpoint
 @app.websocket("/ws")
 async def websocket_route(websocket: WebSocket, token: str):

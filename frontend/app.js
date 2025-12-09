@@ -538,6 +538,19 @@ let compassEnabled = false;
 let heatmapVisible = true;  // Start with heatmap enabled
 let authToken = null;
 let ws = null;
+
+// Connection monitoring
+let lastSuccessfulAPICall = Date.now();
+let lastSuccessfulWSMessage = Date.now();
+let connectionDiagnostics = {
+    apiErrors: [],
+    wsErrors: [],
+    lastAPIError: null,
+    lastWSError: null
+};
+
+// Health check interval (every 30 seconds)
+let healthCheckInterval = null;
 let currentUser = null;
 let activeTrackId = null;
 let wakeLock = null;
@@ -1042,6 +1055,10 @@ async function initializeApp() {
         setInterval(trySpawnLoot, 120000); // Try spawn loot every 2 minutes
         if (window.debugLog) window.debugLog('⏱️ Update loops started (AutoLog: 1s, Stats: 30s, Loot: 2m)');
         
+        // Start health check every 30 seconds
+        startHealthCheck();
+        if (window.debugLog) window.debugLog('🏥 Health check started (30s interval)');
+        
         // AGGRESSIVE: Periodically try to unlock audio on iOS (every 3 seconds for first 30 seconds)
         let unlockAttempts = 0;
         const unlockInterval = setInterval(() => {
@@ -1395,28 +1412,44 @@ function updatePlayerPosition() {
 function connectWebSocket() {
     if (!authToken) return;
     
-    if (window.debugLog) window.debugLog('🌐 WebSocket: Connecting...');
+    const timestamp = new Date().toISOString();
+    if (window.debugLog) window.debugLog(`🌐 WebSocket: Connecting at ${timestamp}...`);
     
     ws = new WebSocket(`${WS_BASE}?token=${authToken}`);
     
     ws.onopen = () => {
-        if (window.debugLog) window.debugLog('✅ WebSocket: Connected');
-        console.log('WebSocket connected');
+        lastSuccessfulWSMessage = Date.now();
+        if (window.debugLog) window.debugLog(`✅ WebSocket: Connected at ${new Date().toISOString()}`);
+        console.log('WebSocket connected at', new Date().toISOString());
     };
     
     ws.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        handleWebSocketMessage(message);
+        lastSuccessfulWSMessage = Date.now();
+        try {
+            const message = JSON.parse(event.data);
+            handleWebSocketMessage(message);
+        } catch (e) {
+            console.error('Failed to parse WebSocket message:', e);
+            if (window.debugLog) window.debugLog(`❌ WS Parse Error: ${e.message}`);
+        }
     };
     
     ws.onerror = (error) => {
-        if (window.debugLog) window.debugLog('❌ WebSocket: Error');
-        console.error('WebSocket error:', error);
+        const timestamp = new Date().toISOString();
+        connectionDiagnostics.wsErrors.push({
+            timestamp,
+            error: error.message || 'Unknown error'
+        });
+        connectionDiagnostics.lastWSError = { timestamp, error: error.message || 'Unknown error' };
+        
+        if (window.debugLog) window.debugLog(`❌ WebSocket: Error at ${timestamp}`);
+        console.error('WebSocket error at', timestamp, error);
     };
     
     ws.onclose = () => {
-        if (window.debugLog) window.debugLog('❌ WebSocket: Closed, reconnecting in 5s...');
-        console.log('WebSocket closed, reconnecting...');
+        const timestamp = new Date().toISOString();
+        if (window.debugLog) window.debugLog(`🔴 WebSocket: Closed at ${timestamp}, reconnecting in 5s...`);
+        console.log('WebSocket closed at', timestamp, 'reconnecting...');
         setTimeout(connectWebSocket, 5000);
     };
 }
@@ -1504,33 +1537,74 @@ async function apiRequest(endpoint, options = {}) {
         headers['Authorization'] = `Bearer ${authToken}`;
     }
     
-    const response = await fetch(url, {
-        ...options,
-        headers
-    });
+    const startTime = Date.now();
+    const timestamp = new Date().toISOString();
     
-    if (!response.ok) {
-        let errorDetail = response.statusText;
-        try {
-            const errorBody = await response.json();
-            errorDetail = errorBody.detail || errorBody.message || errorBody.error || response.statusText;
-        } catch (e) {
-            // If response body is not JSON, use status text
+    try {
+        const response = await fetch(url, {
+            ...options,
+            headers,
+            timeout: 10000
+        });
+        
+        if (!response.ok) {
+            let errorDetail = response.statusText;
+            try {
+                const errorBody = await response.json();
+                errorDetail = errorBody.detail || errorBody.message || errorBody.error || response.statusText;
+            } catch (e) {
+                // If response body is not JSON, use status text
+            }
+            
+            const error = new Error(`API Error: ${errorDetail}`);
+            error.status = response.status;
+            error.detail = errorDetail;
+            
+            // Track API errors for diagnostics
+            const duration = Date.now() - startTime;
+            connectionDiagnostics.apiErrors.push({
+                timestamp,
+                endpoint,
+                status: response.status,
+                error: errorDetail,
+                duration
+            });
+            connectionDiagnostics.lastAPIError = { timestamp, endpoint, status: response.status, error: errorDetail };
+            
+            // Only log non-429 errors to console (rate limiting is expected and silent)
+            if (response.status !== 429) {
+                console.error(`API Error (${response.status}) at ${timestamp}:`, errorDetail);
+                if (window.debugLog) window.debugLog(`❌ API Error [${response.status}] ${endpoint}: ${errorDetail}`);
+            }
+            
+            throw error;
         }
         
-        const error = new Error(`API Error: ${errorDetail}`);
-        error.status = response.status;
-        error.detail = errorDetail;
-        
-        // Only log non-429 errors to console (rate limiting is expected and silent)
-        if (response.status !== 429) {
-            console.error(`API Error (${response.status}):`, errorDetail);
+        // Track successful API calls
+        lastSuccessfulAPICall = Date.now();
+        const duration = Date.now() - startTime;
+        if (window.debugLog && duration > 1000) {
+            window.debugLog(`📡 API [${duration}ms] ${endpoint}`);
         }
         
+        return response.json();
+    } catch (error) {
+        // Handle network errors (timeouts, disconnects, etc.)
+        if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+            const errorMsg = 'Network error - server may be unreachable';
+            connectionDiagnostics.apiErrors.push({
+                timestamp,
+                endpoint,
+                status: 0,
+                error: errorMsg,
+                duration: Date.now() - startTime
+            });
+            connectionDiagnostics.lastAPIError = { timestamp, endpoint, status: 0, error: errorMsg };
+            console.error(`Network error at ${timestamp}: ${errorMsg}`);
+            if (window.debugLog) window.debugLog(`📡 Network Error: ${errorMsg}`);
+        }
         throw error;
     }
-    
-    return response.json();
 }
 
 // Data Loading
@@ -2071,6 +2145,121 @@ async function submitLog(spotId, notes, photoFile) {
     }
 }
 
+// Connection Health Check
+function startHealthCheck() {
+    healthCheckInterval = setInterval(async () => {
+        const now = Date.now();
+        const timestamp = new Date().toISOString();
+        
+        // Check API connectivity
+        const timeSinceLastAPI = now - lastSuccessfulAPICall;
+        const timeSinceLastWS = now - lastSuccessfulWSMessage;
+        
+        let status = '✅ Healthy';
+        let statusColor = 'green';
+        
+        if (timeSinceLastAPI > 60000) {
+            status = '⚠️ API Timeout';
+            statusColor = 'orange';
+        } else if (timeSinceLastAPI > 120000) {
+            status = '❌ API Down';
+            statusColor = 'red';
+        }
+        
+        if (timeSinceLastWS > 120000 && ws && ws.readyState !== WebSocket.OPEN) {
+            status = '❌ WS Disconnected';
+            statusColor = 'red';
+        }
+        
+        // Log status periodically
+        const diagnosticsInfo = {
+            timestamp,
+            status,
+            apiLastResponse: Math.round(timeSinceLastAPI / 1000) + 's ago',
+            wsLastMessage: Math.round(timeSinceLastWS / 1000) + 's ago',
+            wsState: ws ? ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'][ws.readyState] : 'N/A',
+            apiErrorCount: connectionDiagnostics.apiErrors.length,
+            wsErrorCount: connectionDiagnostics.wsErrors.length,
+            lastAPIError: connectionDiagnostics.lastAPIError,
+            lastWSError: connectionDiagnostics.lastWSError
+        };
+        
+        if (window.debugLog) {
+            window.debugLog(`🏥 ${status} | API: ${diagnosticsInfo.apiLastResponse} | WS: ${diagnosticsInfo.wsLastMessage} [${diagnosticsInfo.wsState}]`);
+        }
+        
+        // Store diagnostics in localStorage for debugging
+        try {
+            localStorage.setItem('claim_connection_diag', JSON.stringify(diagnosticsInfo));
+        } catch (e) {
+            // Ignore localStorage errors
+        }
+        
+        // Send diagnostics to server every 2 minutes (when there are errors or every cycle)
+        if (timeSinceLastAPI > 60000 || connectionDiagnostics.apiErrors.length > 0 || connectionDiagnostics.wsErrors.length > 0) {
+            try {
+                await fetch(`${API_BASE}/connection-diagnostics`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': authToken ? `Bearer ${authToken}` : ''
+                    },
+                    body: JSON.stringify({
+                        clientInfo: {
+                            user: currentUser ? currentUser.username : 'unknown',
+                            url: window.location.href
+                        },
+                        status: diagnosticsInfo,
+                        recent: {
+                            apiErrors: connectionDiagnostics.apiErrors.slice(-5).map(e => `${e.timestamp} ${e.endpoint} [${e.status}]: ${e.error}`),
+                            wsErrors: connectionDiagnostics.wsErrors.slice(-5).map(e => `${e.timestamp}: ${e.error}`)
+                        }
+                    })
+                });
+            } catch (e) {
+                // Silently ignore diagnostics send failures
+            }
+        }
+        
+        // Alert user if connection is critical
+        if (timeSinceLastAPI > 120000) {
+            showNotification('⚠️ Server Connection Lost', 'Trying to reconnect...', 'warning');
+            // Force API retry
+            try {
+                await apiRequest('/items/stats');
+            } catch (e) {
+                console.error('Health check failed:', e);
+            }
+        }
+    }, 30000); // Check every 30 seconds
+}
+
+function stopHealthCheck() {
+    if (healthCheckInterval) {
+        clearInterval(healthCheckInterval);
+        healthCheckInterval = null;
+    }
+}
+
+// Get connection diagnostics (for debugging)
+window.getConnectionDiagnostics = function() {
+    const diagnostics = {
+        timestamp: new Date().toISOString(),
+        status: {
+            apiLastResponse: Date.now() - lastSuccessfulAPICall + 'ms ago',
+            wsLastMessage: Date.now() - lastSuccessfulWSMessage + 'ms ago',
+            wsConnected: ws && ws.readyState === WebSocket.OPEN
+        },
+        recent: {
+            apiErrors: connectionDiagnostics.apiErrors.slice(-5),
+            wsErrors: connectionDiagnostics.wsErrors.slice(-5)
+        }
+    };
+    console.table(diagnostics);
+    return diagnostics;
+};
+
+// Loot Functions
 async function uploadPhoto(file) {
     const formData = new FormData();
     formData.append('file', file);
