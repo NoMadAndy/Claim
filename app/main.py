@@ -1,16 +1,25 @@
 from fastapi import FastAPI, Request, Depends, WebSocket
 from fastapi import Body
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, Response, JSONResponse
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
 import os
 from datetime import datetime
+import logging
 
 from app.database import get_db
 from app.routers import auth, spots, logs, claims, tracks, items, loot
 from app.ws.handlers import websocket_endpoint
 from app.config import settings
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Track server start time and connection count for diagnostics
+server_start_time = datetime.now()
+active_connections = 0
 
 
 @asynccontextmanager
@@ -143,12 +152,32 @@ async def connection_diagnostics(payload: dict = Body(...)):
             
             f.flush()
         
-        print(f"[{timestamp}] Received connection diagnostics from client")
+        logger.info(f"Received connection diagnostics from {payload.get('clientInfo', {}).get('user', 'unknown')}")
         
     except Exception as e:
-        print(f"ERROR writing diagnostics: {e}")
+        logger.error(f"ERROR writing diagnostics: {e}")
     
     return {"ok": True}
+
+
+# Health check / Keep-Alive endpoint
+@app.get("/api/health")
+async def health_check():
+    """Server health check endpoint - lightweight response for keep-alive"""
+    uptime_seconds = (datetime.now() - server_start_time).total_seconds()
+    return JSONResponse({
+        "status": "ok",
+        "timestamp": datetime.now().isoformat(),
+        "uptime_seconds": uptime_seconds,
+        "active_connections": active_connections
+    })
+
+
+# Heartbeat endpoint for frequent pings
+@app.post("/api/heartbeat")
+async def heartbeat(payload: dict = Body(...)):
+    """Client heartbeat to keep connection alive"""
+    return {"ok": True, "timestamp": datetime.now().isoformat()}
 
 
 # WebSocket endpoint

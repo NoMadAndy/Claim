@@ -6,12 +6,16 @@ from app.config import settings
 from app.services import auth_service
 from app.ws.connection_manager import manager
 import json
+import asyncio
+from datetime import datetime
 
 
 async def websocket_endpoint(websocket: WebSocket, token: str):
     """Main WebSocket endpoint"""
     # Create DB session
     db = SessionLocal()
+    last_heartbeat = datetime.now()
+    heartbeat_interval = 30  # Send heartbeat every 30 seconds
     
     try:
         # Authenticate user
@@ -32,6 +36,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
         
         # Connect user
         await manager.connect(websocket, user.id)
+        print(f"[{datetime.now().isoformat()}] User {user.username} connected to WebSocket")
         
         try:
             # Send welcome message
@@ -44,55 +49,78 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                 }
             })
             
-            # Listen for messages
+            # Listen for messages with timeout handling
             while True:
-                data = await websocket.receive_text()
+                # Check if we need to send heartbeat
+                now = datetime.now()
+                if (now - last_heartbeat).total_seconds() >= heartbeat_interval:
+                    try:
+                        await websocket.send_json({
+                            "event_type": "heartbeat",
+                            "data": {"timestamp": now.isoformat()}
+                        })
+                        last_heartbeat = now
+                    except Exception as e:
+                        print(f"[{datetime.now().isoformat()}] Heartbeat failed for {user.username}: {e}")
+                        break
                 
                 try:
-                    message = json.loads(data)
-                    event_type = message.get("event_type")
-                    event_data = message.get("data", {})
+                    # Wait for message with timeout
+                    data = await asyncio.wait_for(websocket.receive_text(), timeout=heartbeat_interval + 10)
                     
-                    # Handle different event types
-                    if event_type == "position_update":
-                        # Broadcast position to other users
-                        await manager.broadcast_position(
-                            user.id,
-                            user.username,
-                            event_data.get("latitude"),
-                            event_data.get("longitude"),
-                            event_data.get("heading")
-                        )
+                    try:
+                        message = json.loads(data)
+                        event_type = message.get("event_type")
+                        event_data = message.get("data", {})
+                        
+                        # Handle different event types
+                        if event_type == "position_update":
+                            # Broadcast position to other users
+                            await manager.broadcast_position(
+                                user.id,
+                                user.username,
+                                event_data.get("latitude"),
+                                event_data.get("longitude"),
+                                event_data.get("heading")
+                            )
+                        
+                        elif event_type == "ping":
+                            # Respond to ping
+                            await websocket.send_json({
+                                "event_type": "pong",
+                                "data": {"timestamp": datetime.now().isoformat()}
+                            })
+                        
+                        elif event_type == "heartbeat":
+                            # Client heartbeat - just acknowledge
+                            pass
+                        
+                        else:
+                            # Echo unknown event types
+                            await websocket.send_json({
+                                "event_type": "error",
+                                "data": {"message": f"Unknown event type: {event_type}"}
+                            })
                     
-                    elif event_type == "ping":
-                        # Respond to ping
-                        await websocket.send_json({
-                            "event_type": "pong",
-                            "data": {}
-                        })
-                    
-                    else:
-                        # Echo unknown event types
+                    except json.JSONDecodeError:
                         await websocket.send_json({
                             "event_type": "error",
-                            "data": {"message": f"Unknown event type: {event_type}"}
+                            "data": {"message": "Invalid JSON"}
                         })
                 
-                except json.JSONDecodeError:
-                    await websocket.send_json({
-                        "event_type": "error",
-                        "data": {"message": "Invalid JSON"}
-                    })
+                except asyncio.TimeoutError:
+                    # Timeout waiting for message - connection might be dead
+                    print(f"[{datetime.now().isoformat()}] WebSocket timeout for {user.username}")
+                    break
         
         except WebSocketDisconnect:
             manager.disconnect(websocket, user.id)
-            print(f"User {user.username} disconnected")
+            print(f"[{datetime.now().isoformat()}] User {user.username} disconnected")
         
         except Exception as e:
-            print(f"WebSocket error for user {user.username}: {e}")
+            print(f"[{datetime.now().isoformat()}] WebSocket error for user {user.username}: {e}")
             manager.disconnect(websocket, user.id)
     
     finally:
         # Close DB session
         db.close()
-

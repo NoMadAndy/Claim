@@ -551,6 +551,10 @@ let connectionDiagnostics = {
 
 // Health check interval (every 30 seconds)
 let healthCheckInterval = null;
+
+// Heartbeat intervals
+let heartbeatInterval = null;
+let wsHeartbeatInterval = null;
 let currentUser = null;
 let activeTrackId = null;
 let wakeLock = null;
@@ -1028,6 +1032,10 @@ async function initializeApp() {
         connectWebSocket();
         if (window.debugLog) window.debugLog('🌐 WebSocket connecting...');
         
+        // Start API heartbeat (every 2 minutes to keep connection alive)
+        startAPIHeartbeat();
+        if (window.debugLog) window.debugLog('💓 API heartbeat started (2m interval)');
+        
         // Cleanup expired loot before loading
         try {
             await apiRequest('/loot/cleanup', { method: 'POST' });
@@ -1456,12 +1464,28 @@ function connectWebSocket() {
 
 function handleWebSocketMessage(message) {
     const { event_type, data } = message;
-    if (window.debugLog) window.debugLog(`📨 WS: ${event_type}`);
+    if (window.debugLog && event_type !== 'heartbeat') window.debugLog(`📨 WS: ${event_type}`);
+    
+    // Update last message time for health check
+    if (event_type !== 'heartbeat') {
+        lastSuccessfulWSMessage = Date.now();
+    }
     
     switch (event_type) {
         case 'connected':
             if (window.debugLog) window.debugLog(`✅ WS connected`);
             console.log('Connected:', data.message);
+            // Start WebSocket heartbeat after connection
+            startWSHeartbeat();
+            break;
+            
+        case 'heartbeat':
+            // Server sent heartbeat - nothing to do, connection is alive
+            break;
+            
+        case 'pong':
+            // Response to our ping
+            lastSuccessfulWSMessage = Date.now();
             break;
             
         case 'position_update':
@@ -2258,6 +2282,48 @@ window.getConnectionDiagnostics = function() {
     console.table(diagnostics);
     return diagnostics;
 };
+
+// WebSocket heartbeat - send ping every 30 seconds to keep connection alive
+function startWSHeartbeat() {
+    if (wsHeartbeatInterval) {
+        clearInterval(wsHeartbeatInterval);
+    }
+    
+    wsHeartbeatInterval = setInterval(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            try {
+                ws.send(JSON.stringify({
+                    event_type: 'ping',
+                    data: {}
+                }));
+            } catch (e) {
+                // Ignore send errors
+            }
+        }
+    }, 30000); // Ping every 30 seconds
+}
+
+// API heartbeat - call health endpoint every 2 minutes to keep connection alive
+function startAPIHeartbeat() {
+    if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+    }
+    
+    heartbeatInterval = setInterval(async () => {
+        try {
+            await fetch(`${API_BASE}/heartbeat`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': authToken ? `Bearer ${authToken}` : ''
+                },
+                body: JSON.stringify({ timestamp: new Date().toISOString() })
+            });
+        } catch (e) {
+            // Ignore heartbeat errors - they're not critical
+        }
+    }, 120000); // Heartbeat every 2 minutes
+}
 
 // Loot Functions
 async function uploadPhoto(file) {
