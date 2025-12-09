@@ -1,5 +1,11 @@
 # Changelog
 
+## 2025-12-09 22:06:02
+**Files:** 2fileschanged,0insertions(+),0deletions(-)
+**Modified:**
+- `app/__pycache__/schemas.cpython-312.pyc`
+- `app/services/__pycache__/item_service.cpython-312.pyc`
+
 ## 2025-12-09 Feature Release: Loot Spots & Logging
 **Highlights:**
 - Neue Loot-Spots: Temporäre, sammelbare Spots mit XP/Items, serverseitig generiert
