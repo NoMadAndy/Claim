@@ -213,6 +213,7 @@ class InventoryItemResponse(BaseModel):
 class UseItemResponse(BaseModel):
     success: bool
     error: str = None
+    item_id: int = None
     item_name: str = None
     effects: dict = None
     remaining: int = 0

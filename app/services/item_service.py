@@ -111,6 +111,7 @@ def use_item(db: Session, user_id: int, item_id: int) -> dict:
     
     return {
         "success": True,
+        "item_id": item.id,
         "item_name": item.name,
         "effects": effects,
         "remaining": inventory_item.quantity if inventory_item.quantity > 0 else 0

@@ -562,6 +562,7 @@ let wakeLockEnabled = false; // Initial aus
 let heatmapUpdateInterval = null; // Interval für Heatmap-Refresh
 let currentLevel = 0; // Track for level-up detection
 let activeHeatmaps = new Set(); // Track which player heatmaps are visible
+let activeBufFs = new Map(); // Track active buffs: Map<itemId, {name, effects, expiresAt}>
 let heatmapLayers = new Map(); // Map of userId -> heatmapLayer
 
 // Map markers storage
@@ -3212,6 +3213,11 @@ async function showInventory() {
                                     ${item.range_boost ? `📡 Range +${item.range_boost}m` : ''}
                                 </div>
                             ` : ''}
+                            ${activeBufFs.has(item.id) ? `
+                                <div style="font-size: 11px; margin-top: 6px; color: #f59e0b; font-weight: bold; padding: 4px; background: rgba(245,158,11,0.15); border-radius: 3px;">
+                                    ⏳ Active
+                                </div>
+                            ` : ''}
                         </div>
                         <div style="text-align: right; margin-left: 10px;">
                             <div style="font-size: 20px; font-weight: bold; color: ${color};">
@@ -3266,7 +3272,16 @@ window.useInventoryItem = async function(itemId) {
                 if (result.effects.range_boost) message += `\n📡 Range +${result.effects.range_boost}m`;
             }
             
-            showNotification('Item Used', message, 'success');
+            showNotification('🎉 Buff Activated!', message, 'success');
+            
+            // Track active buff (1 hour duration)
+            activeBufFs.set(result.item_id || result.id, {
+                name: result.item_name,
+                effects: result.effects,
+                expiresAt: Date.now() + (60 * 60 * 1000) // 1 hour
+            });
+            
+            updateActivBuffsDisplay();
             
             // Refresh inventory
             await showInventory();
@@ -3282,6 +3297,39 @@ function toggleSound() {
     soundManager.playSound('log'); // Play sound to confirm
     showNotification('Sound', enabled ? '🔊 Aktiviert' : '🔇 Deaktiviert', 'info');
 }
+
+function updateActivBuffsDisplay() {
+    // Remove expired buffs
+    const now = Date.now();
+    for (const [itemId, buff] of activeBufFs.entries()) {
+        if (buff.expiresAt < now) {
+            activeBufFs.delete(itemId);
+        }
+    }
+    
+    // Update stats bar with active buffs
+    const buffsDisplay = document.getElementById('active-buffs-display');
+    if (!buffsDisplay) return;
+    
+    let buffsHtml = '';
+    if (activeBufFs.size > 0) {
+        for (const [itemId, buff] of activeBufFs.entries()) {
+            const remaining = Math.ceil((buff.expiresAt - now) / 1000 / 60); // minutes
+            let buffIcon = '✨'; // default
+            if (buff.effects?.claim_boost) buffIcon = '💎';
+            if (buff.effects?.range_boost) buffIcon = '📡';
+            
+            buffsHtml += `<div style="background: rgba(245,158,11,0.2); padding: 4px 8px; border-radius: 4px; font-size: 11px; white-space: nowrap;">${buffIcon} ${remaining}m</div>`;
+        }
+    }
+    
+    buffsDisplay.innerHTML = buffsHtml;
+}
+
+// Periodically update buff display (every 10 seconds)
+setInterval(() => {
+    updateActivBuffsDisplay();
+}, 10000);
 
 function changeVolume() {
     const slider = document.getElementById('setting-volume-slider');
