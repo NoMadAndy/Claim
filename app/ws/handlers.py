@@ -118,8 +118,15 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
             print(f"[{datetime.now().isoformat()}] User {user.username} disconnected")
         
         except Exception as e:
-            print(f"[{datetime.now().isoformat()}] WebSocket error for user {user.username}: {e}")
-            manager.disconnect(websocket, user.id)
+            # Log the actual error message instead of just "Unknown error"
+            error_msg = str(e) if str(e) else type(e).__name__
+            print(f"[{datetime.now().isoformat()}] WebSocket error for user {user.username}: {error_msg}")
+            logger_ws = __import__('logging').getLogger(__name__)
+            logger_ws.error(f"WebSocket error for {user.username}: {error_msg}", exc_info=True)
+            try:
+                manager.disconnect(websocket, user.id)
+            except:
+                pass  # Already disconnected
     
     finally:
         # Close DB session

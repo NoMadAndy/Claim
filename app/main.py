@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 import os
 from datetime import datetime
 import logging
+import shutil
 
 from app.database import get_db
 from app.routers import auth, spots, logs, claims, tracks, items, loot
@@ -97,17 +98,32 @@ async def client_log(payload: dict = Body(...)):
         # Print to stdout (what you see in server terminal)
         print(f"CLIENTLOG [{level}] {msg}")
         
-        # Also write to file for easy access
+        # Also write to file for easy access (with better error handling)
         try:
             log_dir = os.path.join(os.path.dirname(__file__), "..", "logs")
             os.makedirs(log_dir, exist_ok=True)
             log_file = os.path.join(log_dir, "client-debug.log")
+            
+            # Check if file exists and is getting too large (>10MB), rotate it
+            if os.path.exists(log_file):
+                if os.path.getsize(log_file) > 10 * 1024 * 1024:  # 10MB
+                    # Rotate the file
+                    import shutil
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    backup_file = f"{log_file}.{timestamp}"
+                    shutil.move(log_file, backup_file)
+                    logger.info(f"Rotated log file to {backup_file}")
+            
             with open(log_file, "a", encoding="utf-8") as f:
                 timestamp = datetime.now().isoformat()
                 f.write(f"[{timestamp}] [{level}] {msg}\n")
                 f.flush()
+        except PermissionError as e:
+            logger.error(f"Permission denied writing log file: {e}")
+            # Don't crash on permission errors - just log to stdout
         except Exception as e:
-            print(f"ERROR writing log file: {e}")
+            logger.error(f"ERROR writing log file: {e}")
+            # Continue even if logging fails
     return {"ok": True}
 
 
@@ -121,6 +137,15 @@ async def connection_diagnostics(payload: dict = Body(...)):
         log_dir = os.path.join(os.path.dirname(__file__), "..", "logs")
         os.makedirs(log_dir, exist_ok=True)
         log_file = os.path.join(log_dir, "connection-diagnostics.log")
+        
+        # Check if file is getting too large (>50MB), rotate it
+        if os.path.exists(log_file):
+            if os.path.getsize(log_file) > 50 * 1024 * 1024:  # 50MB
+                # Rotate the file
+                dt = datetime.now().strftime("%Y%m%d_%H%M%S")
+                backup_file = f"{log_file}.{dt}"
+                shutil.move(log_file, backup_file)
+                logger.info(f"Rotated diagnostics log to {backup_file}")
         
         with open(log_file, "a", encoding="utf-8") as f:
             f.write(f"\n{'='*80}\n")
@@ -154,6 +179,8 @@ async def connection_diagnostics(payload: dict = Body(...)):
         
         logger.info(f"Received connection diagnostics from {payload.get('clientInfo', {}).get('user', 'unknown')}")
         
+    except PermissionError as e:
+        logger.error(f"Permission denied writing diagnostics: {e}")
     except Exception as e:
         logger.error(f"ERROR writing diagnostics: {e}")
     
