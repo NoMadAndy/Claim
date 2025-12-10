@@ -821,15 +821,6 @@ function setupEventListeners() {
         logoutBtn.addEventListener('click', handleLogout);
     }
     
-    // Admin button
-    const adminBtn = document.getElementById('btn-admin');
-    if (adminBtn && currentUser && currentUser.role === 'admin') {
-        adminBtn.style.display = 'block';
-        adminBtn.addEventListener('click', () => {
-            window.location.href = '/admin.html';
-        });
-    }
-    
     // Action buttons
     document.getElementById('btn-tracking')?.addEventListener('click', toggleTracking);
     document.getElementById('btn-follow')?.addEventListener('click', toggleFollow);
@@ -1030,6 +1021,15 @@ async function initializeApp() {
         const logoutBtn = document.getElementById('btn-logout');
         if (logoutBtn && currentUser.username) {
             logoutBtn.textContent = `Logout (${currentUser.username})`;
+        }
+        
+        // Show admin button if user is admin
+        const adminBtn = document.getElementById('btn-admin');
+        if (adminBtn && currentUser && currentUser.role === 'admin') {
+            adminBtn.style.display = 'block';
+            adminBtn.addEventListener('click', () => {
+                window.location.href = '/admin.html';
+            });
         }
         
         // Hide Create Spot button for travellers
