@@ -1,5 +1,13 @@
 # Changelog
 
+## 2025-12-10 20:03:43
+**Files:** 4fileschanged,0insertions(+),0deletions(-)
+**Modified:**
+- `app/__pycache__/models.cpython-312.pyc`
+- `app/__pycache__/schemas.cpython-312.pyc`
+- `app/services/__pycache__/auth_service.cpython-312.pyc`
+- `app/services/__pycache__/claim_service.cpython-312.pyc`
+
 ## 2025-12-10 19:53:23
 **Files:** 3fileschanged,0insertions(+),0deletions(-)
 **Modified:**
