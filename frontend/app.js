@@ -2033,6 +2033,14 @@ async function performAutoLog(spotId) {
             // Set cooldown for 5 minutes to prevent repeated requests
             autoLogCooldownUntil = now + (5 * 60 * 1000);
             if (window.debugLog) window.debugLog(`⚠️ Rate limited (429) - cooldown 5m`);
+            soundManager.playSound('error');
+            return;
+        }
+        
+        // Check for other errors
+        if (response.status && response.status >= 400) {
+            if (window.debugLog) window.debugLog(`❌ AutoLog failed with status ${response.status}`);
+            soundManager.playSound('error');
             return;
         }
         
@@ -2052,6 +2060,10 @@ async function performAutoLog(spotId) {
         
         // Update heatmap after autolog
         updateClaimHeatmap();
+    } catch (error) {
+        // Handle unexpected errors
+        if (window.debugLog) window.debugLog(`❌ AutoLog error: ${error.message}`);
+        soundManager.playSound('error');
     } finally {
         // Always remove from being logged set
         spotsBeingLogged.delete(spotId);
@@ -2205,6 +2217,8 @@ async function submitLog(spotId, notes, photoFile) {
                 'warning'
             );
         } else {
+            // Play error sound for all other errors
+            soundManager.playSound('error');
             // Remove "API Error: " prefix for cleaner display
             let message = error.detail || error.message || 'Failed to log spot';
             if (message.startsWith('API Error: ')) {
