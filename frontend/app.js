@@ -15,16 +15,21 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     return R * c;
 }
 
-// Utility function: Convert hex color to RGBA format for heatmap gradients
-function hexToRgb(hex, alpha = 1) {
+// Utility function: Lighten a hex color by a percentage (0-1)
+function lightenHexColor(hex, percent = 0.5) {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    if (!result) return `rgba(0, 0, 0, ${alpha})`;
+    if (!result) return '#ffffff';
     
-    const r = parseInt(result[1], 16);
-    const g = parseInt(result[2], 16);
-    const b = parseInt(result[3], 16);
+    let r = parseInt(result[1], 16);
+    let g = parseInt(result[2], 16);
+    let b = parseInt(result[3], 16);
     
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    // Lighten by moving towards white
+    r = Math.round(r + (255 - r) * percent);
+    g = Math.round(g + (255 - g) * percent);
+    b = Math.round(b + (255 - b) * percent);
+    
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
 // Auto-log cooldown tracking to prevent spam in console
@@ -2792,9 +2797,9 @@ async function loadHeatmap() {
                         // Create a gradient from the player's color
                         colorConfig = {
                             gradient: {
-                                0.0: '#ffffff',
-                                0.25: hexToRgb(heatmap.color, 0.2),
-                                0.55: hexToRgb(heatmap.color, 0.6),
+                                0.0: lightenHexColor(heatmap.color, 0.8),
+                                0.25: lightenHexColor(heatmap.color, 0.5),
+                                0.55: lightenHexColor(heatmap.color, 0.2),
                                 1.0: heatmap.color
                             }
                         };
