@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claim Admin Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            color: #667eea;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+
+        .user-info {
+            text-align: right;
+        }
+
+        .user-info p {
+            color: #666;
+            margin: 5px 0;
+        }
+
+        .logout-btn {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .logout-btn:hover {
+            background: #ff5252;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+            border-left: 4px solid;
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-card.users { border-left-color: #667eea; }
+        .stat-card.spots { border-left-color: #764ba2; }
+        .stat-card.logs { border-left-color: #f093fb; }
+        .stat-card.claims { border-left-color: #4facfe; }
+
+        .stat-card h3 {
+            color: #999;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            background: white;
+            padding: 10px;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: 2px solid #ddd;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            color: #666;
+        }
+
+        .tab-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: transparent;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            animation: fadeIn 0.3s;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #f5f5f5;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        tr:hover {
+            background: #fafafa;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .badge.admin { background: #ffd93d; color: #333; }
+        .badge.creator { background: #6bcf7f; color: white; }
+        .badge.traveller { background: #4facfe; color: white; }
+        .badge.active { background: #6bcf7f; color: white; }
+        .badge.inactive { background: #ff6b6b; color: white; }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #ff5252;
+        }
+
+        .btn-success {
+            background: #6bcf7f;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #5ab66a;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .setting-card {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .setting-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1em;
+        }
+
+        .setting-card p {
+            color: #999;
+            font-size: 0.85em;
+            margin-bottom: 15px;
+        }
+
+        .setting-card input {
+            margin-bottom: 10px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .pagination {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .pagination button {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            background: white;
+            color: #667eea;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .pagination button:hover {
+            border-color: #667eea;
+            background: #f5f7ff;
+        }
+
+        .pagination button.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            table {
+                font-size: 0.9em;
+            }
+
+            th, td {
+                padding: 10px;
+            }
+
+            .tabs {
+                flex-direction: column;
+            }
+
+            .tab-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>
+                <div class="header-icon">⚙️</div>
+                <div>Claim Admin Dashboard</div>
+            </h1>
+            <div class="user-info">
+                <p id="user-display">Loading...</p>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card users">
+                <h3>Users</h3>
+                <div class="value" id="stat-users">-</div>
+            </div>
+            <div class="stat-card spots">
+                <h3>Spots</h3>
+                <div class="value" id="stat-spots">-</div>
+            </div>
+            <div class="stat-card logs">
+                <h3>Logs</h3>
+                <div class="value" id="stat-logs">-</div>
+            </div>
+            <div class="stat-card claims">
+                <h3>Claim Points</h3>
+                <div class="value" id="stat-claims">-</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('settings')">⚙️ Settings</button>
+            <button class="tab-btn" onclick="switchTab('users')">👥 Users</button>
+            <button class="tab-btn" onclick="switchTab('spots')">📍 Spots</button>
+            <button class="tab-btn" onclick="switchTab('logs')">📝 Logs</button>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings" class="tab-content active">
+            <h2 style="margin-bottom: 20px; color: #333;">Game Settings</h2>
+            <div id="settingsContainer" class="settings-grid">
+                <div class="loading"></div>
+            </div>
+        </div>
+
+        <!-- Users Tab -->
+        <div id="users" class="tab-content">
+            <h2 style="margin-bottom: 20px; color: #333;">User Management</h2>
+            <button class="btn btn-primary" style="margin-bottom: 20px;" onclick="refreshUsers()">🔄 Refresh</button>
+            <div id="usersContainer" class="table-container">
+                <div class="loading"></div>
+            </div>
+        </div>
+
+        <!-- Spots Tab -->
+        <div id="spots" class="tab-content">
+            <h2 style="margin-bottom: 20px; color: #333;">Spot Management</h2>
+            <button class="btn btn-primary" style="margin-bottom: 20px;" onclick="openCreateSpotModal()">➕ Create Spot</button>
+            <div id="spotsContainer" class="table-container">
+                <div class="loading"></div>
+            </div>
+        </div>
+
+        <!-- Logs Tab -->
+        <div id="logs" class="tab-content">
+            <h2 style="margin-bottom: 20px; color: #333;">Recent Logs</h2>
+            <button class="btn btn-primary" style="margin-bottom: 20px;" onclick="refreshLogs()">🔄 Refresh</button>
+            <div id="logsContainer" class="table-container">
+                <div class="loading"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Spot Modal -->
+    <div id="spotModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('spotModal')">×</button>
+            <div class="modal-header">Create New Spot</div>
+            <form onsubmit="createSpot(event)">
+                <div class="form-group">
+                    <label>Name *</label>
+                    <input type="text" id="spotName" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="spotDescription" rows="3"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Latitude *</label>
+                        <input type="number" id="spotLat" step="0.0001" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Longitude *</label>
+                        <input type="number" id="spotLon" step="0.0001" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Type</label>
+                        <select id="spotType">
+                            <option value="permanent">Permanent</option>
+                            <option value="loot">Loot</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>XP Reward</label>
+                        <input type="number" id="spotXP" value="10" min="0">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 20px;">Create Spot</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api';
+        let authToken = localStorage.getItem('claim_token');
+
+        if (!authToken) {
+            window.location.href = '/';
+        }
+
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+
+            // Load tab data
+            if (tabName === 'users') loadUsers();
+            if (tabName === 'spots') loadSpots();
+            if (tabName === 'logs') loadLogs();
+            if (tabName === 'settings') loadSettings();
+        }
+
+        async function apiRequest(endpoint, method = 'GET', body = null) {
+            const options = {
+                method,
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json',
+                }
+            };
+
+            if (body) {
+                options.body = JSON.stringify(body);
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`, options);
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        showAlert('You do not have admin access', 'error');
+                        setTimeout(() => window.location.href = '/', 2000);
+                        return null;
+                    }
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                showAlert(`Request failed: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        async function loadStats() {
+            const data = await apiRequest('/admin/stats');
+            if (data) {
+                document.getElementById('stat-users').textContent = data.users.total;
+                document.getElementById('stat-spots').textContent = data.spots.total;
+                document.getElementById('stat-logs').textContent = data.logs.total;
+                document.getElementById('stat-claims').textContent = data.claims.total_points;
+            }
+        }
+
+        async function loadSettings() {
+            const data = await apiRequest('/admin/settings');
+            if (data) {
+                const container = document.getElementById('settingsContainer');
+                container.innerHTML = '';
+
+                for (const [name, setting] of Object.entries(data.settings)) {
+                    const card = document.createElement('div');
+                    card.className = 'setting-card';
+                    
+                    let inputHTML = '';
+                    if (setting.type === 'bool') {
+                        inputHTML = `<select id="setting-${name}" onchange="saveSetting('${name}')">
+                            <option value="true" ${setting.value ? 'selected' : ''}>Enabled</option>
+                            <option value="false" ${!setting.value ? 'selected' : ''}>Disabled</option>
+                        </select>`;
+                    } else {
+                        inputHTML = `<input type="${setting.type === 'int' || setting.type === 'float' ? 'number' : 'text'}" 
+                            id="setting-${name}" value="${setting.value}" 
+                            ${setting.type === 'float' ? 'step="0.1"' : ''} 
+                            onchange="saveSetting('${name}')">`;
+                    }
+
+                    card.innerHTML = `
+                        <h3>${name.replace(/_/g, ' ')}</h3>
+                        <p>${setting.description || ''}</p>
+                        ${inputHTML}
+                    `;
+                    container.appendChild(card);
+                }
+            }
+        }
+
+        async function saveSetting(name) {
+            const input = document.getElementById(`setting-${name}`);
+            const value = input.value;
+            
+            const result = await apiRequest(`/admin/settings/${name}`, 'PUT', { value });
+            if (result && result.success) {
+                showAlert(`Setting "${name}" updated!`, 'success');
+            }
+        }
+
+        async function loadUsers() {
+            const data = await apiRequest('/admin/users');
+            if (data) {
+                const container = document.getElementById('usersContainer');
+                container.innerHTML = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Level</th>
+                                <th>XP</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.users.map(user => `
+                                <tr>
+                                    <td>${user.id}</td>
+                                    <td>${user.username}</td>
+                                    <td>${user.email}</td>
+                                    <td>
+                                        <select onchange="changeUserRole(${user.id}, this.value)">
+                                            <option value="traveller" ${user.role === 'traveller' ? 'selected' : ''}>Traveller</option>
+                                            <option value="creator" ${user.role === 'creator' ? 'selected' : ''}>Creator</option>
+                                            <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                                        </select>
+                                    </td>
+                                    <td>${user.level}</td>
+                                    <td>${user.xp}</td>
+                                    <td><span class="badge ${user.is_active ? 'active' : 'inactive'}">${user.is_active ? 'Active' : 'Inactive'}</span></td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <button class="btn btn-primary" onclick="toggleUserActive(${user.id})">
+                                                ${user.is_active ? '🔒 Disable' : '🔓 Enable'}
+                                            </button>
+                                            <button class="btn btn-danger" onclick="deleteUser(${user.id})">🗑️ Delete</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            }
+        }
+
+        async function loadSpots() {
+            const data = await apiRequest('/admin/spots');
+            if (data) {
+                const container = document.getElementById('spotsContainer');
+                container.innerHTML = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>XP</th>
+                                <th>Active</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.spots.map(spot => `
+                                <tr>
+                                    <td>${spot.id}</td>
+                                    <td>${spot.name}</td>
+                                    <td><span class="badge">${spot.spot_type}</span></td>
+                                    <td>${spot.xp_reward}</td>
+                                    <td><span class="badge ${spot.is_active ? 'active' : 'inactive'}">${spot.is_active ? 'Yes' : 'No'}</span></td>
+                                    <td>
+                                        <button class="btn btn-danger" onclick="deleteSpot(${spot.id})">🗑️ Delete</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            }
+        }
+
+        async function loadLogs() {
+            const data = await apiRequest('/admin/logs');
+            if (data) {
+                const container = document.getElementById('logsContainer');
+                container.innerHTML = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>User</th>
+                                <th>Spot</th>
+                                <th>XP</th>
+                                <th>Type</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.logs.map(log => `
+                                <tr>
+                                    <td>${log.id}</td>
+                                    <td>${log.user}</td>
+                                    <td>${log.spot}</td>
+                                    <td>${log.xp_gained}</td>
+                                    <td><span class="badge">${log.log_type}</span></td>
+                                    <td>${new Date(log.timestamp).toLocaleString()}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            }
+        }
+
+        async function changeUserRole(userId, newRole) {
+            const result = await apiRequest(`/admin/users/${userId}/role`, 'PUT', { role: newRole });
+            if (result && result.success) {
+                showAlert('User role updated!', 'success');
+            }
+        }
+
+        async function toggleUserActive(userId) {
+            const result = await apiRequest(`/admin/users/${userId}/toggle-active`, 'PUT');
+            if (result && result.success) {
+                showAlert('User status updated!', 'success');
+                loadUsers();
+            }
+        }
+
+        async function deleteUser(userId) {
+            if (confirm('Are you sure you want to delete this user? This cannot be undone!')) {
+                const result = await apiRequest(`/admin/users/${userId}`, 'DELETE');
+                if (result && result.success) {
+                    showAlert('User deleted!', 'success');
+                    loadUsers();
+                }
+            }
+        }
+
+        async function deleteSpot(spotId) {
+            if (confirm('Are you sure you want to delete this spot?')) {
+                const result = await apiRequest(`/admin/spots/${spotId}`, 'DELETE');
+                if (result && result.success) {
+                    showAlert('Spot deleted!', 'success');
+                    loadSpots();
+                }
+            }
+        }
+
+        function openCreateSpotModal() {
+            document.getElementById('spotModal').classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        async function createSpot(event) {
+            event.preventDefault();
+            
+            const spotData = {
+                name: document.getElementById('spotName').value,
+                description: document.getElementById('spotDescription').value,
+                latitude: parseFloat(document.getElementById('spotLat').value),
+                longitude: parseFloat(document.getElementById('spotLon').value),
+                spot_type: document.getElementById('spotType').value,
+                xp_reward: parseInt(document.getElementById('spotXP').value),
+            };
+
+            const result = await apiRequest('/admin/spots', 'POST', spotData);
+            if (result && result.success) {
+                showAlert('Spot created successfully!', 'success');
+                closeModal('spotModal');
+                loadSpots();
+                event.target.reset();
+            }
+        }
+
+        function refreshUsers() { loadUsers(); }
+        function refreshLogs() { loadLogs(); }
+
+        function showAlert(message, type = 'success') {
+            const alert = document.createElement('div');
+            alert.className = `alert ${type}`;
+            alert.textContent = message;
+            document.querySelector('.container').prepend(alert);
+            setTimeout(() => alert.remove(), 5000);
+        }
+
+        function logout() {
+            localStorage.removeItem('claim_token');
+            window.location.href = '/';
+        }
+
+        // Load user info and initial data
+        async function init() {
+            const userStr = localStorage.getItem('claim_user');
+            if (userStr) {
+                const user = JSON.parse(userStr);
+                document.getElementById('user-display').textContent = `${user.username} (${user.role})`;
+            }
+            
+            loadStats();
+            loadSettings();
+        }
+
+        init();
+    </script>
+</body>
+</html>

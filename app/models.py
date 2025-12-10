@@ -204,6 +204,28 @@ class InventoryItem(Base):
     item = relationship("Item", back_populates="inventory_items")
 
 
+class GameSetting(Base):
+    """Global game settings for admin panel"""
+    __tablename__ = "game_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    setting_name = Column(String(100), unique=True, index=True, nullable=False)
+    setting_value = Column(Text)  # JSON or string value
+    data_type = Column(String(20))  # "int", "float", "bool", "string", "json"
+    description = Column(Text, nullable=True)
+    updated_at = Column(DateTime, default=get_cet_now, onupdate=get_cet_now)
+    
+    # Default settings examples:
+    # auto_log_distance: 20 (meters)
+    # manual_log_distance: 100 (meters)
+    # log_cooldown: 300 (seconds)
+    # xp_per_log: 10
+    # claim_points_per_log: 5
+    # loot_spawn_rate: 0.3
+    # loot_spawn_radius_min: 20
+    # loot_spawn_radius_max: 150
+
+
 # Create tables function
 def init_db():
     """Initialize database with PostGIS extension and create all tables"""

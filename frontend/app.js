@@ -821,6 +821,15 @@ function setupEventListeners() {
         logoutBtn.addEventListener('click', handleLogout);
     }
     
+    // Admin button
+    const adminBtn = document.getElementById('btn-admin');
+    if (adminBtn && currentUser && currentUser.role === 'admin') {
+        adminBtn.style.display = 'block';
+        adminBtn.addEventListener('click', () => {
+            window.location.href = '/admin.html';
+        });
+    }
+    
     // Action buttons
     document.getElementById('btn-tracking')?.addEventListener('click', toggleTracking);
     document.getElementById('btn-follow')?.addEventListener('click', toggleFollow);
