@@ -2,7 +2,6 @@ from fastapi import FastAPI, Request, Depends, WebSocket
 from fastapi import Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response, JSONResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
 import os
@@ -80,7 +79,7 @@ async def reverse_proxy_middleware(request: Request, call_next):
     return response
 
 
-# Include routers (before static files mount so /api/* routes are matched first)
+# Include routers
 app.include_router(auth.router)
 app.include_router(spots.router)
 app.include_router(logs.router)
@@ -89,14 +88,6 @@ app.include_router(tracks.router)
 app.include_router(items.router)
 app.include_router(loot.router)
 app.include_router(admin.router)
-
-
-# Serve static frontend files (after routers so /* doesn't shadow /api/*)
-FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "../frontend")
-if os.path.exists(FRONTEND_DIR):
-    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
-else:
-    logger.warning(f"Frontend directory not found: {FRONTEND_DIR}")
 
 
 # Lightweight client log sink for debugging (stdout only, no auth)
