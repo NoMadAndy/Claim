@@ -581,6 +581,7 @@ let currentLevel = 0; // Track for level-up detection
 let activeHeatmaps = new Set(); // Track which player heatmaps are visible
 let activeBufFs = new Map(); // Track active buffs: Map<itemId, {name, effects, expiresAt}>
 let heatmapLayers = new Map(); // Map of userId -> heatmapLayer
+let isPopupOpen = false; // Track if a popup is currently open
 
 // Map markers storage
 const spotMarkers = new Map();
@@ -1914,6 +1915,17 @@ async function loadNearbySpots() {
                 keepInView: true
             });
             
+            // Track popup state
+            marker.on('popupopen', () => {
+                isPopupOpen = true;
+                if (window.debugLog) window.debugLog('📍 Popup opened - pausing heatmap updates');
+            });
+            
+            marker.on('popupclose', () => {
+                isPopupOpen = false;
+                if (window.debugLog) window.debugLog('📍 Popup closed - resuming heatmap updates');
+            });
+            
             spotMarkers.set(spot.id, marker);
         });
         
@@ -2776,6 +2788,11 @@ async function toggleHeatmap() {
             clearInterval(heatmapUpdateInterval);
         }
         heatmapUpdateInterval = setInterval(async () => {
+            // Skip heatmap update if a popup is open
+            if (isPopupOpen) {
+                if (window.debugLog) window.debugLog('⏭️ Skipping heatmap update (popup open)');
+                return;
+            }
             if (heatmapVisible) {
                 await loadHeatmap();
                 if (window.debugLog) window.debugLog('🔥 Heatmap aktualisiert');
