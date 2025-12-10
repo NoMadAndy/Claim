@@ -7,7 +7,7 @@ set -uo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SYNC_SCRIPT="$PROJECT_ROOT/tools/auto_sync.sh"
 LOG_FILE="$PROJECT_ROOT/.git-watch.log"
-INTERVAL="${1:=10}"  # Default: check every 10 seconds
+INTERVAL="${1:-10}"  # Default: check every 10 seconds
 
 if [[ ! -f "$SYNC_SCRIPT" ]]; then
   echo "[error] auto_sync.sh not found at $SYNC_SCRIPT"
