@@ -11,6 +11,10 @@
 
 set -e
 
+# Force unbuffered output for real-time logging
+export PYTHONUNBUFFERED=1
+export BASH_XTRACEFD=1
+
 # Parse arguments
 WATCH_MODE=false
 INTERVAL=0

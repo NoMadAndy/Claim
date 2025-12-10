@@ -4,6 +4,10 @@
 
 set -uo pipefail
 
+# Force unbuffered output
+export PYTHONUNBUFFERED=1
+export BASH_XTRACEFD=1
+
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SYNC_SCRIPT="$PROJECT_ROOT/tools/auto_sync.sh"
 LOG_FILE="$PROJECT_ROOT/.git-watch.log"
@@ -19,7 +23,10 @@ log_msg() {
   shift
   local msg="$*"
   local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-  echo "[$timestamp] [$level] $msg" | tee -a "$LOG_FILE"
+  # Print to both stdout and log file immediately with unbuffered output
+  printf "[$timestamp] [$level] $msg\n" | tee -a "$LOG_FILE"
+  # Flush stdout
+  fflush stdout 2>/dev/null || true
 }
 
 cd "$PROJECT_ROOT"
@@ -63,7 +70,14 @@ while true; do
       else
         # origin/branch is NOT an ancestor of HEAD = we're behind
         log_msg "INFO" "⬇️  Local is behind remote, pulling..."
-        if git pull origin "$CURRENT_BRANCH" 2>&1 | tee -a "$LOG_FILE"; then
+        # Run git pull with unbuffered output, showing immediately
+        {
+          git pull origin "$CURRENT_BRANCH" 2>&1
+        } | while IFS= read -r line; do
+          printf "%s\n" "$line" | tee -a "$LOG_FILE"
+        done
+        
+        if [[ ${PIPESTATUS[0]} -eq 0 ]]; then
           log_msg "SUCCESS" "✓ Remote changes pulled successfully"
           local_commit=$(git rev-parse HEAD)
         else
@@ -78,7 +92,14 @@ while true; do
     if ! git diff-index --quiet HEAD -- 2>/dev/null; then
       log_msg "INFO" "💾 Local changes detected"
       log_msg "INFO" "🔄 Running auto_sync..."
-      if bash "$SYNC_SCRIPT" >> "$LOG_FILE" 2>&1; then
+      # Run sync script with unbuffered output
+      {
+        bash "$SYNC_SCRIPT" 2>&1
+      } | while IFS= read -r line; do
+        printf "%s\n" "$line" | tee -a "$LOG_FILE"
+      done
+      
+      if [[ ${PIPESTATUS[0]} -eq 0 ]]; then
         log_msg "SUCCESS" "✓ Local sync completed"
         local_commit=$(git rev-parse HEAD)
       else
