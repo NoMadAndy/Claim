@@ -27,22 +27,50 @@ class ConnectionManager:
     async def send_personal_message(self, message: dict, user_id: int):
         """Send message to specific user"""
         if user_id in self.active_connections:
-            for connection in self.active_connections[user_id]:
+            disconnected = []
+            for connection in list(self.active_connections[user_id]):
                 try:
-                    await connection.send_json(message)
+                    # Check if connection is still open before sending
+                    if connection.client_state.name != 'DISCONNECTED' and connection.application_state.name != 'DISCONNECTED':
+                        await connection.send_json(message)
+                except RuntimeError as e:
+                    # Connection already closed - mark for removal
+                    if "close" in str(e).lower() or "disconnected" in str(e).lower():
+                        disconnected.append(connection)
+                    else:
+                        print(f"Runtime error sending to user {user_id}: {e}")
                 except Exception as e:
                     print(f"Error sending message to user {user_id}: {e}")
+                    disconnected.append(connection)
+            
+            # Clean up disconnected connections
+            for conn in disconnected:
+                self.active_connections[user_id].discard(conn)
     
     async def broadcast(self, message: dict, exclude_user: int = None):
         """Broadcast message to all connected users"""
-        for user_id, connections in self.active_connections.items():
+        for user_id, connections in list(self.active_connections.items()):
             if exclude_user and user_id == exclude_user:
                 continue
-            for connection in connections:
+            disconnected = []
+            for connection in list(connections):
                 try:
-                    await connection.send_json(message)
+                    # Check if connection is still open before sending
+                    if connection.client_state.name != 'DISCONNECTED' and connection.application_state.name != 'DISCONNECTED':
+                        await connection.send_json(message)
+                except RuntimeError as e:
+                    # Connection already closed
+                    if "close" in str(e).lower() or "disconnected" in str(e).lower():
+                        disconnected.append(connection)
+                    else:
+                        print(f"Runtime error broadcasting to user {user_id}: {e}")
                 except Exception as e:
-                    print(f"Error broadcasting to user {user_id}: {e}")
+                    # Silently ignore connection errors - this is normal
+                    disconnected.append(connection)
+            
+            # Clean up disconnected connections
+            for conn in disconnected:
+                connections.discard(conn)
     
     async def broadcast_position(
         self,

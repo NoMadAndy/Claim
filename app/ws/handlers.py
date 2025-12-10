@@ -110,7 +110,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                 
                 except asyncio.TimeoutError:
                     # Timeout waiting for message - connection might be dead
-                    print(f"[{datetime.now().isoformat()}] WebSocket timeout for {user.username}")
+                    print(f"[{datetime.now().isoformat()}] WebSocket timeout for {user.username} (no data in {heartbeat_interval + 10}s)")
                     break
         
         except WebSocketDisconnect:

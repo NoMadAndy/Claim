@@ -122,11 +122,12 @@ fi
 
 # Run migrations/init (handled in app.lifespan via init_db)
 
-# Start server
+# Start server with unbuffered output (important for VS Code console!)
+export PYTHONUNBUFFERED=1
 UVICORN_CMD=(uvicorn app.main:app --host "$HOST" --port "$PORT" --workers "$WORKERS")
 if [[ "$RELOAD" == "true" ]]; then
   UVICORN_CMD+=(--reload)
 fi
 
-echo "[info] Starting uvicorn..."
+echo "[info] Starting uvicorn with unbuffered output..."
 exec "${UVICORN_CMD[@]}"
