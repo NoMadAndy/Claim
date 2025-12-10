@@ -1,7 +1,8 @@
 from fastapi import FastAPI, Request, Depends, WebSocket
 from fastapi import Body
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, Response, JSONResponse
+from fastapi.responses import HTMLResponse, Response, JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
 import os
@@ -59,6 +60,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Serve static frontend files
+FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "../frontend")
+if os.path.exists(FRONTEND_DIR):
+    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+else:
+    logger.warning(f"Frontend directory not found: {FRONTEND_DIR}")
 
 
 # Middleware for reverse proxy support
