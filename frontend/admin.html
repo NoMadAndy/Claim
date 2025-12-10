@@ -954,7 +954,7 @@
         }
 
         async function loadUsers() {
-            const data = await apiRequest('/admin/users?limit=1000');
+            const data = await apiRequest('/admin/users');
             if (data) {
                 cachedUsers = data.users;
                 renderUsers(cachedUsers);
@@ -1037,7 +1037,7 @@
         }
 
         async function loadSpots() {
-            const data = await apiRequest('/admin/spots?limit=1000');
+            const data = await apiRequest('/admin/spots');
             if (data) {
                 cachedSpots = data.spots;
                 renderSpots(cachedSpots);
@@ -1115,7 +1115,7 @@
         }
 
         async function loadLogs() {
-            const data = await apiRequest('/admin/logs?limit=1000');
+            const data = await apiRequest('/admin/logs');
             if (data) {
                 cachedLogs = data.logs;
                 renderLogs(cachedLogs);
