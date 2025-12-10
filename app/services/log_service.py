@@ -5,7 +5,7 @@ from sqlalchemy import func
 from geoalchemy2.functions import ST_Distance, ST_SetSRID, ST_MakePoint
 from geoalchemy2.elements import WKTElement
 from geoalchemy2.types import Geography
-from app.models import Log, Spot, User, Claim
+from app.models import Log, Spot, User, Claim, GameSetting
 from app.schemas import LogCreate
 from app.config import settings
 import pytz
@@ -18,6 +18,24 @@ def get_current_cet():
     return datetime.now(CET).replace(tzinfo=None)
 from app.services.auth_service import update_user_xp
 
+def get_game_setting(db: Session, setting_name: str, default_value: float) -> float:
+    """Get a game setting from database with fallback to default"""
+    setting = db.query(GameSetting).filter(
+        GameSetting.setting_name == setting_name
+    ).first()
+    
+    if not setting:
+        return default_value
+    
+    try:
+        if setting.data_type == "int":
+            return float(int(setting.setting_value))
+        elif setting.data_type == "float":
+            return float(setting.setting_value)
+        else:
+            return float(setting.setting_value)
+    except (ValueError, TypeError):
+        return default_value
 
 def create_log(
     db: Session,
@@ -40,8 +58,10 @@ def create_log(
         )
     ).scalar()
     
-    # Check distance constraints
-    max_distance = settings.AUTO_LOG_DISTANCE if is_auto else settings.MANUAL_LOG_DISTANCE
+    # Check distance constraints - get from database with fallback to config defaults
+    auto_log_distance = get_game_setting(db, "auto_log_distance", settings.AUTO_LOG_DISTANCE)
+    manual_log_distance = get_game_setting(db, "manual_log_distance", settings.MANUAL_LOG_DISTANCE)
+    max_distance = auto_log_distance if is_auto else manual_log_distance
     if distance > max_distance:
         return None
     
