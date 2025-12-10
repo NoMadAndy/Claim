@@ -18,6 +18,25 @@ def migrate():
         print("Current logs table columns:", logs_columns)
         print("Current users table columns:", users_columns)
         
+        # Check if game_settings table exists
+        tables = inspector.get_table_names()
+        if 'game_settings' not in tables:
+            print("Creating game_settings table...")
+            conn.execute(text("""
+                CREATE TABLE game_settings (
+                    id SERIAL PRIMARY KEY,
+                    setting_name VARCHAR(100) UNIQUE NOT NULL,
+                    setting_value TEXT,
+                    data_type VARCHAR(20),
+                    description TEXT,
+                    updated_at TIMESTAMP DEFAULT NOW()
+                )
+            """))
+            conn.commit()
+            print("✓ game_settings table created")
+        else:
+            print("✓ game_settings table already exists")
+        
         # Check if columns exist in logs
         if 'photo_data' not in logs_columns:
             print("Adding photo_data column...")

@@ -28,6 +28,7 @@ class User(Base):
     email = Column(String(100), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     role = Column(SQLEnum(UserRole), default=UserRole.TRAVELLER, nullable=False)
+    is_active = Column(Boolean, default=True)
     
     # Game Stats
     level = Column(Integer, default=1)
@@ -59,6 +60,7 @@ class Spot(Base):
     # Spot Type
     is_permanent = Column(Boolean, default=True)
     is_loot = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # For loot spots
     
     # Creator Info
