@@ -989,7 +989,13 @@
                                 <td>${user.id}</td>
                                 <td>${user.username}</td>
                                 <td>${user.email}</td>
-                                <td><span class="badge ${user.role}">${user.role}</span></td>
+                                <td>
+                                    <select class="role-select" onchange="changeUserRole(${user.id}, this.value)" style="padding: 6px; border-radius: 4px; border: 1px solid #ddd; cursor: pointer;">
+                                        <option value="traveller" ${user.role === 'traveller' ? 'selected' : ''}>Traveller</option>
+                                        <option value="creator" ${user.role === 'creator' ? 'selected' : ''}>Creator</option>
+                                        <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                                    </select>
+                                </td>
                                 <td>${user.level}</td>
                                 <td>${user.xp}</td>
                                 <td><span class="badge ${user.is_active ? 'active' : 'inactive'}">${user.is_active ? 'Aktiv' : 'Inaktiv'}</span></td>
@@ -1190,6 +1196,17 @@
             const result = await apiRequest(`/admin/users/${userId}/toggle-active`, 'PUT');
             if (result && result.success) {
                 showAlert('Benutzerstatus aktualisiert!', 'success');
+                loadUsers();
+            }
+        }
+
+        async function changeUserRole(userId, newRole) {
+            const result = await apiRequest(`/admin/users/${userId}/role`, 'PUT', { role: newRole });
+            if (result && result.success) {
+                showAlert(`Benutzer-Rolle zu "${newRole}" geändert!`, 'success');
+                loadUsers();
+            } else {
+                showAlert('Fehler beim Ändern der Rolle', 'error');
                 loadUsers();
             }
         }
