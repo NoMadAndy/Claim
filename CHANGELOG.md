@@ -1,5 +1,10 @@
 # Changelog
 
+## 2025-12-10 21:47:26
+**Files:** 1filechanged,15deletions(-)
+**Modified:**
+- `.env.example`
+
 ## 2025-12-10 21:18:36
 **Files:** 1filechanged,0insertions(+),0deletions(-)
 **Modified:**
