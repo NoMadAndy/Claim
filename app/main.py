@@ -258,6 +258,19 @@ async def serve_js():
             return response
     return Response(content="/* JS not found */", media_type="application/javascript", status_code=404)
 
+@app.get("/admin.html")
+async def serve_admin():
+    """Serve admin dashboard"""
+    admin_path = os.path.join(frontend_path, "admin.html")
+    if os.path.exists(admin_path):
+        with open(admin_path, "r", encoding="utf-8") as f:
+            response = HTMLResponse(content=f.read())
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+            return response
+    return HTMLResponse(content="<h1>Admin Dashboard Not Found</h1>", status_code=404)
+
 @app.get("/sounds/{filename}")
 async def serve_sound(filename: str):
     """Serve sound files from frontend/sounds/"""
