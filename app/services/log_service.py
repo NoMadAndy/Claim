@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from geoalchemy2.functions import ST_Distance, ST_SetSRID, ST_MakePoint
+from geoalchemy2.functions import ST_Distance, ST_SetSRID, ST_MakePoint, ST_DistanceSphere
 from geoalchemy2.elements import WKTElement
 from geoalchemy2.types import Geography
 from app.models import Log, Spot, User, Claim, GameSetting
@@ -49,10 +49,10 @@ def create_log(
     if not spot:
         return None
     
-    # Calculate distance using PostGIS
+    # Calculate distance using PostGIS ST_DistanceSphere (returns meters)
     user_point = ST_SetSRID(ST_MakePoint(log_data.longitude, log_data.latitude), 4326)
     distance = db.query(
-        ST_Distance(
+        ST_DistanceSphere(
             spot.location,
             user_point
         )
