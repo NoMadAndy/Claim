@@ -1300,11 +1300,23 @@
 
         // Load user info and initial data
         async function init() {
+            // Try to get user from localStorage
+            let username = 'Admin';
+            let role = 'admin';
+            
             const userStr = localStorage.getItem('claim_user');
             if (userStr) {
-                const user = JSON.parse(userStr);
-                document.getElementById('user-display').textContent = `${user.username} (${user.role})`;
+                try {
+                    const user = JSON.parse(userStr);
+                    username = user.username || 'Admin';
+                    role = user.role || 'admin';
+                } catch (e) {
+                    console.error('Error parsing user from localStorage:', e);
+                }
             }
+            
+            // Update user display
+            document.getElementById('user-display').textContent = `${username} (${role})`;
             
             loadStats();
             loadSettings();
