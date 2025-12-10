@@ -34,6 +34,9 @@ class User(Base):
     xp = Column(Integer, default=0)
     total_claim_points = Column(Integer, default=0)
     
+    # Permanent Heatmap Color (hex format: #RRGGBB)
+    heatmap_color = Column(String(7), nullable=True)  # Will be set on first login
+    
     created_at = Column(DateTime, default=get_cet_now)
     last_login = Column(DateTime, default=get_cet_now)
     

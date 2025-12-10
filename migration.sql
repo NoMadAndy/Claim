@@ -10,5 +10,12 @@ ALTER TABLE logs ADD COLUMN IF NOT EXISTS photo_mime VARCHAR(50);
 -- Add notes column (for log notes/description)
 ALTER TABLE logs ADD COLUMN IF NOT EXISTS notes TEXT;
 
+-- Migration: Add heatmap color to users table
+-- This adds permanent, deterministic color assignment per player
+
+-- Add heatmap_color column (hex color code, e.g., #FF6B6B)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS heatmap_color VARCHAR(7);
+
 -- Verify the columns were added
 -- SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'logs';
+-- SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'users';

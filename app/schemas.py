@@ -45,6 +45,7 @@ class UserResponse(UserBase):
     level: int
     xp: int
     total_claim_points: int
+    heatmap_color: Optional[str] = None
     created_at: datetime
     
     class Config:
@@ -271,6 +272,7 @@ class HeatmapPoint(BaseModel):
 class HeatmapData(BaseModel):
     user_id: int
     username: str
+    color: Optional[str] = None
     points: List[HeatmapPoint]
 
 

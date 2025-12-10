@@ -15,6 +15,18 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     return R * c;
 }
 
+// Utility function: Convert hex color to RGBA format for heatmap gradients
+function hexToRgb(hex, alpha = 1) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!result) return `rgba(0, 0, 0, ${alpha})`;
+    
+    const r = parseInt(result[1], 16);
+    const g = parseInt(result[2], 16);
+    const b = parseInt(result[3], 16);
+    
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 // Auto-log cooldown tracking to prevent spam in console
 let autoLogCooldownUntil = 0;
 // Track spots already being logged to prevent duplicate requests
@@ -2774,9 +2786,23 @@ async function loadHeatmap() {
                 if (heatmap.points && heatmap.points.length > 0) {
                     const points = heatmap.points.map(p => [p.latitude, p.longitude, p.intensity]);
                     
-                    // Get color for this heatmap (cycle through palette)
-                    const colorIndex = index % HEATMAP_COLORS.length;
-                    const colorConfig = HEATMAP_COLORS[colorIndex];
+                    // Use player's permanent color if available, otherwise use palette
+                    let colorConfig;
+                    if (heatmap.color) {
+                        // Create a gradient from the player's color
+                        colorConfig = {
+                            gradient: {
+                                0.0: '#ffffff',
+                                0.25: hexToRgb(heatmap.color, 0.2),
+                                0.55: hexToRgb(heatmap.color, 0.6),
+                                1.0: heatmap.color
+                            }
+                        };
+                    } else {
+                        // Fallback to color palette if no permanent color set
+                        const colorIndex = index % HEATMAP_COLORS.length;
+                        colorConfig = HEATMAP_COLORS[colorIndex];
+                    }
                     
                     // Create heatmap with specific color gradient
                     const heat = L.heatLayer(points, {

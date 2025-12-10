@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.models import User, UserRole
 from app.schemas import UserCreate
 from app.config import settings
+from app.services.color_service import generate_color_for_user
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -45,6 +46,8 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[Use
 def create_user(db: Session, user_data: UserCreate) -> User:
     """Create a new user"""
     hashed_password = get_password_hash(user_data.password)
+    
+    # Create user (need to commit to get the ID)
     db_user = User(
         username=user_data.username,
         email=user_data.email,
@@ -52,6 +55,11 @@ def create_user(db: Session, user_data: UserCreate) -> User:
         role=UserRole.TRAVELLER
     )
     db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    
+    # Assign permanent heatmap color based on user ID and username
+    db_user.heatmap_color = generate_color_for_user(db_user.id, db_user.username)
     db.commit()
     db.refresh(db_user)
     return db_user

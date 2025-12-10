@@ -38,6 +38,7 @@ def get_user_heatmap(db: Session, user_id: int) -> HeatmapData:
     return HeatmapData(
         user_id=user.id,
         username=user.username,
+        color=user.heatmap_color,
         points=points
     )
 
