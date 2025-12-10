@@ -62,14 +62,6 @@ app.add_middleware(
 )
 
 
-# Serve static frontend files
-FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "../frontend")
-if os.path.exists(FRONTEND_DIR):
-    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
-else:
-    logger.warning(f"Frontend directory not found: {FRONTEND_DIR}")
-
-
 # Middleware for reverse proxy support
 @app.middleware("http")
 async def reverse_proxy_middleware(request: Request, call_next):
@@ -88,7 +80,7 @@ async def reverse_proxy_middleware(request: Request, call_next):
     return response
 
 
-# Include routers
+# Include routers (before static files mount so /api/* routes are matched first)
 app.include_router(auth.router)
 app.include_router(spots.router)
 app.include_router(logs.router)
@@ -97,6 +89,14 @@ app.include_router(tracks.router)
 app.include_router(items.router)
 app.include_router(loot.router)
 app.include_router(admin.router)
+
+
+# Serve static frontend files (after routers so /* doesn't shadow /api/*)
+FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "../frontend")
+if os.path.exists(FRONTEND_DIR):
+    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+else:
+    logger.warning(f"Frontend directory not found: {FRONTEND_DIR}")
 
 
 # Lightweight client log sink for debugging (stdout only, no auth)
