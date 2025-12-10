@@ -182,11 +182,13 @@ def get_spots_list(db: Session, skip: int = 0, limit: int = 50) -> List[Dict[str
             "id": s.id,
             "name": s.name,
             "description": s.description,
-            "spot_type": s.spot_type,
-            "xp_reward": s.xp_reward,
+            "is_permanent": s.is_permanent,
+            "is_loot": s.is_loot,
             "is_active": s.is_active,
+            "loot_xp": s.loot_xp,
             "created_at": s.created_at.isoformat() if s.created_at else None,
-            "created_by": s.created_by,
+            "creator_id": s.creator_id,
+            "creator": s.creator.username if s.creator else None,
         }
         for s in spots
     ]
@@ -204,7 +206,9 @@ def get_logs_list(db: Session, skip: int = 0, limit: int = 50) -> List[Dict[str,
             "spot_id": l.spot_id,
             "spot": l.spot.name if l.spot else "Unknown",
             "xp_gained": l.xp_gained,
-            "log_type": l.log_type,
+            "claim_points": l.claim_points,
+            "is_auto": l.is_auto,
+            "distance": l.distance,
             "timestamp": l.timestamp.isoformat() if l.timestamp else None,
         }
         for l in logs
