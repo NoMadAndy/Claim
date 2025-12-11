@@ -1,0 +1,25 @@
+[Unit]
+Description=Claim Auto-Deployment Watcher
+Documentation=https://github.com/NoMadAndy/Claim
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/claim
+ExecStart=/opt/claim/tools/deploy-watcher.sh
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=claim-watcher
+
+# Security
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/claim /var/lib/docker
+
+[Install]
+WantedBy=multi-user.target

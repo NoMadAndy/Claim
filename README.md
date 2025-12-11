@@ -124,6 +124,38 @@ Ein ortsbasiertes Echtzeit-GPS-Spiel mit FastAPI, WebSockets, PostGIS und Leafle
    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
    ```
 
+## � Production Deployment
+
+Das System unterstützt **vollständig automatisiertes Deployment** mit Docker:
+
+### Quick Start (One-Liner für Ubuntu/Debian)
+
+```bash
+curl https://raw.githubusercontent.com/NoMadAndy/Claim/main/tools/setup-production.sh | sudo bash
+```
+
+### Workflow nach Setup:
+1. **Lokale Änderungen machen** → `git push origin main`
+2. **Server holt sich die Änderungen** automatisch alle 60 Sekunden
+3. **Container werden neu gebaut** und restartet
+4. **Live-Anwendung** wird sofort aktualisiert
+
+### Status überprüfen:
+```bash
+# Live-Logs anschauen
+sudo journalctl -u claim-watcher -f
+
+# Container Status
+docker-compose -f /opt/claim/docker-compose.prod.yml ps
+
+# Deployment-Logs
+tail -f /opt/claim/.deploy.log
+```
+
+**Vollständige Deployment-Dokumentation:** Siehe [DEPLOYMENT.md](DEPLOYMENT.md)
+
+---
+
 ## 🔧 Konfiguration
 
 ### Reverse Proxy Support
@@ -136,6 +168,8 @@ Das System ist vollständig Reverse-Proxy-kompatibel und funktioniert hinter:
 - GitHub Codespaces Port-Forwarding
 
 #### Nginx Beispiel-Konfiguration:
+
+Siehe [nginx-config.conf](nginx-config.conf) für Production-Setup mit SSL/TLS.
 
 ```nginx
 server {

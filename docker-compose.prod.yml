@@ -1,0 +1,61 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    container_name: claim-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-claim_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-claim_password}
+      POSTGRES_DB: ${DB_NAME:-claim_db}
+      TZ: UTC
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-claim_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - claim-network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: claim-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-claim_user}:${DB_PASSWORD:-claim_password}@db:5432/${DB_NAME:-claim_db}
+      CORS_ORIGINS: "${CORS_ORIGINS:-*}"
+      API_PORT: 8000
+      TZ: UTC
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ./app:/app/app
+      - ./frontend:/app/frontend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - claim-network
+    labels:
+      - "com.example.description=Claim API"
+
+volumes:
+  db_data:
+    driver: local
+
+networks:
+  claim-network:
+    driver: bridge
