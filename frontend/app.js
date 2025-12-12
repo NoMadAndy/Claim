@@ -913,6 +913,46 @@ let versionCheckInterval = null;
 let versionUpdatePrompted = false;
 let initialDeployedCommitFull = '';
 
+let updateOverlayEl = null;
+
+function ensureUpdateOverlay() {
+    if (updateOverlayEl) return updateOverlayEl;
+    const el = document.createElement('div');
+    el.id = 'update-overlay';
+    el.style.display = 'none';
+    el.innerHTML = `
+        <div class="update-overlay-card">
+            <div class="update-overlay-title">Update verfügbar</div>
+            <div class="update-overlay-subtitle" id="update-overlay-subtitle">Neue Version verfügbar.</div>
+            <button class="update-overlay-button" id="update-overlay-button" type="button">Reload</button>
+        </div>
+    `;
+    document.body.appendChild(el);
+    updateOverlayEl = el;
+
+    const btn = el.querySelector('#update-overlay-button');
+    if (btn) {
+        btn.addEventListener('click', () => {
+            try {
+                window.location.reload();
+            } catch (e) {
+                window.location.href = window.location.href;
+            }
+        });
+    }
+    return el;
+}
+
+function showUpdateOverlay(remoteShort) {
+    const el = ensureUpdateOverlay();
+    const subtitle = el.querySelector('#update-overlay-subtitle');
+    if (subtitle) {
+        const s = (remoteShort && String(remoteShort).trim()) ? String(remoteShort).trim() : '';
+        subtitle.textContent = s ? `Neue Version verfügbar (${s}).` : 'Neue Version verfügbar.';
+    }
+    el.style.display = 'flex';
+}
+
 function getCurrentAssetCacheBust() {
     try {
         const script = document.querySelector('script[src*="app.js"]');
@@ -1049,17 +1089,8 @@ async function checkForNewVersionInBackground() {
     const remoteCommit = String(remoteSig.split('|')[0] || '').trim();
     const remoteShort = remoteCommit ? remoteCommit.substring(0, 8) : 'neu';
 
-    // Use an in-app notification instead of confirm(): some mobile browsers suppress dialogs from timers.
-    const n = showNotification(
-        'Update verfügbar',
-        `Neue Version verfügbar (${remoteShort}). Tippe hier zum Neuladen.`,
-        'info',
-        20000
-    );
-    if (n) {
-        n.style.cursor = 'pointer';
-        n.addEventListener('click', () => window.location.reload());
-    }
+    // Lock the app with a centered reload button until pressed.
+    showUpdateOverlay(remoteShort);
 }
 
 function startVersionMonitor() {

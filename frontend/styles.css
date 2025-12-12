@@ -659,3 +659,52 @@ body {
 .layer-menu button:hover {
     background: #5568d3;
 }
+
+/* Fullscreen update overlay (locks app until reload) */
+#update-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.65);
+    z-index: 20000;
+}
+
+.update-overlay-card {
+    width: min(360px, 92vw);
+    background: white;
+    border-radius: 14px;
+    padding: 18px 16px;
+    box-shadow: 0 6px 26px rgba(0, 0, 0, 0.35);
+    text-align: center;
+}
+
+.update-overlay-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #222;
+    margin-bottom: 8px;
+}
+
+.update-overlay-subtitle {
+    font-size: 13px;
+    color: #555;
+    margin-bottom: 14px;
+}
+
+.update-overlay-button {
+    width: 100%;
+    padding: 12px 12px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 800;
+    color: white;
+    background: #667eea;
+}
+
+.update-overlay-button:active {
+    transform: translateY(1px);
+}
