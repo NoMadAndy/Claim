@@ -772,6 +772,23 @@ function playLootCollectFX(lat, lng) {
         // ignore
     }
 
+    // Extra: floating label (re-uses existing floating-reward styling)
+    try {
+        const float = L.marker([lat, lng], {
+            icon: L.divIcon({
+                className: 'floating-reward',
+                html: '<div class="floating-reward-inner">+LOOT</div>',
+                iconSize: [0, 0]
+            }),
+            interactive: false
+        }).addTo(map);
+        setTimeout(() => {
+            try { map.removeLayer(float); } catch (e) {}
+        }, 1200);
+    } catch (e) {
+        // ignore
+    }
+
     // Sparkles: a few short-lived circle markers around the point
     try {
         const origin = latLngToMercatorMeters(lat, lng);
@@ -3071,6 +3088,10 @@ window.collectLoot = async function(lootSpotId) {
     if (!currentPosition) return;
     
     map.closePopup();
+
+    // Prefer FX at the loot spot (what the player actually clicked)
+    const lootMarker = spotMarkers.get(lootSpotId);
+    const lootLatLng = lootMarker && lootMarker.getLatLng ? lootMarker.getLatLng() : null;
     
     try {
         const result = await apiRequest('/loot/collect', {
@@ -3083,19 +3104,22 @@ window.collectLoot = async function(lootSpotId) {
         });
         
         if (result.success) {
-            soundManager.playSound('collect');
+            try { soundManager.playSound('collect'); } catch (e) {}
 
             try {
-                playLootCollectFX(currentPosition.lat, currentPosition.lng);
-            } catch (e) {
-                // ignore
-            }
+                if (lootLatLng) {
+                    playLootCollectFX(lootLatLng.lat, lootLatLng.lng);
+                } else {
+                    playLootCollectFX(currentPosition.lat, currentPosition.lng);
+                }
+            } catch (e) {}
             
             // Remove marker immediately from map
             const marker = spotMarkers.get(lootSpotId);
             if (marker) {
                 map.removeLayer(marker);
                 spotMarkers.delete(lootSpotId);
+                lootSpotIds.delete(lootSpotId);
             }
             
             // Show rewards notification
