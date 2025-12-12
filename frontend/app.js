@@ -713,20 +713,24 @@ function initVersionBadge() {
 // Background update check: detect new deployed commit and offer restart
 let versionCheckInterval = null;
 let versionUpdatePrompted = false;
+let initialDeployedCommitFull = '';
 
 function getCurrentDeployedCommitFull() {
     const toggleDebugBtn = document.getElementById('toggle-debug');
     const commit = toggleDebugBtn?.getAttribute('data-commit');
-    return (commit || '').trim();
+    const current = (commit || '').trim();
+    return current || (initialDeployedCommitFull || '').trim();
 }
 
 async function fetchRemoteDeployedCommitFull() {
     // Fetch the current HTML without cache to detect deployment changes
     const url = `/?version_check=${Date.now()}`;
     const res = await fetch(url, {
+        credentials: 'same-origin',
         cache: 'no-store',
         headers: {
-            'Cache-Control': 'no-cache'
+            'Cache-Control': 'no-cache, no-store, max-age=0',
+            'Pragma': 'no-cache'
         }
     });
     if (!res.ok) return '';
@@ -748,12 +752,19 @@ async function fetchRemoteDeployedCommitFull() {
 async function checkForNewVersionInBackground() {
     if (versionUpdatePrompted) return;
     const current = getCurrentDeployedCommitFull();
-    if (!current) return;
 
     let remote = '';
     try {
         remote = await fetchRemoteDeployedCommitFull();
     } catch (e) {
+        if (window.debugLog) window.debugLog(`⚠️ Version check failed: ${String(e && e.message ? e.message : e)}`);
+        return;
+    }
+    if (!remote) return;
+
+    // If we don't know our current commit yet, learn it from remote and wait for the next deploy.
+    if (!current) {
+        initialDeployedCommitFull = remote;
         return;
     }
     if (!remote || remote === current) return;
@@ -761,10 +772,15 @@ async function checkForNewVersionInBackground() {
     versionUpdatePrompted = true;
     if (window.debugLog) window.debugLog(`⬆️ New version detected: ${current.substring(0, 8)} → ${remote.substring(0, 8)}`);
 
-    // Offer restart (simple UX: confirm dialog)
-    const ok = confirm(`Neue Version verfügbar (${remote.substring(0, 8)}). Jetzt neu starten?`);
-    if (ok) {
-        window.location.reload();
+    // Use an in-app notification instead of confirm(): some mobile browsers suppress dialogs from timers.
+    const n = showNotification(
+        'Update verfügbar',
+        `Neue Version verfügbar (${remote.substring(0, 8)}). Tippe hier zum Neuladen.`,
+        'info'
+    );
+    if (n) {
+        n.style.cursor = 'pointer';
+        n.addEventListener('click', () => window.location.reload());
     }
 }
 
@@ -800,6 +816,9 @@ function init() {
     
     // Initialize version badge
     initVersionBadge();
+
+    // Capture baseline commit early as fallback (in case attributes are missing temporarily)
+    initialDeployedCommitFull = getCurrentDeployedCommitFull();
 
     // Background update check (offer restart when new deploy detected)
     startVersionMonitor();
@@ -3368,6 +3387,8 @@ function showNotification(title, message, type = '') {
     setTimeout(() => {
         notification.remove();
     }, 5000);
+
+    return notification;
 }
 
 function showLogNotification(data) {
