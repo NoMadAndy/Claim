@@ -446,6 +446,23 @@ body {
     }
 }
 
+.heatmap-edge-shimmer {
+    --heatmap-edge-color: white;
+    animation: heatmapEdgeShimmer 2.1s ease-in-out infinite;
+    will-change: filter, opacity;
+}
+
+@keyframes heatmapEdgeShimmer {
+    0%, 100% {
+        opacity: 0.75;
+        filter: drop-shadow(0 0 6px var(--heatmap-edge-color)) drop-shadow(0 0 14px var(--heatmap-edge-color));
+    }
+    50% {
+        opacity: 1;
+        filter: drop-shadow(0 0 10px var(--heatmap-edge-color)) drop-shadow(0 0 22px var(--heatmap-edge-color));
+    }
+}
+
 /* Territory hex breathing (recent activity) */
 .leaflet-overlay-pane path.territory-hex-active {
     animation: territoryBreathe 2.2s ease-in-out infinite;

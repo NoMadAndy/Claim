@@ -61,6 +61,23 @@ function applyHeatmapShimmer(heatLayer, baseHexColor) {
     setTimeout(apply, 0);
 }
 
+function applyHeatmapEdgeShimmer(edgeHeatLayer, baseColorCss) {
+    // Stronger, more visible shimmer for the edge/glow layer.
+    if (!baseColorCss) return;
+
+    const apply = () => {
+        const canvas = edgeHeatLayer && edgeHeatLayer._canvas;
+        if (!canvas) return;
+        canvas.classList.add('heatmap-edge-shimmer');
+        canvas.style.setProperty('--heatmap-edge-color', String(baseColorCss));
+    };
+
+    if (edgeHeatLayer && edgeHeatLayer.on) {
+        edgeHeatLayer.on('add', () => setTimeout(apply, 0));
+    }
+    setTimeout(apply, 0);
+}
+
 function playLogFX(lat, lng, xpGained, claimPoints, isAuto = false) {
     if (!map) return;
     if (lat == null || lng == null) return;
@@ -822,7 +839,8 @@ async function checkForNewVersionInBackground() {
     const n = showNotification(
         'Update verfügbar',
         `Neue Version verfügbar (${remote.substring(0, 8)}). Tippe hier zum Neuladen.`,
-        'info'
+        'info',
+        20000
     );
     if (n) {
         n.style.cursor = 'pointer';
@@ -3294,18 +3312,45 @@ async function loadHeatmap() {
                         gradient: colorConfig.gradient
                     });
 
-                    // Add subtle shimmering edge for players with a stable hex color
+                    // Add shimmer edge: a second heat layer with slightly larger radius
+                    // to create a visible glowing outline around the strongest areas.
+                    const baseColor = heatmap.color || (colorConfig && colorConfig.gradient && colorConfig.gradient[1.0]) || null;
+                    let edgeColor = baseColor;
+                    if (heatmap.color) {
+                        edgeColor = lightenHexColor(heatmap.color, 0.55);
+                    }
+                    const edgeGradient = heatmap.color ? {
+                        0.0: lightenHexColor(heatmap.color, 0.92),
+                        0.55: lightenHexColor(heatmap.color, 0.70),
+                        1.0: lightenHexColor(heatmap.color, 0.40)
+                    } : {
+                        0.0: '#ffffff',
+                        1.0: String(edgeColor || 'white')
+                    };
+
+                    const edgeHeat = L.heatLayer(points, {
+                        radius: 32,
+                        blur: 22,
+                        maxZoom: 17,
+                        minOpacity: 0.08,
+                        gradient: edgeGradient
+                    });
+
+                    // Subtle shimmer on the base heatmap (only if we have a real hex color)
                     if (heatmap.color) {
                         applyHeatmapShimmer(heat, heatmap.color);
                     }
+                    applyHeatmapEdgeShimmer(edgeHeat, edgeColor || baseColor);
+
+                    const group = L.layerGroup([edgeHeat, heat]);
                     
                     // Store layer and always add to map if heatmap is visible
                     const userId = heatmap.user_id || `user_${index}`;
-                    heatmapLayers.set(userId, heat);
+                    heatmapLayers.set(userId, group);
                     
                     // Always show all heatmaps when heatmap layer is active
                     if (heatmapVisible) {
-                        heat.addTo(map);
+                        group.addTo(map);
                     }
                 }
             });
@@ -3466,6 +3511,7 @@ function formatBuffDebugLine(payload) {
 }
 
 function showNotification(title, message, type = '') {
+function showNotification(title, message, type = '', durationMs = 5000) {
     const container = document.getElementById('notifications');
     const notification = document.createElement('div');
     notification.className = 'notification ' + type;
@@ -3481,7 +3527,7 @@ function showNotification(title, message, type = '') {
     
     setTimeout(() => {
         notification.remove();
-    }, 5000);
+    }, durationMs);
 
     return notification;
 }
