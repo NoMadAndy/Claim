@@ -5,7 +5,10 @@ from fastapi.responses import HTMLResponse, Response, JSONResponse, FileResponse
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
 import os
+import re
+from typing import Optional
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import logging
 import shutil
 
@@ -21,6 +24,8 @@ logger = logging.getLogger(__name__)
 # Track server start time and connection count for diagnostics
 server_start_time = datetime.now()
 active_connections = 0
+
+BERLIN = ZoneInfo("Europe/Berlin")
 
 
 @asynccontextmanager
@@ -218,20 +223,105 @@ async def websocket_route(websocket: WebSocket, token: str):
 # Serve frontend static files
 frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")
 
+
+def _read_git_commit_short(repo_root: str) -> Optional[str]:
+    """Read short git commit hash without calling `git`.
+
+    Works in containers where the repository (including .git) is volume-mounted but git isn't installed.
+    """
+    try:
+        git_dir = os.path.join(repo_root, ".git")
+        head_path = os.path.join(git_dir, "HEAD")
+        if not os.path.exists(head_path):
+            return None
+
+        head = open(head_path, "r", encoding="utf-8").read().strip()
+        if head.startswith("ref:"):
+            ref = head.split(" ", 1)[1].strip()
+            ref_path = os.path.join(git_dir, ref.replace("/", os.sep))
+            if os.path.exists(ref_path):
+                sha = open(ref_path, "r", encoding="utf-8").read().strip()
+                return sha[:8]
+
+            packed = os.path.join(git_dir, "packed-refs")
+            if os.path.exists(packed):
+                with open(packed, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line or line.startswith("#") or line.startswith("^"):
+                            continue
+                        parts = line.split(" ")
+                        if len(parts) == 2 and parts[1] == ref:
+                            return parts[0][:8]
+            return None
+
+        # Detached head
+        if re.fullmatch(r"[a-fA-F0-9]{40}", head):
+            return head[:8]
+        return None
+    except Exception:
+        return None
+
+
+def _inject_version_into_html(html: str, *, commit: str, timestamp: str, cache_bust: str) -> str:
+    """Inject commit/timestamp and cache-bust query into the HTML (in-memory)."""
+    def _toggle_repl(m: re.Match) -> str:
+        tag = m.group(0)
+        tag = re.sub(r"\sdata-commit=\"[^\"]*\"", "", tag)
+        tag = re.sub(r"\sdata-timestamp=\"[^\"]*\"", "", tag)
+        return tag.replace(
+            'id="toggle-debug"',
+            f'id="toggle-debug" data-commit="{commit}" data-timestamp="{timestamp}"',
+        )
+
+    html = re.sub(
+        r"<button\b[^>]*\bid=\"toggle-debug\"[^>]*>",
+        _toggle_repl,
+        html,
+        count=1,
+        flags=re.IGNORECASE,
+    )
+
+    # Ensure cache busting for CSS/JS
+    html = re.sub(r"styles\.css(\?v=[^\"'>\s]+)?", f"styles.css?v={cache_bust}", html)
+    html = re.sub(r"app\.js(\?v=[^\"'>\s]+)?", f"app.js?v={cache_bust}", html)
+    return html
+
+
+_DEPLOYED_AT = datetime.now(BERLIN)
+_DEPLOYED_AT_STR = _DEPLOYED_AT.strftime('%d.%m.%Y %H:%M:%S')
+_CACHE_BUST = str(int(_DEPLOYED_AT.timestamp()))
+
+
 # Root endpoint to serve index.html
 @app.get("/", response_class=HTMLResponse)
 async def serve_frontend():
     """Serve the main frontend page"""
     index_path = os.path.join(frontend_path, "index.html")
-    if os.path.exists(index_path):
-        with open(index_path, "r", encoding="utf-8") as f:
-            # Return with no-cache header to always get latest HTML
-            response = HTMLResponse(content=f.read())
-            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-            response.headers["Pragma"] = "no-cache"
-            response.headers["Expires"] = "0"
-            return response
-    return HTMLResponse(content="<h1>Claim GPS Game</h1><p>Frontend not found</p>")
+    if not os.path.exists(index_path):
+        return HTMLResponse(content="<h1>Claim GPS Game</h1><p>Frontend not found</p>")
+
+    with open(index_path, "r", encoding="utf-8") as f:
+        raw = f.read()
+
+    # Prefer explicit env override (useful for some deploy setups)
+    commit = (os.environ.get("CLAIM_COMMIT") or "").strip()
+    if not commit:
+        repo_root = os.path.abspath(os.path.join(frontend_path, ".."))
+        commit = _read_git_commit_short(repo_root) or "deployed"
+
+    html = _inject_version_into_html(
+        raw,
+        commit=commit,
+        timestamp=os.environ.get("CLAIM_DEPLOYED_AT") or _DEPLOYED_AT_STR,
+        cache_bust=os.environ.get("CLAIM_CACHE_BUST") or _CACHE_BUST,
+    )
+
+    response = HTMLResponse(content=html)
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 # Serve static files (CSS, JS)
 @app.get("/styles.css")
@@ -314,17 +404,6 @@ async def serve_manifest():
         with open(manifest_path, "r", encoding="utf-8") as f:
             return Response(content=f.read(), media_type="application/json")
     return Response(content="{}", media_type="application/json", status_code=404)
-
-
-# Health check endpoint
-@app.get("/api/health")
-async def health_check():
-    """Health check endpoint"""
-    return {
-        "status": "healthy",
-        "service": "Claim GPS Game",
-        "version": "1.0.0"
-    }
 
 
 # Root API info
