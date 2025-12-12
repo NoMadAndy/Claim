@@ -49,6 +49,23 @@ class User(Base):
     created_spots = relationship("Spot", back_populates="creator", foreign_keys="Spot.creator_id")
 
 
+class UserBuff(Base):
+    __tablename__ = "user_buffs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+
+    # Multipliers are absolute (e.g. 1.5 means +50%)
+    xp_multiplier = Column(Float, default=1.0)
+    claim_multiplier = Column(Float, default=1.0)
+    range_bonus_m = Column(Float, default=0.0)
+
+    expires_at = Column(DateTime, nullable=False, index=True)
+    created_at = Column(DateTime, default=get_cet_now)
+
+    user = relationship("User")
+
+
 class Spot(Base):
     __tablename__ = "spots"
 

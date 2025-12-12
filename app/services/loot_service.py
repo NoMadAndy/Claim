@@ -7,6 +7,8 @@ from app.config import settings
 import random
 import math
 from typing import List, Optional
+from app.services import buff_service
+from app.services.auth_service import update_user_xp
 
 
 def get_current_cet():
@@ -173,28 +175,32 @@ def collect_loot(db: Session, user_id: int, loot_spot_id: int, user_lat: float, 
     
     distance = result[0] if result else None
     
-    if distance is None or distance > settings.MANUAL_LOG_DISTANCE:
-        return {"success": False, "error": f"Too far away (distance: {distance:.0f}m, max: {settings.MANUAL_LOG_DISTANCE}m)"}
+    modifiers = buff_service.get_active_modifiers(db, user_id)
+    max_distance = float(settings.MANUAL_LOG_DISTANCE) + float(modifiers.range_bonus_m)
+
+    if distance is None or distance > max_distance:
+        return {"success": False, "error": f"Too far away (distance: {distance:.0f}m, max: {max_distance:.0f}m)"}
     
     # Collect rewards
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         return {"success": False, "error": "User not found"}
     
+    base_xp = int(loot_spot.loot_xp or 0)
+    try:
+        boosted_xp = int(round(float(base_xp) * float(modifiers.xp_multiplier)))
+    except Exception:
+        boosted_xp = base_xp
+
     rewards = {
-        "xp": loot_spot.loot_xp or 0,
+        "xp": boosted_xp,
         "items": []
     }
-    
-    # Add XP
-    user.xp += rewards["xp"]
-    
-    # Check for level up
-    level_up = False
-    xp_for_next_level = 100 + (user.level - 1) * 50
-    if user.xp >= xp_for_next_level:
-        user.level += 1
-        level_up = True
+
+    # Add XP (use common leveling logic)
+    old_level = int(user.level or 1)
+    update_user_xp(db, user, boosted_xp)
+    level_up = int(user.level or 1) > old_level
     
     # Add item to inventory if present
     if loot_spot.loot_item_id:

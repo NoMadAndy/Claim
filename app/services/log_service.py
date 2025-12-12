@@ -9,6 +9,7 @@ from app.models import Log, Spot, User, Claim, GameSetting
 from app.schemas import LogCreate
 from app.config import settings
 import pytz
+from app.services import buff_service
 
 # CET timezone
 CET = pytz.timezone('Europe/Berlin')
@@ -58,10 +59,14 @@ def create_log(
         )
     ).scalar()
     
+    # Active buffs (XP/Claim multipliers, optional range bonus)
+    modifiers = buff_service.get_active_modifiers(db, user.id)
+
     # Check distance constraints - get from database with fallback to config defaults
     auto_log_distance = get_game_setting(db, "auto_log_distance", settings.AUTO_LOG_DISTANCE)
     manual_log_distance = get_game_setting(db, "manual_log_distance", settings.MANUAL_LOG_DISTANCE)
-    max_distance = auto_log_distance if is_auto else manual_log_distance
+    # Range buffs apply to manual logs only (auto-log stays tight at default radius)
+    max_distance = auto_log_distance if is_auto else (manual_log_distance + modifiers.range_bonus_m)
     if distance > max_distance:
         return None
     
@@ -76,6 +81,16 @@ def create_log(
         if log_data.photo_data or log_data.notes:
             xp_gained += 25  # +25 bonus for photo or notes
             claim_points += 10
+
+    # Apply active buff multipliers
+    try:
+        xp_gained = int(round(float(xp_gained) * float(modifiers.xp_multiplier)))
+    except Exception:
+        pass
+    try:
+        claim_points = int(round(float(claim_points) * float(modifiers.claim_multiplier)))
+    except Exception:
+        pass
     
     # Create log
     log_point = f'POINT({log_data.longitude} {log_data.latitude})'
@@ -108,6 +123,12 @@ def create_log(
     
     # Update user XP
     update_user_xp(db, user, xp_gained)
+
+    # Track total claim points for rankings
+    try:
+        user.total_claim_points = int(user.total_claim_points or 0) + int(claim_points or 0)
+    except Exception:
+        pass
     
     # Update or create claim
     update_claim(db, user.id, spot.id, claim_points)

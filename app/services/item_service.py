@@ -2,6 +2,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 from app.models import Item, InventoryItem, User
 from app.schemas import ItemCreate
+from app.services import buff_service
 
 
 def create_item(db: Session, item_data: ItemCreate) -> Item:
@@ -94,13 +95,44 @@ def use_item(db: Session, user_id: int, item_id: int) -> dict:
         return {"success": False, "error": "Item not in inventory"}
     
     item = inventory_item.item
+
+    # Determine buff duration (seconds). No DB schema for duration yet, so keep mapping in code.
+    duration_seconds = 0
+    name = (item.name or "").strip().lower()
+    if name == "xp boost":
+        duration_seconds = 3600
+    elif name == "mega xp boost":
+        duration_seconds = 1800
+    elif name == "range extender":
+        duration_seconds = 3600
+    elif name == "claim amplifier":
+        duration_seconds = 3600
+    else:
+        # Default: if it has an effect, give it 1h so it visibly works.
+        if (item.xp_boost or 0) != 0 or (item.claim_boost or 0) != 0 or (item.range_boost or 0) != 0:
+            duration_seconds = 3600
     
-    # Apply effects (simplified - in real game would have temporary buffs, etc.)
+    # Apply effects (now persisted as temporary buffs)
     effects = {
         "xp_boost": item.xp_boost,
         "claim_boost": item.claim_boost,
         "range_boost": item.range_boost
     }
+
+    # Persist buff so it affects subsequent actions (logs / loot)
+    created_buff = None
+    if duration_seconds > 0 and (
+        (item.xp_boost or 0) != 0 or (item.claim_boost or 0) != 0 or (item.range_boost or 0) != 0
+    ):
+        created_buff = buff_service.create_buff_from_item_effects(
+            db,
+            user_id=user_id,
+            xp_boost=item.xp_boost,
+            claim_boost=item.claim_boost,
+            range_boost=item.range_boost,
+            duration_seconds=duration_seconds,
+        )
+        effects["expires_at"] = created_buff.expires_at.isoformat() if created_buff.expires_at else None
     
     # Decrease quantity
     inventory_item.quantity -= 1

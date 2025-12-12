@@ -5,6 +5,7 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     postgresql-client \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
@@ -22,7 +23,7 @@ USER claim
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/api/health')" || exit 1
+    CMD curl -fsS http://localhost:8000/api/health >/dev/null || exit 1
 
 EXPOSE 8000
 
