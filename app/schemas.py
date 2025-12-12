@@ -108,6 +108,9 @@ class LogResponse(BaseModel):
     is_auto: bool
     xp_gained: int
     claim_points: int
+    xp_multiplier_applied: Optional[float] = None
+    claim_multiplier_applied: Optional[float] = None
+    range_bonus_m_applied: Optional[float] = None
     timestamp: datetime
     notes: Optional[str] = None
     has_photo: bool = False  # Just indicate if photo exists, don't return binary data

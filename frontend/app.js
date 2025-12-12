@@ -2371,9 +2371,11 @@ async function performAutoLog(spotId) {
         } catch (e) {
             // ignore FX failures
         }
+
+        const buffLine = formatBuffDebugLine(response);
         showNotification(
             'Auto Log!',
-            `+${response.xp_gained} XP, +${response.claim_points} Claims`,
+            `+${response.xp_gained} XP, +${response.claim_points} Claims${buffLine ? `\n${buffLine}` : ''}`,
             'log-event'
         );
         
@@ -2519,9 +2521,10 @@ async function submitLog(spotId, notes, photoFile) {
         });
         
         soundManager.playSound('log');
+        const buffLine = formatBuffDebugLine(log);
         showNotification(
             'Logged!',
-            `+${log.xp_gained} XP, +${log.claim_points} Claims`,
+            `+${log.xp_gained} XP, +${log.claim_points} Claims${buffLine ? `\n${buffLine}` : ''}`,
             'log-event'
         );
 
@@ -3320,13 +3323,45 @@ function toggleStatsDetail() {
 }
 
 // Notifications
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function formatBuffDebugLine(payload) {
+    if (!payload) return '';
+    const xpMul = Number(payload.xp_multiplier_applied);
+    const claimMul = Number(payload.claim_multiplier_applied);
+    const rangeBonus = Number(payload.range_bonus_m_applied);
+
+    const parts = [];
+    if (!Number.isNaN(xpMul) && xpMul && Math.abs(xpMul - 1) > 0.001) {
+        parts.push(`XP×${xpMul.toFixed(2).replace(/\.00$/, '')}`);
+    }
+    if (!Number.isNaN(claimMul) && claimMul && Math.abs(claimMul - 1) > 0.001) {
+        parts.push(`Claims×${claimMul.toFixed(2).replace(/\.00$/, '')}`);
+    }
+    if (!Number.isNaN(rangeBonus) && Math.abs(rangeBonus) > 0.001) {
+        parts.push(`Range+${Math.round(rangeBonus)}m`);
+    }
+
+    return parts.length ? `Buff: ${parts.join(' · ')}` : '';
+}
+
 function showNotification(title, message, type = '') {
     const container = document.getElementById('notifications');
     const notification = document.createElement('div');
     notification.className = 'notification ' + type;
+
+    const safeTitle = escapeHtml(title);
+    const safeMessage = escapeHtml(message).replace(/\n/g, '<br>');
     notification.innerHTML = `
-        <h4>${title}</h4>
-        <p>${message}</p>
+        <h4>${safeTitle}</h4>
+        <p>${safeMessage}</p>
     `;
     
     container.appendChild(notification);

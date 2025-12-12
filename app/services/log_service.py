@@ -118,6 +118,20 @@ def create_log(
         photo_data=photo_data,
         photo_mime=photo_mime
     )
+
+    # Attach applied buff info (transient, for API response)
+    try:
+        log.xp_multiplier_applied = float(modifiers.xp_multiplier or 1.0)
+    except Exception:
+        log.xp_multiplier_applied = 1.0
+    try:
+        log.claim_multiplier_applied = float(modifiers.claim_multiplier or 1.0)
+    except Exception:
+        log.claim_multiplier_applied = 1.0
+    try:
+        log.range_bonus_m_applied = float(modifiers.range_bonus_m or 0.0)
+    except Exception:
+        log.range_bonus_m_applied = 0.0
     
     db.add(log)
     
