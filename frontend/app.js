@@ -1540,19 +1540,34 @@ function updateTerritoryOverlay() {
     const activityActive = !!(activity && nowMs < activity.untilMs);
     const activityRadiusM = Math.max(900, size * 2.2);
 
-    const sorted = Array.from(bins.values()).sort((a, b) => b.value - a.value).slice(0, 380);
-    for (const cell of sorted) {
+    const allCells = Array.from(bins.values());
+    const activeKeys = new Set();
+    if (activityActive) {
+        for (const cell of allCells) {
+            const center = hexAxialToCenterMeters(cell.q, cell.r, size);
+            const d = Math.hypot(center.x - activity.x, center.y - activity.y);
+            if (d <= activityRadiusM) {
+                activeKeys.add(`${cell.q},${cell.r}`);
+            }
+        }
+    }
+
+    const maxCellsToRender = activityActive ? 900 : 380;
+    const activeCells = activeKeys.size ? allCells.filter(c => activeKeys.has(`${c.q},${c.r}`)) : [];
+    activeCells.sort((a, b) => b.value - a.value);
+
+    const restCells = activeKeys.size ? allCells.filter(c => !activeKeys.has(`${c.q},${c.r}`)) : allCells;
+    const sortedRest = restCells.sort((a, b) => b.value - a.value);
+
+    const finalCells = activeCells.concat(sortedRest).slice(0, maxCellsToRender);
+    for (const cell of finalCells) {
         const ratio = maxValue > 0 ? Math.min(1, Math.sqrt(cell.value / maxValue)) : 0;
         const fillOpacity = 0.06 + 0.20 * ratio;
         const fillColor = lightenHexColor(baseColor, 0.35 - 0.20 * ratio);
 
         let className = 'territory-hex';
-        if (activityActive) {
-            const center = hexAxialToCenterMeters(cell.q, cell.r, size);
-            const d = Math.hypot(center.x - activity.x, center.y - activity.y);
-            if (d <= activityRadiusM) {
-                className = 'territory-hex territory-hex-active';
-            }
+        if (activityActive && activeKeys.has(`${cell.q},${cell.r}`)) {
+            className = 'territory-hex territory-hex-active';
         }
 
         const corners = hexCornersLatLng(cell.q, cell.r, size);
