@@ -896,6 +896,29 @@ let versionCheckInterval = null;
 let versionUpdatePrompted = false;
 let initialDeployedCommitFull = '';
 
+function getCurrentAssetCacheBust() {
+    try {
+        const script = document.querySelector('script[src*="app.js"]');
+        const href = script?.getAttribute('src') || '';
+        const u = new URL(href, window.location.href);
+        return (u.searchParams.get('v') || '').trim();
+    } catch (e) {
+        return '';
+    }
+}
+
+function getCurrentDeployedTimestamp() {
+    const toggleDebugBtn = document.getElementById('toggle-debug');
+    return (toggleDebugBtn?.getAttribute('data-timestamp') || '').trim();
+}
+
+function getCurrentDeployedSignature() {
+    const commit = getCurrentDeployedCommitFull();
+    const ts = getCurrentDeployedTimestamp();
+    const v = getCurrentAssetCacheBust();
+    return `${commit}|${ts}|${v}`;
+}
+
 function getCurrentDeployedCommitFull() {
     const toggleDebugBtn = document.getElementById('toggle-debug');
     const commit = toggleDebugBtn?.getAttribute('data-commit');
@@ -930,33 +953,89 @@ async function fetchRemoteDeployedCommitFull() {
     return m ? String(m[1]).trim() : '';
 }
 
+async function fetchRemoteDeployedSignature() {
+    const url = `/?version_check=${Date.now()}`;
+    const res = await fetch(url, {
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: {
+            'Cache-Control': 'no-cache, no-store, max-age=0',
+            'Pragma': 'no-cache'
+        }
+    });
+    if (!res.ok) return '';
+
+    const html = await res.text();
+    let commit = '';
+    let ts = '';
+    let v = '';
+
+    try {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const btn = doc.getElementById('toggle-debug');
+        commit = (btn?.getAttribute('data-commit') || '').trim();
+        ts = (btn?.getAttribute('data-timestamp') || '').trim();
+
+        const script = doc.querySelector('script[src*="app.js"]');
+        const src = script?.getAttribute('src') || '';
+        if (src) {
+            const u = new URL(src, window.location.origin);
+            v = (u.searchParams.get('v') || '').trim();
+        }
+    } catch (e) {
+        // ignore and fallback below
+    }
+
+    if (!commit) {
+        const m = html.match(/\bdata-commit\s*=\s*"([a-f0-9]{7,40}|deployed)"/i);
+        commit = m ? String(m[1]).trim() : '';
+    }
+    if (!ts) {
+        const m = html.match(/\bdata-timestamp\s*=\s*"([^"]{5,80})"/i);
+        ts = m ? String(m[1]).trim() : '';
+    }
+    if (!v) {
+        const m = html.match(/app\.js\?v=([0-9]{6,})/i);
+        v = m ? String(m[1]).trim() : '';
+    }
+
+    return `${commit}|${ts}|${v}`;
+}
+
 async function checkForNewVersionInBackground() {
     if (versionUpdatePrompted) return;
-    const current = getCurrentDeployedCommitFull();
+    const currentCommit = getCurrentDeployedCommitFull();
+    const currentSig = getCurrentDeployedSignature();
 
-    let remote = '';
+    let remoteSig = '';
     try {
-        remote = await fetchRemoteDeployedCommitFull();
+        remoteSig = await fetchRemoteDeployedSignature();
     } catch (e) {
         if (window.debugLog) window.debugLog(`⚠️ Version check failed: ${String(e && e.message ? e.message : e)}`);
         return;
     }
-    if (!remote) return;
+    if (!remoteSig) return;
 
     // If we don't know our current commit yet, learn it from remote and wait for the next deploy.
-    if (!current) {
-        initialDeployedCommitFull = remote;
+    if (!currentCommit) {
+        // Try to at least capture commit part from remote signature
+        initialDeployedCommitFull = String(remoteSig.split('|')[0] || '').trim();
         return;
     }
-    if (!remote || remote === current) return;
+
+    // Compare full signature (commit|timestamp|asset-v). This works even if commit stays "deployed".
+    if (remoteSig === currentSig) return;
 
     versionUpdatePrompted = true;
-    if (window.debugLog) window.debugLog(`⬆️ New version detected: ${current.substring(0, 8)} → ${remote.substring(0, 8)}`);
+    if (window.debugLog) window.debugLog(`⬆️ New version detected: ${currentSig} → ${remoteSig}`);
+
+    const remoteCommit = String(remoteSig.split('|')[0] || '').trim();
+    const remoteShort = remoteCommit ? remoteCommit.substring(0, 8) : 'neu';
 
     // Use an in-app notification instead of confirm(): some mobile browsers suppress dialogs from timers.
     const n = showNotification(
         'Update verfügbar',
-        `Neue Version verfügbar (${remote.substring(0, 8)}). Tippe hier zum Neuladen.`,
+        `Neue Version verfügbar (${remoteShort}). Tippe hier zum Neuladen.`,
         'info',
         20000
     );
