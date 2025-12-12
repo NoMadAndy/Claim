@@ -5,12 +5,22 @@
 set -uo pipefail
 
 # This script lives in tools/, but must operate from the repository root.
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Prefer git's idea of the repo root (more robust if invoked from elsewhere).
+if command -v git >/dev/null 2>&1; then
+  GIT_ROOT="$(cd "$SCRIPT_DIR" && git rev-parse --show-toplevel 2>/dev/null || true)"
+  if [[ -n "$GIT_ROOT" ]]; then
+    PROJECT_ROOT="$GIT_ROOT"
+  fi
+fi
 LOG_FILE="$PROJECT_ROOT/.deploy.log"
 LOCK_FILE="$PROJECT_ROOT/.deploy.lock"
 
 # Configuration
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
+COMPOSE_PATH="$PROJECT_ROOT/$COMPOSE_FILE"
 BRANCH="${BRANCH:-main}"
 RESTART_TIMEOUT=30
 
@@ -34,7 +44,7 @@ echo $$ > "$LOCK_FILE"
 
 log_msg "INFO" "========== DEPLOYMENT STARTED =========="
 log_msg "INFO" "Project: $PROJECT_ROOT"
-log_msg "INFO" "Compose file: $COMPOSE_FILE"
+log_msg "INFO" "Compose file: $COMPOSE_PATH"
 log_msg "INFO" "Branch: $BRANCH"
 
 cd "$PROJECT_ROOT"
@@ -70,8 +80,8 @@ NEW_COMMIT=$(git rev-parse HEAD 2>/dev/null | cut -c1-8)
 log_msg "SUCCESS" "✓ Pulled successfully (now at $NEW_COMMIT)"
 
 # Check if docker-compose file exists
-if [[ ! -f "$COMPOSE_FILE" ]]; then
-  log_msg "ERROR" "Compose file not found: $COMPOSE_FILE"
+if [[ ! -f "$COMPOSE_PATH" ]]; then
+  log_msg "ERROR" "Compose file not found: $COMPOSE_PATH"
   exit 1
 fi
 
@@ -82,18 +92,18 @@ if ! docker info >/dev/null 2>&1; then
 fi
 
 log_msg "INFO" "Building Docker images..."
-if ! docker-compose -f "$COMPOSE_FILE" build --no-cache; then
+if ! docker-compose -f "$COMPOSE_PATH" build --no-cache; then
   log_msg "ERROR" "Docker build failed"
   exit 1
 fi
 
 log_msg "INFO" "⬆️ Stopping old containers..."
-if ! docker-compose -f "$COMPOSE_FILE" down; then
+if ! docker-compose -f "$COMPOSE_PATH" down; then
   log_msg "WARN" "Failed to stop containers gracefully, continuing..."
 fi
 
 log_msg "INFO" "🚀 Starting new containers..."
-if ! docker-compose -f "$COMPOSE_FILE" up -d; then
+if ! docker-compose -f "$COMPOSE_PATH" up -d; then
   log_msg "ERROR" "Failed to start containers"
   exit 1
 fi
@@ -102,7 +112,7 @@ fi
 log_msg "INFO" "Waiting for services to be healthy..."
 WAIT_COUNT=0
 while [[ $WAIT_COUNT -lt $RESTART_TIMEOUT ]]; do
-  if docker-compose -f "$COMPOSE_FILE" exec -T api curl -f http://localhost:8000/api/health >/dev/null 2>&1; then
+  if docker-compose -f "$COMPOSE_PATH" exec -T api curl -f http://localhost:8000/api/health >/dev/null 2>&1; then
     log_msg "SUCCESS" "✓ API is healthy"
     break
   fi
@@ -117,7 +127,7 @@ fi
 
 log_msg "SUCCESS" "========== DEPLOYMENT SUCCESSFUL =========="
 log_msg "INFO" "Containers running:"
-docker-compose -f "$COMPOSE_FILE" ps | tee -a "$LOG_FILE"
+docker-compose -f "$COMPOSE_PATH" ps | tee -a "$LOG_FILE"
 
 # Clean up old images
 log_msg "INFO" "Cleaning up old images..."
