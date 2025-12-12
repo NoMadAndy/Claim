@@ -657,7 +657,7 @@ let lastGPSUpdateTime = null; // Track last GPS update for tracking pause detect
 let followMode = false;
 let trackingActive = false;
 let compassEnabled = false;
-let heatmapVisible = true;  // Start with heatmap enabled
+let heatmapVisible = false;  // Heatmap standardmäßig aus
 let authToken = null;
 let ws = null;
 
@@ -1620,11 +1620,38 @@ function initMap() {
     
     // Base layers
     const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
     });
     
     const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 19
+        maxZoom: 19,
+        attribution: 'Tiles &copy; Esri'
+    });
+
+    // Free (no key) basemaps
+    const cartoPositronLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 20,
+        subdomains: 'abcd',
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+    });
+
+    const cartoDarkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 20,
+        subdomains: 'abcd',
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+    });
+
+    const cyclosmLayer = L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
+        maxZoom: 20,
+        subdomains: 'abc',
+        attribution: '&copy; OpenStreetMap contributors &copy; CyclOSM'
+    });
+
+    const hotLayer = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        subdomains: 'abc',
+        attribution: '&copy; OpenStreetMap contributors, Tiles style by Humanitarian OpenStreetMap Team'
     });
     
     // Add default layer
@@ -1633,7 +1660,11 @@ function initMap() {
     // Store layers for switching
     window.mapLayers = {
         'Street': osmLayer,
-        'Satellite': satelliteLayer
+        'Satellite': satelliteLayer,
+        'Positron': cartoPositronLayer,
+        'Dark': cartoDarkLayer,
+        'CyclOSM': cyclosmLayer,
+        'HOT': hotLayer
     };
     
     // Initialize tracking layer
