@@ -429,6 +429,39 @@ body {
         box-shadow: 0 0 20px rgba(255, 215, 0, 1), 0 0 30px rgba(255, 215, 0, 0.6);
     }
 }
+
+/* Floating reward text (XP/Claims) */
+.floating-reward {
+    pointer-events: none;
+}
+
+.floating-reward-inner {
+    transform: translate(-50%, -8px);
+    color: white;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
+    white-space: nowrap;
+    animation: floatUpFade 1.15s ease-out forwards;
+}
+
+@keyframes floatUpFade {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, 6px) scale(0.98);
+    }
+    15% {
+        opacity: 1;
+        transform: translate(-50%, -2px) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -26px) scale(1.02);
+    }
+}
     animation: pulse 2s infinite;
 }
 

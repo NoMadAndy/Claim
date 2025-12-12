@@ -32,6 +32,65 @@ function lightenHexColor(hex, percent = 0.5) {
     return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
+function playLogFX(lat, lng, xpGained, claimPoints, isAuto = false) {
+    if (!map) return;
+    if (lat == null || lng == null) return;
+
+    const xp = Number(xpGained || 0) || 0;
+    const claims = Number(claimPoints || 0) || 0;
+
+    const intensity = Math.min(1, Math.max(0, xp / 120));
+    const color = isAuto ? '#FFB800' : '#22c55e';
+
+    // Ripple: animate radius in JS (Leaflet path rendering safe)
+    const startRadius = 6;
+    const endRadius = 70;
+    const durationMs = 750;
+    const start = performance.now();
+
+    const ripple = L.circle([lat, lng], {
+        radius: startRadius,
+        color,
+        weight: 2,
+        opacity: 0.65,
+        fillColor: color,
+        fillOpacity: 0.08 + 0.10 * intensity,
+        interactive: false
+    }).addTo(map);
+
+    const tick = (t) => {
+        const p = Math.min(1, (t - start) / durationMs);
+        const eased = 1 - Math.pow(1 - p, 3);
+        const r = startRadius + (endRadius - startRadius) * eased;
+        ripple.setRadius(r);
+        ripple.setStyle({
+            opacity: 0.65 * (1 - p),
+            fillOpacity: (0.08 + 0.10 * intensity) * (1 - p)
+        });
+        if (p < 1) {
+            requestAnimationFrame(tick);
+        } else {
+            map.removeLayer(ripple);
+        }
+    };
+    requestAnimationFrame(tick);
+
+    // Floating text
+    const text = `+${xp} XP · +${claims} Claims`;
+    const float = L.marker([lat, lng], {
+        interactive: false,
+        icon: L.divIcon({
+            className: 'floating-reward',
+            html: `<div class="floating-reward-inner">${text}</div>`,
+            iconSize: [10, 10]
+        })
+    }).addTo(map);
+
+    setTimeout(() => {
+        if (map && map.hasLayer(float)) map.removeLayer(float);
+    }, 1200);
+}
+
 // Auto-log cooldown tracking to prevent spam in console
 let autoLogCooldownUntil = 0;
 // Track spots already being logged to prevent duplicate requests
@@ -582,6 +641,12 @@ let activeHeatmaps = new Set(); // Track which player heatmaps are visible
 let activeBufFs = new Map(); // Track active buffs: Map<itemId, {name, effects, expiresAt}>
 let heatmapLayers = new Map(); // Map of userId -> heatmapLayer
 let isPopupOpen = false; // Track if a popup is currently open
+
+// Territory (Hex Grid) Overlay
+let territoryVisible = true;
+let territoryLayer = null;
+let territoryUpdateTimeout = null;
+let cachedTerritoryHeatmap = null; // { user_id, username, color, points: [{latitude, longitude, intensity}] }
 
 // Map markers storage
 const spotMarkers = new Map();
@@ -1163,6 +1228,12 @@ function initMap() {
     
     // Initialize heatmap layer
     heatmapLayer = L.layerGroup();
+
+    // Initialize territory (hex) overlay layer
+    territoryLayer = L.layerGroup();
+    if (territoryVisible) {
+        territoryLayer.addTo(map);
+    }
     
     // Add click handler for creating spots
     map.on('click', handleMapClick);
@@ -1173,6 +1244,7 @@ function initMap() {
         spotReloadTimeout = setTimeout(() => {
             if (window.debugLog) window.debugLog('🗺️ Map moved - reloading spots');
             loadNearbySpots();
+            if (territoryVisible) scheduleTerritoryUpdate();
         }, 500); // Wait 500ms after movement stops
     });
     
@@ -1181,8 +1253,156 @@ function initMap() {
         spotReloadTimeout = setTimeout(() => {
             if (window.debugLog) window.debugLog('🔍 Zoom changed - reloading spots');
             loadNearbySpots();
+            if (territoryVisible) scheduleTerritoryUpdate();
         }, 500); // Wait 500ms after zoom stops
     });
+}
+
+function scheduleTerritoryUpdate() {
+    if (!territoryLayer || !map) return;
+    if (!territoryVisible) return;
+    if (!cachedTerritoryHeatmap || !cachedTerritoryHeatmap.points || cachedTerritoryHeatmap.points.length === 0) return;
+
+    if (territoryUpdateTimeout) clearTimeout(territoryUpdateTimeout);
+    territoryUpdateTimeout = setTimeout(() => {
+        updateTerritoryOverlay();
+    }, 120);
+}
+
+// --- Hex grid helpers (WebMercator meters) ---
+const EARTH_RADIUS_M = 6378137;
+const SQRT3 = Math.sqrt(3);
+
+function latLngToMercatorMeters(lat, lng) {
+    const x = EARTH_RADIUS_M * (lng * Math.PI / 180);
+    const y = EARTH_RADIUS_M * Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI / 180) / 2));
+    return { x, y };
+}
+
+function mercatorMetersToLatLng(x, y) {
+    const lng = (x / EARTH_RADIUS_M) * 180 / Math.PI;
+    const lat = (2 * Math.atan(Math.exp(y / EARTH_RADIUS_M)) - Math.PI / 2) * 180 / Math.PI;
+    return { lat, lng };
+}
+
+function cubeRound(x, y, z) {
+    let rx = Math.round(x);
+    let ry = Math.round(y);
+    let rz = Math.round(z);
+
+    const xDiff = Math.abs(rx - x);
+    const yDiff = Math.abs(ry - y);
+    const zDiff = Math.abs(rz - z);
+
+    if (xDiff > yDiff && xDiff > zDiff) {
+        rx = -ry - rz;
+    } else if (yDiff > zDiff) {
+        ry = -rx - rz;
+    } else {
+        rz = -rx - ry;
+    }
+
+    return { x: rx, y: ry, z: rz };
+}
+
+function pointToHexAxial(x, y, size) {
+    // pointy-top axial coords (q, r)
+    const q = (SQRT3 / 3 * x - 1 / 3 * y) / size;
+    const r = (2 / 3 * y) / size;
+    const cube = cubeRound(q, -q - r, r);
+    return { q: cube.x, r: cube.z };
+}
+
+function hexAxialToCenterMeters(q, r, size) {
+    const x = size * SQRT3 * (q + r / 2);
+    const y = size * (3 / 2) * r;
+    return { x, y };
+}
+
+function hexCornersLatLng(q, r, size) {
+    const center = hexAxialToCenterMeters(q, r, size);
+    const corners = [];
+    for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 180) * (60 * i - 30); // pointy-top
+        const cx = center.x + size * Math.cos(angle);
+        const cy = center.y + size * Math.sin(angle);
+        const ll = mercatorMetersToLatLng(cx, cy);
+        corners.push([ll.lat, ll.lng]);
+    }
+    return corners;
+}
+
+function getHexSizeMeters() {
+    const z = map ? map.getZoom() : 16;
+    let size = 160 * Math.pow(2, (16 - z));
+    size = Math.max(70, Math.min(350, size));
+    return size;
+}
+
+function updateTerritoryOverlay() {
+    if (!territoryLayer || !map) return;
+
+    if (!territoryVisible) {
+        territoryLayer.clearLayers();
+        if (map.hasLayer(territoryLayer)) map.removeLayer(territoryLayer);
+        return;
+    }
+
+    if (!map.hasLayer(territoryLayer)) territoryLayer.addTo(map);
+
+    const heat = cachedTerritoryHeatmap;
+    if (!heat || !heat.points || heat.points.length === 0) {
+        territoryLayer.clearLayers();
+        return;
+    }
+
+    const bounds = map.getBounds();
+    const sw = latLngToMercatorMeters(bounds.getSouthWest().lat, bounds.getSouthWest().lng);
+    const ne = latLngToMercatorMeters(bounds.getNorthEast().lat, bounds.getNorthEast().lng);
+    const size = getHexSizeMeters();
+    const pad = size * 2.2;
+    const minX = Math.min(sw.x, ne.x) - pad;
+    const maxX = Math.max(sw.x, ne.x) + pad;
+    const minY = Math.min(sw.y, ne.y) - pad;
+    const maxY = Math.max(sw.y, ne.y) + pad;
+
+    const bins = new Map(); // key -> {q,r,value}
+    let maxValue = 0;
+
+    for (const p of heat.points) {
+        const m = latLngToMercatorMeters(p.latitude, p.longitude);
+        if (m.x < minX || m.x > maxX || m.y < minY || m.y > maxY) continue;
+        const axial = pointToHexAxial(m.x, m.y, size);
+        const key = `${axial.q},${axial.r}`;
+        const prev = bins.get(key);
+        const inc = Number(p.intensity || 0) || 0;
+        const next = (prev ? prev.value : 0) + inc;
+        bins.set(key, { q: axial.q, r: axial.r, value: next });
+        if (next > maxValue) maxValue = next;
+    }
+
+    territoryLayer.clearLayers();
+    if (bins.size === 0) return;
+
+    const baseColor = heat.color || '#22c55e';
+    const borderColor = lightenHexColor(baseColor, 0.15);
+
+    const sorted = Array.from(bins.values()).sort((a, b) => b.value - a.value).slice(0, 380);
+    for (const cell of sorted) {
+        const ratio = maxValue > 0 ? Math.min(1, Math.sqrt(cell.value / maxValue)) : 0;
+        const fillOpacity = 0.06 + 0.20 * ratio;
+        const fillColor = lightenHexColor(baseColor, 0.35 - 0.20 * ratio);
+
+        const corners = hexCornersLatLng(cell.q, cell.r, size);
+        L.polygon(corners, {
+            color: borderColor,
+            weight: 1,
+            opacity: 0.55,
+            fillColor,
+            fillOpacity,
+            interactive: false
+        }).addTo(territoryLayer);
+    }
 }
 
 // Handle map click for spot creation
@@ -2062,6 +2282,11 @@ async function performAutoLog(spotId) {
         lastAutoLogTime.set(spotId, now);
         
         soundManager.playSound('log');
+        try {
+            playLogFX(currentPosition.lat, currentPosition.lng, response.xp_gained, response.claim_points, true);
+        } catch (e) {
+            // ignore FX failures
+        }
         showNotification(
             'Auto Log!',
             `+${response.xp_gained} XP, +${response.claim_points} Claims`,
@@ -2215,6 +2440,12 @@ async function submitLog(spotId, notes, photoFile) {
             `+${log.xp_gained} XP, +${log.claim_points} Claims`,
             'log-event'
         );
+
+        try {
+            playLogFX(currentPosition.lat, currentPosition.lng, log.xp_gained, log.claim_points, false);
+        } catch (e) {
+            // ignore FX failures
+        }
         
         loadStats();
         
@@ -2827,6 +3058,16 @@ async function loadHeatmap() {
         heatmapLayers.clear();
         
         if (heatmaps && heatmaps.length > 0) {
+            // Cache "my" heatmap for territory overlay (fallback: first available)
+            let myHeatmap = null;
+            if (currentUser && currentUser.id) {
+                myHeatmap = heatmaps.find(h => Number(h.user_id) === Number(currentUser.id)) || null;
+            }
+            if (!myHeatmap) {
+                myHeatmap = heatmaps.find(h => h.points && h.points.length > 0) || null;
+            }
+            cachedTerritoryHeatmap = myHeatmap;
+
             heatmaps.forEach((heatmap, index) => {
                 if (heatmap.points && heatmap.points.length > 0) {
                     const points = heatmap.points.map(p => [p.latitude, p.longitude, p.intensity]);
@@ -2869,6 +3110,10 @@ async function loadHeatmap() {
                 }
             });
         }
+
+        if (territoryVisible) {
+            scheduleTerritoryUpdate();
+        }
         
         if (window.debugLog) window.debugLog(`🔥 Heatmap updated: ${heatmapLayers.size} players`);
     } catch (error) {
@@ -2908,6 +3153,10 @@ function showLayerMenu() {
             <label>
                 <input type="checkbox" id="overlay-heatmap" ${heatmapVisible ? 'checked' : ''}>
                 Heatmap 🔥 (alle Spieler)
+            </label>
+            <label>
+                <input type="checkbox" id="overlay-territory" ${territoryVisible ? 'checked' : ''}>
+                Territorium (Hex) 🛡️
             </label>
             <label>
                 <input type="checkbox" id="overlay-tracks" ${trackLayers.size > (activeTrackId ? 1 : 0) ? 'checked' : ''}>
@@ -2955,6 +3204,22 @@ function showLayerMenu() {
         } else {
             if (trackLayers.size > (activeTrackId ? 1 : 0)) {
                 toggleTracksView();
+            }
+        }
+    });
+
+    // Handle territory overlay
+    menu.querySelector('#overlay-territory').addEventListener('change', (e) => {
+        territoryVisible = !!e.target.checked;
+        if (territoryVisible) {
+            if (territoryLayer && map && !map.hasLayer(territoryLayer)) {
+                territoryLayer.addTo(map);
+            }
+            scheduleTerritoryUpdate();
+        } else {
+            if (territoryLayer) territoryLayer.clearLayers();
+            if (territoryLayer && map && map.hasLayer(territoryLayer)) {
+                map.removeLayer(territoryLayer);
             }
         }
     });
