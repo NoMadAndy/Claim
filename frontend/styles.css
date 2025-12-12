@@ -478,6 +478,34 @@ body {
     }
 }
 
+/* Player movement trail dots */
+.leaflet-overlay-pane path.player-trail-dot {
+    transform-box: fill-box;
+    transform-origin: center;
+    filter: drop-shadow(0 0 6px rgba(102, 126, 234, 0.25));
+    animation: playerTrailFade 5.2s ease-out forwards;
+}
+
+.leaflet-overlay-pane path.player-trail-dot-fast {
+    filter: drop-shadow(0 0 10px rgba(102, 126, 234, 0.35));
+    animation-duration: 3.8s;
+}
+
+@keyframes playerTrailFade {
+    0% {
+        opacity: 0;
+        transform: scale(0.85);
+    }
+    12% {
+        opacity: 0.85;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.55);
+    }
+}
+
 /* Heatmap shimmer edge (canvas glow) */
 .heatmap-shimmer {
     --heatmap-glow-color: transparent;

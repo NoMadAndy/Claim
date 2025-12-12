@@ -661,6 +661,11 @@ let heatmapVisible = true;  // Start with heatmap enabled
 let authToken = null;
 let ws = null;
 
+// Player movement trail (visual effect)
+let playerTrailLayer = null;
+let lastTrailDrop = null; // { lat, lng, t }
+const activeTrailDots = []; // keep references for cleanup
+
 // Connection monitoring
 let lastSuccessfulAPICall = Date.now();
 let lastSuccessfulWSMessage = Date.now();
@@ -2070,6 +2075,13 @@ function startGPSTracking() {
 
 function updatePlayerPosition() {
     if (!currentPosition || !map) return;
+
+    // Drop a subtle trail dot behind movement (ignores drift / bad accuracy)
+    try {
+        maybeDropPlayerTrailDot(currentPosition);
+    } catch (e) {
+        // ignore
+    }
     
     if (playerMarker) {
         // Smooth animation to new position
@@ -2122,6 +2134,73 @@ function updatePlayerPosition() {
         
         // Bring player marker to front (above spots and other layers)
         playerMarker.setZIndexOffset(10000);
+    }
+}
+
+function maybeDropPlayerTrailDot(pos) {
+    if (!pos || !map) return;
+    if (pos.accuracy != null && Number(pos.accuracy) > 45) return; // too noisy
+
+    const now = Date.now();
+    const lat = Number(pos.lat);
+    const lng = Number(pos.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+    if (!lastTrailDrop) {
+        lastTrailDrop = { lat, lng, t: now };
+        return;
+    }
+
+    const dt = now - lastTrailDrop.t;
+    if (dt < 900) return; // throttle
+
+    const dist = calculateDistance(lastTrailDrop.lat, lastTrailDrop.lng, lat, lng);
+    if (dist < 6) return; // ignore tiny jitter
+
+    // Limit frequency at walking speed, allow a bit more at higher speed
+    const speed = (pos.speed != null && Number.isFinite(pos.speed)) ? Number(pos.speed) : null;
+    if (speed != null && speed < 0.8 && dt < 1600) return;
+
+    lastTrailDrop = { lat, lng, t: now };
+    dropPlayerTrailDot(lat, lng, speed);
+}
+
+function dropPlayerTrailDot(lat, lng, speed) {
+    if (!map) return;
+    if (!playerTrailLayer) {
+        playerTrailLayer = L.layerGroup().addTo(map);
+    }
+
+    const fast = (speed != null && speed >= 2.2);
+    const dot = L.circleMarker([lat, lng], {
+        radius: fast ? 6 : 5,
+        color: '#667eea',
+        weight: 2,
+        opacity: 0.55,
+        fillColor: '#667eea',
+        fillOpacity: fast ? 0.18 : 0.14,
+        interactive: false,
+        className: fast ? 'player-trail-dot player-trail-dot-fast' : 'player-trail-dot'
+    });
+
+    dot.addTo(playerTrailLayer);
+    activeTrailDots.push(dot);
+
+    // Cleanup: remove after a few seconds
+    const ttl = fast ? 3800 : 5200;
+    setTimeout(() => {
+        try {
+            if (playerTrailLayer && dot) playerTrailLayer.removeLayer(dot);
+        } catch (e) {}
+    }, ttl);
+
+    // Hard cap to prevent buildup
+    const cap = 18;
+    while (activeTrailDots.length > cap) {
+        const old = activeTrailDots.shift();
+        try {
+            if (playerTrailLayer && old) playerTrailLayer.removeLayer(old);
+        } catch (e) {}
     }
 }
 
