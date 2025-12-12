@@ -716,6 +716,106 @@ const spotMarkers = new Map();
 const playerMarkers = new Map();
 const trackLayers = new Map(); // Store track polylines
 let activeTrackPoints = []; // Current track points for live drawing
+const lootSpotIds = new Set();
+function playLootCollectFX(lat, lng) {
+    if (!map) return;
+    if (lat == null || lng == null) return;
+
+    const color = '#ffb800';
+    const startRadius = 6;
+    const endRadius = 95;
+    const durationMs = 650;
+    const start = performance.now();
+
+    const ripple = L.circle([lat, lng], {
+        radius: startRadius,
+        color,
+        weight: 2,
+        opacity: 0.7,
+        fillColor: color,
+        fillOpacity: 0.10,
+        interactive: false
+    }).addTo(map);
+
+    const tick = (t) => {
+        const p = Math.min(1, (t - start) / durationMs);
+        const eased = 1 - Math.pow(1 - p, 3);
+        const r = startRadius + (endRadius - startRadius) * eased;
+        ripple.setRadius(r);
+        ripple.setStyle({
+            opacity: 0.7 * (1 - p),
+            fillOpacity: 0.10 * (1 - p)
+        });
+        if (p < 1) {
+            requestAnimationFrame(tick);
+        } else {
+            map.removeLayer(ripple);
+        }
+    };
+    requestAnimationFrame(tick);
+
+    // Sparkles: a few short-lived circle markers around the point
+    try {
+        const origin = latLngToMercatorMeters(lat, lng);
+        const sparkles = [];
+        for (let i = 0; i < 8; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const d = 12 + Math.random() * 26; // meters
+            const x = origin.x + Math.cos(a) * d;
+            const y = origin.y + Math.sin(a) * d;
+            const ll = mercatorMetersToLatLng(x, y);
+            const s = L.circleMarker([ll.lat, ll.lng], {
+                radius: 3,
+                color,
+                weight: 1,
+                opacity: 0.9,
+                fillColor: color,
+                fillOpacity: 0.75,
+                interactive: false,
+                className: 'loot-sparkle'
+            }).addTo(map);
+            sparkles.push(s);
+        }
+        setTimeout(() => {
+            for (const s of sparkles) {
+                try { map.removeLayer(s); } catch (e) {}
+            }
+        }, 800);
+    } catch (e) {
+        // ignore
+    }
+}
+
+function updateLootBeaconBling() {
+    if (!map || !currentPosition) return;
+    if (lootSpotIds.size === 0) return;
+
+    for (const id of Array.from(lootSpotIds)) {
+        const marker = spotMarkers.get(id);
+        if (!marker) {
+            lootSpotIds.delete(id);
+            continue;
+        }
+
+        const el = marker.getElement && marker.getElement();
+        if (!el) continue;
+
+        // Distance-based pulse: closer = faster & stronger
+        const ll = marker.getLatLng();
+        const dist = calculateDistance(currentPosition.lat, currentPosition.lng, ll.lat, ll.lng);
+
+        // Only apply within a reasonable radius; far away shouldn't scream
+        const clamped = Math.max(0, Math.min(450, dist));
+        const t = 1 - (clamped / 450); // 1 near, 0 far
+
+        const duration = (2.4 - 1.6 * t); // 2.4s far -> 0.8s near
+        const glow = (6 + 10 * t); // px
+        const glow2 = (10 + 18 * t);
+
+        el.style.animationDuration = `${duration.toFixed(2)}s`;
+        el.style.filter = `drop-shadow(0 0 ${glow.toFixed(0)}px rgba(255, 215, 0, 0.65)) drop-shadow(0 0 ${glow2.toFixed(0)}px rgba(255, 184, 0, 0.35))`;
+    }
+}
 
 // Version information
 function getVersionInfo() {
@@ -1321,6 +1421,7 @@ async function initializeApp() {
         setInterval(updateAutoLog, 1000); // Check auto-log every 1 second
         setInterval(loadStats, 30000); // Update stats every 30 seconds
         setInterval(trySpawnLoot, 120000); // Try spawn loot every 2 minutes
+        setInterval(updateLootBeaconBling, 1000); // Loot beacon pulse update
         if (window.debugLog) window.debugLog('⏱️ Update loops started (AutoLog: 1s, Stats: 30s, Loot: 2m)');
         
         // Start health check every 30 seconds
@@ -2292,6 +2393,8 @@ async function loadNearbySpots() {
         // Clear existing markers
         spotMarkers.forEach(marker => marker.remove());
         spotMarkers.clear();
+
+        lootSpotIds.clear();
         
         // Count loot spots for debugging
         let lootCount = 0;
@@ -2343,6 +2446,10 @@ async function loadNearbySpots() {
             });
             
             spotMarkers.set(spot.id, marker);
+
+            if (spot.is_loot) {
+                lootSpotIds.add(spot.id);
+            }
         });
         
         // Re-open popup if it was open before reload
@@ -2880,6 +2987,12 @@ window.collectLoot = async function(lootSpotId) {
         
         if (result.success) {
             soundManager.playSound('collect');
+
+            try {
+                playLootCollectFX(currentPosition.lat, currentPosition.lng);
+            } catch (e) {
+                // ignore
+            }
             
             // Remove marker immediately from map
             const marker = spotMarkers.get(lootSpotId);

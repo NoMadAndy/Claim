@@ -421,6 +421,27 @@ body {
     animation: pulse-loot 1.5s ease-in-out infinite;
 }
 
+/* Loot sparkles (SVG paths) */
+.leaflet-overlay-pane path.loot-sparkle {
+    animation: lootSparkle 0.8s ease-out forwards;
+    transform-origin: center;
+}
+
+@keyframes lootSparkle {
+    0% {
+        opacity: 0;
+        transform: scale(0.6);
+    }
+    25% {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.5);
+    }
+}
+
 @keyframes pulse-loot {
     0%, 100% {
         box-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
