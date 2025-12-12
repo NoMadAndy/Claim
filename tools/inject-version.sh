@@ -39,6 +39,22 @@ awk -v commit="$SHORT_HASH" -v timestamp="$TIMESTAMP" -v cachebust="$CACHE_BUST"
     print line
     next
   }
+  /href="styles\.css"/ {
+    # Ensure cache busting even if no ?v= is present
+    if ($0 ~ /styles\.css\?v=/) {
+      gsub(/styles\.css\?v=[0-9]+/, "styles.css?v=" cachebust)
+    } else {
+      gsub(/href="styles\.css"/, "href=\"styles.css?v=" cachebust "\"")
+    }
+  }
+  /src="app\.js"/ {
+    # Ensure cache busting even if no ?v= is present
+    if ($0 ~ /app\.js\?v=/) {
+      gsub(/app\.js\?v=[0-9]+/, "app.js?v=" cachebust)
+    } else {
+      gsub(/src="app\.js"/, "src=\"app.js?v=" cachebust "\"")
+    }
+  }
   /styles\.css\?v=/ {
     gsub(/styles\.css\?v=[0-9]+/, "styles.css?v=" cachebust)
   }

@@ -462,8 +462,6 @@ body {
         transform: translate(-50%, -26px) scale(1.02);
     }
 }
-    animation: pulse 2s infinite;
-}
 
 @keyframes pulse {
     0%, 100% {
