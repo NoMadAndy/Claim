@@ -1627,18 +1627,13 @@ function initMap() {
         maxZoom: 19
     });
     
-    const topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-        maxZoom: 17
-    });
-    
     // Add default layer
     osmLayer.addTo(map);
     
     // Store layers for switching
     window.mapLayers = {
         'Street': osmLayer,
-        'Satellite': satelliteLayer,
-        'Topo': topoLayer
+        'Satellite': satelliteLayer
     };
     
     // Initialize tracking layer
