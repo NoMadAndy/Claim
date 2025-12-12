@@ -722,29 +722,30 @@ function playLootCollectFX(lat, lng) {
     if (lat == null || lng == null) return;
 
     const color = '#ffb800';
-    const startRadius = 6;
-    const endRadius = 95;
-    const durationMs = 650;
+    const startRadiusPx = 10;
+    const endRadiusPx = 70;
+    const durationMs = 720;
     const start = performance.now();
 
-    const ripple = L.circle([lat, lng], {
-        radius: startRadius,
+    // Use circleMarker (pixels) so it's always visible regardless of zoom.
+    const ripple = L.circleMarker([lat, lng], {
+        radius: startRadiusPx,
         color,
-        weight: 2,
-        opacity: 0.7,
+        weight: 3,
+        opacity: 0.85,
         fillColor: color,
-        fillOpacity: 0.10,
+        fillOpacity: 0.08,
         interactive: false
     }).addTo(map);
 
     const tick = (t) => {
         const p = Math.min(1, (t - start) / durationMs);
         const eased = 1 - Math.pow(1 - p, 3);
-        const r = startRadius + (endRadius - startRadius) * eased;
+        const r = startRadiusPx + (endRadiusPx - startRadiusPx) * eased;
         ripple.setRadius(r);
         ripple.setStyle({
-            opacity: 0.7 * (1 - p),
-            fillOpacity: 0.10 * (1 - p)
+            opacity: 0.85 * (1 - p),
+            fillOpacity: 0.08 * (1 - p)
         });
         if (p < 1) {
             requestAnimationFrame(tick);
@@ -753,6 +754,23 @@ function playLootCollectFX(lat, lng) {
         }
     };
     requestAnimationFrame(tick);
+
+    // Small "POP" marker for extra visibility
+    try {
+        const pop = L.marker([lat, lng], {
+            icon: L.divIcon({
+                className: 'loot-pop',
+                html: '<div class="loot-pop-inner">💎</div>',
+                iconSize: [0, 0]
+            }),
+            interactive: false
+        }).addTo(map);
+        setTimeout(() => {
+            try { map.removeLayer(pop); } catch (e) {}
+        }, 900);
+    } catch (e) {
+        // ignore
+    }
 
     // Sparkles: a few short-lived circle markers around the point
     try {

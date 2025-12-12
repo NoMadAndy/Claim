@@ -442,6 +442,33 @@ body {
     }
 }
 
+/* Loot collect "pop" icon */
+.loot-pop {
+    pointer-events: none;
+}
+
+.loot-pop-inner {
+    transform: translate(-50%, -50%);
+    font-size: 22px;
+    filter: drop-shadow(0 0 8px rgba(255, 184, 0, 0.6));
+    animation: lootPop 0.9s ease-out forwards;
+}
+
+@keyframes lootPop {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.6);
+    }
+    20% {
+        opacity: 1;
+        transform: translate(-50%, -58%) scale(1.15);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -80%) scale(1.05);
+    }
+}
+
 @keyframes pulse-loot {
     0%, 100% {
         box-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
