@@ -25,7 +25,13 @@ TIMESTAMP=$(TZ='Europe/Berlin' date '+%d.%m.%Y %H:%M:%S')
 echo "[info] Injecting version: $SHORT_HASH"
 echo "[info] Timestamp: $TIMESTAMP"
 
-# Update the toggle-debug button with data attributes (only once, correctly)
-sed -i "s|id=\"toggle-debug\"|id=\"toggle-debug\" data-commit=\"$SHORT_HASH\" data-timestamp=\"$TIMESTAMP\"|g" "$INDEX_FILE"
+# Update the toggle-debug button with data attributes (idempotent)
+# 1) Remove any existing data-commit/data-timestamp
+# 2) Inject exactly one set right after id="toggle-debug"
+sed -i \
+  -e 's/ data-commit="[^"]*"//g' \
+  -e 's/ data-timestamp="[^"]*"//g' \
+  -e "s|id=\"toggle-debug\"|id=\"toggle-debug\" data-commit=\"$SHORT_HASH\" data-timestamp=\"$TIMESTAMP\"|" \
+  "$INDEX_FILE"
 
 echo "[success] Version injected successfully!"

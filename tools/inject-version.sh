@@ -29,19 +29,23 @@ echo "[info] Cache bust: $CACHE_BUST"
 
 # Update the toggle-debug button element with both commit and timestamp attributes
 # Also update cache busting for CSS and JS files
+# IMPORTANT: remove any existing data-commit/data-timestamp attributes first to avoid duplicates.
 awk -v commit="$SHORT_HASH" -v timestamp="$TIMESTAMP" -v cachebust="$CACHE_BUST" '
-    /id="toggle-debug"/ {
-        gsub(/data-commit="[^"]*"/, "data-commit=\"" commit "\"")
-        gsub(/data-timestamp="[^"]*"/, "")
-        sub(/id="toggle-debug"/, "id=\"toggle-debug\" data-commit=\"" commit "\" data-timestamp=\"" timestamp "\"")
-    }
-    /styles\.css\?v=/ {
-        gsub(/styles\.css\?v=[0-9]+/, "styles.css?v=" cachebust)
-    }
-    /app\.js\?v=/ {
-        gsub(/app\.js\?v=[0-9]+/, "app.js?v=" cachebust)
-    }
-    { print }
+  /id="toggle-debug"/ {
+    line = $0
+    gsub(/ data-commit="[^"]*"/, "", line)
+    gsub(/ data-timestamp="[^"]*"/, "", line)
+    sub(/id="toggle-debug"/, "id=\"toggle-debug\" data-commit=\"" commit "\" data-timestamp=\"" timestamp "\"", line)
+    print line
+    next
+  }
+  /styles\.css\?v=/ {
+    gsub(/styles\.css\?v=[0-9]+/, "styles.css?v=" cachebust)
+  }
+  /app\.js\?v=/ {
+    gsub(/app\.js\?v=[0-9]+/, "app.js?v=" cachebust)
+  }
+  { print }
 ' "$INDEX_FILE" > "${INDEX_FILE}.tmp"
 
 mv "${INDEX_FILE}.tmp" "$INDEX_FILE"
