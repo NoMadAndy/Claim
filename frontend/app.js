@@ -3693,12 +3693,24 @@ window.useInventoryItem = async function(itemId) {
             }
             
             showNotification('🎉 Buff Activated!', message, 'success');
-            
-            // Track active buff (1 hour duration)
+
+            // Track active buff (prefer server-provided expires_at)
+            let expiresAtMs = Date.now() + (60 * 60 * 1000); // fallback 1h
+            try {
+                if (result.effects && result.effects.expires_at) {
+                    const parsed = Date.parse(result.effects.expires_at);
+                    if (!Number.isNaN(parsed)) {
+                        expiresAtMs = parsed;
+                    }
+                }
+            } catch (e) {
+                // keep fallback
+            }
+
             activeBufFs.set(result.item_id || result.id, {
                 name: result.item_name,
                 effects: result.effects,
-                expiresAt: Date.now() + (60 * 60 * 1000) // 1 hour
+                expiresAt: expiresAtMs
             });
             
             updateActivBuffsDisplay();
