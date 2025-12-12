@@ -1417,10 +1417,9 @@ function hexCornersLatLng(q, r, size) {
 }
 
 function getHexSizeMeters() {
-    const z = map ? map.getZoom() : 16;
-    let size = 160 * Math.pow(2, (16 - z));
-    size = Math.max(70, Math.min(350, size));
-    return size;
+    // Fixed real-world size (meters), independent of zoom level.
+    // Note: `size` here is the hex radius (center -> corner), i.e. also the side length.
+    return 500;
 }
 
 function updateTerritoryOverlay() {
