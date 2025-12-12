@@ -4070,11 +4070,46 @@ async function loadAllTracks() {
 async function loadTrackPoints(trackId) {
     try {
         const track = await apiRequest(`/tracks/${trackId}`);
-        return track.points.map(p => [p.latitude, p.longitude]);
+        const pts = Array.isArray(track.points) ? track.points.slice() : [];
+        // Ensure correct order: backend relationship may not be ordered.
+        pts.sort((a, b) => {
+            const at = a && a.timestamp ? Date.parse(a.timestamp) : NaN;
+            const bt = b && b.timestamp ? Date.parse(b.timestamp) : NaN;
+            if (Number.isFinite(at) && Number.isFinite(bt) && at !== bt) return at - bt;
+            const ai = a && typeof a.id === 'number' ? a.id : 0;
+            const bi = b && typeof b.id === 'number' ? b.id : 0;
+            return ai - bi;
+        });
+        return pts
+            .map(p => [p.latitude, p.longitude])
+            .filter(p => Number.isFinite(p[0]) && Number.isFinite(p[1]));
     } catch (error) {
         console.error('Failed to load track points:', error);
         return [];
     }
+}
+
+function buildTrackSegments(points, maxJumpMeters = 500) {
+    const segments = [];
+    let current = [];
+    for (const pt of points || []) {
+        if (!pt || pt.length < 2) continue;
+        const lat = Number(pt[0]);
+        const lng = Number(pt[1]);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+
+        if (current.length > 0) {
+            const prev = current[current.length - 1];
+            const d = calculateDistance(prev[0], prev[1], lat, lng);
+            if (d > maxJumpMeters) {
+                if (current.length > 1) segments.push(current);
+                current = [];
+            }
+        }
+        current.push([lat, lng]);
+    }
+    if (current.length > 1) segments.push(current);
+    return segments;
 }
 
 function displayTracks(tracks) {
@@ -4089,26 +4124,36 @@ function displayTracks(tracks) {
     // Display each track
     tracks.forEach(async (track) => {
         const points = await loadTrackPoints(track.id);
-        if (points.length > 1) {
-            const polyline = L.polyline(points, {
-                color: track.id === activeTrackId ? '#667eea' : '#888',
+        if (points.length <= 1) return;
+
+        // Split into segments to avoid "spiderweb" lines across gaps/jumps.
+        const segments = buildTrackSegments(points, 500);
+        if (!segments || segments.length === 0) return;
+
+        const color = track.id === activeTrackId ? '#667eea' : '#888';
+        const group = L.layerGroup();
+
+        // Add click handler to show track info
+        const startedStr = new Date(track.started_at).toLocaleString('de-DE');
+        const endedStr = track.ended_at ? new Date(track.ended_at).toLocaleString('de-DE') : 'Aktiv';
+        const popupHtml = `
+            <strong>${track.name}</strong><br>
+            Gestartet: ${startedStr}<br>
+            ${track.ended_at ? 'Beendet: ' + endedStr : 'Status: Aktiv'}
+        `;
+
+        segments.forEach(seg => {
+            const polyline = L.polyline(seg, {
+                color,
                 weight: 2,
                 opacity: 0.6
             });
-            
-            // Add click handler to show track info
-            const startedStr = new Date(track.started_at).toLocaleString('de-DE');
-            const endedStr = track.ended_at ? new Date(track.ended_at).toLocaleString('de-DE') : 'Aktiv';
-            
-            polyline.bindPopup(`
-                <strong>${track.name}</strong><br>
-                Gestartet: ${startedStr}<br>
-                ${track.ended_at ? 'Beendet: ' + endedStr : 'Status: Aktiv'}
-            `);
-            
-            trackingLayer.addLayer(polyline);
-            trackLayers.set(track.id, polyline);
-        }
+            polyline.bindPopup(popupHtml);
+            group.addLayer(polyline);
+        });
+
+        trackingLayer.addLayer(group);
+        trackLayers.set(track.id, group);
     });
 }
 
