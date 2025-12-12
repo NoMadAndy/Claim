@@ -32,6 +32,35 @@ function lightenHexColor(hex, percent = 0.5) {
     return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
+function hexToRgba(hex, alpha = 1) {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(String(hex || ''));
+    if (!m) return null;
+    const r = parseInt(m[1], 16);
+    const g = parseInt(m[2], 16);
+    const b = parseInt(m[3], 16);
+    const a = Math.max(0, Math.min(1, Number(alpha)));
+    return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+function applyHeatmapShimmer(heatLayer, baseHexColor) {
+    // Adds a subtle animated glow on the heatmap canvas to make edges shimmer.
+    const glow = hexToRgba(baseHexColor, 0.28);
+    if (!glow) return;
+
+    const apply = () => {
+        const canvas = heatLayer && heatLayer._canvas;
+        if (!canvas) return;
+        canvas.classList.add('heatmap-shimmer');
+        canvas.style.setProperty('--heatmap-glow-color', glow);
+    };
+
+    // Canvas exists after the layer is added to the map.
+    if (heatLayer && heatLayer.on) {
+        heatLayer.on('add', () => setTimeout(apply, 0));
+    }
+    setTimeout(apply, 0);
+}
+
 function playLogFX(lat, lng, xpGained, claimPoints, isAuto = false) {
     if (!map) return;
     if (lat == null || lng == null) return;
@@ -3203,6 +3232,11 @@ async function loadHeatmap() {
                         minOpacity: 0.4,
                         gradient: colorConfig.gradient
                     });
+
+                    // Add subtle shimmering edge for players with a stable hex color
+                    if (heatmap.color) {
+                        applyHeatmapShimmer(heat, heatmap.color);
+                    }
                     
                     // Store layer and always add to map if heatmap is visible
                     const userId = heatmap.user_id || `user_${index}`;

@@ -430,6 +430,22 @@ body {
     }
 }
 
+/* Heatmap shimmer edge (canvas glow) */
+.heatmap-shimmer {
+    --heatmap-glow-color: transparent;
+    animation: heatmapShimmer 2.6s ease-in-out infinite;
+    will-change: filter;
+}
+
+@keyframes heatmapShimmer {
+    0%, 100% {
+        filter: drop-shadow(0 0 2px var(--heatmap-glow-color)) drop-shadow(0 0 7px var(--heatmap-glow-color));
+    }
+    50% {
+        filter: drop-shadow(0 0 4px var(--heatmap-glow-color)) drop-shadow(0 0 12px var(--heatmap-glow-color));
+    }
+}
+
 /* Floating reward text (XP/Claims) */
 .floating-reward {
     pointer-events: none;
