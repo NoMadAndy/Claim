@@ -4,7 +4,8 @@
 
 set -uo pipefail
 
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# This script lives in tools/, but must operate from the repository root.
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_FILE="$PROJECT_ROOT/.deploy.log"
 LOCK_FILE="$PROJECT_ROOT/.deploy.lock"
 
