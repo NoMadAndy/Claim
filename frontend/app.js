@@ -3510,7 +3510,6 @@ function formatBuffDebugLine(payload) {
     return parts.length ? `Buff: ${parts.join(' · ')}` : '';
 }
 
-function showNotification(title, message, type = '') {
 function showNotification(title, message, type = '', durationMs = 5000) {
     const container = document.getElementById('notifications');
     const notification = document.createElement('div');
