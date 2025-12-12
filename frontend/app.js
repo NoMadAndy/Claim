@@ -676,6 +676,23 @@ let territoryVisible = true;
 let territoryLayer = null;
 let territoryUpdateTimeout = null;
 let cachedTerritoryHeatmap = null; // { user_id, username, color, points: [{latitude, longitude, intensity}] }
+let territoryActivity = null; // { x, y, untilMs }
+
+function markTerritoryActivity(lat, lng) {
+    if (lat == null || lng == null) return;
+    const m = latLngToMercatorMeters(lat, lng);
+    const untilMs = Date.now() + 25000;
+    territoryActivity = { x: m.x, y: m.y, untilMs };
+
+    if (territoryVisible) scheduleTerritoryUpdate();
+
+    // Re-render once after activity window to stop breathing
+    setTimeout(() => {
+        if (territoryActivity && Date.now() >= territoryActivity.untilMs) {
+            if (territoryVisible) scheduleTerritoryUpdate();
+        }
+    }, 25500);
+}
 
 // Map markers storage
 const spotMarkers = new Map();
@@ -1518,11 +1535,25 @@ function updateTerritoryOverlay() {
     const baseColor = heat.color || '#22c55e';
     const borderColor = lightenHexColor(baseColor, 0.15);
 
+    const activity = territoryActivity;
+    const nowMs = Date.now();
+    const activityActive = !!(activity && nowMs < activity.untilMs);
+    const activityRadiusM = Math.max(900, size * 2.2);
+
     const sorted = Array.from(bins.values()).sort((a, b) => b.value - a.value).slice(0, 380);
     for (const cell of sorted) {
         const ratio = maxValue > 0 ? Math.min(1, Math.sqrt(cell.value / maxValue)) : 0;
         const fillOpacity = 0.06 + 0.20 * ratio;
         const fillColor = lightenHexColor(baseColor, 0.35 - 0.20 * ratio);
+
+        let className = 'territory-hex';
+        if (activityActive) {
+            const center = hexAxialToCenterMeters(cell.q, cell.r, size);
+            const d = Math.hypot(center.x - activity.x, center.y - activity.y);
+            if (d <= activityRadiusM) {
+                className = 'territory-hex territory-hex-active';
+            }
+        }
 
         const corners = hexCornersLatLng(cell.q, cell.r, size);
         L.polygon(corners, {
@@ -1531,6 +1562,7 @@ function updateTerritoryOverlay() {
             opacity: 0.55,
             fillColor,
             fillOpacity,
+            className,
             interactive: false
         }).addTo(territoryLayer);
     }
@@ -2419,6 +2451,13 @@ async function performAutoLog(spotId) {
             // ignore FX failures
         }
 
+        // Territory breathing near the activity
+        try {
+            markTerritoryActivity(currentPosition.lat, currentPosition.lng);
+        } catch (e) {
+            // ignore
+        }
+
         const buffLine = formatBuffDebugLine(response);
         showNotification(
             'Auto Log!',
@@ -2579,6 +2618,13 @@ async function submitLog(spotId, notes, photoFile) {
             playLogFX(currentPosition.lat, currentPosition.lng, log.xp_gained, log.claim_points, false);
         } catch (e) {
             // ignore FX failures
+        }
+
+        // Territory breathing near the activity
+        try {
+            markTerritoryActivity(currentPosition.lat, currentPosition.lng);
+        } catch (e) {
+            // ignore
         }
         
         loadStats();

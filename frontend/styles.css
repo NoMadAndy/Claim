@@ -446,6 +446,23 @@ body {
     }
 }
 
+/* Territory hex breathing (recent activity) */
+.leaflet-overlay-pane path.territory-hex-active {
+    animation: territoryBreathe 2.8s ease-in-out infinite;
+    will-change: opacity, stroke-width;
+}
+
+@keyframes territoryBreathe {
+    0%, 100% {
+        opacity: 0.85;
+        stroke-width: 1;
+    }
+    50% {
+        opacity: 1;
+        stroke-width: 2;
+    }
+}
+
 /* Floating reward text (XP/Claims) */
 .floating-reward {
     pointer-events: none;
