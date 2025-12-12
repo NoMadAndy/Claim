@@ -761,7 +761,7 @@ function playLootCollectFX(lat, lng) {
             icon: L.divIcon({
                 className: 'loot-pop',
                 html: '<div class="loot-pop-inner">💎</div>',
-                iconSize: [0, 0]
+                iconSize: [64, 64]
             }),
             interactive: false
         }).addTo(map);
@@ -778,7 +778,7 @@ function playLootCollectFX(lat, lng) {
             icon: L.divIcon({
                 className: 'floating-reward',
                 html: '<div class="floating-reward-inner">+LOOT</div>',
-                iconSize: [0, 0]
+                iconSize: [120, 40]
             }),
             interactive: false
         }).addTo(map);
