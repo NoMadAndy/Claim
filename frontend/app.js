@@ -1559,12 +1559,18 @@ async function initializeApp() {
         loadNearbySpots();
         trySpawnLoot(); // Try to spawn initial loot
         if (window.debugLog) window.debugLog('📊 Initial data loaded');
-        
-        // Load heatmap if visible
-        if (heatmapVisible) {
+
+        // Load heatmap data:
+        // - If heatmap overlay is enabled, render it.
+        // - If territory overlay is enabled, still load once to get cachedTerritoryHeatmap.
+        if (heatmapVisible || territoryVisible) {
             await loadHeatmap();
-            heatmapLayer.addTo(map);
-            if (window.debugLog) window.debugLog('🔥 Heatmap loaded');
+            if (heatmapVisible) {
+                heatmapLayer.addTo(map);
+                if (window.debugLog) window.debugLog('🔥 Heatmap loaded');
+            } else {
+                if (window.debugLog) window.debugLog('🛡️ Territory preloaded (heatmap hidden)');
+            }
         }
         
         // Start update loops
@@ -1655,7 +1661,7 @@ function initMap() {
     });
     
     // Add default layer
-    osmLayer.addTo(map);
+    cartoDarkLayer.addTo(map);
     
     // Store layers for switching
     window.mapLayers = {
@@ -2016,6 +2022,11 @@ function startGPSTracking() {
             lastGPSUpdateTime = Date.now();
             
             updatePlayerPosition();
+
+            // Ensure territory overlay refreshes once we have a real GPS position
+            if (territoryVisible) {
+                try { scheduleTerritoryUpdate(); } catch (e) {}
+            }
             
             // Reload spots if player moved significantly (every 100 meters) AND in follow mode
             // (When not in follow mode, map movement triggers reload already)
