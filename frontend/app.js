@@ -710,6 +710,87 @@ function initVersionBadge() {
     }
 }
 
+// Background update check: detect new deployed commit and offer restart
+let versionCheckInterval = null;
+let versionUpdatePrompted = false;
+
+function getCurrentDeployedCommitFull() {
+    const toggleDebugBtn = document.getElementById('toggle-debug');
+    const commit = toggleDebugBtn?.getAttribute('data-commit');
+    return (commit || '').trim();
+}
+
+async function fetchRemoteDeployedCommitFull() {
+    // Fetch the current HTML without cache to detect deployment changes
+    const url = `/?version_check=${Date.now()}`;
+    const res = await fetch(url, {
+        cache: 'no-store',
+        headers: {
+            'Cache-Control': 'no-cache'
+        }
+    });
+    if (!res.ok) return '';
+
+    const html = await res.text();
+    try {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const btn = doc.getElementById('toggle-debug');
+        const commit = btn?.getAttribute('data-commit');
+        if (commit) return String(commit).trim();
+    } catch (e) {
+        // ignore and fallback to regex
+    }
+
+    const m = html.match(/\bdata-commit\s*=\s*"([a-f0-9]{7,40})"/i);
+    return m ? String(m[1]).trim() : '';
+}
+
+async function checkForNewVersionInBackground() {
+    if (versionUpdatePrompted) return;
+    const current = getCurrentDeployedCommitFull();
+    if (!current) return;
+
+    let remote = '';
+    try {
+        remote = await fetchRemoteDeployedCommitFull();
+    } catch (e) {
+        return;
+    }
+    if (!remote || remote === current) return;
+
+    versionUpdatePrompted = true;
+    if (window.debugLog) window.debugLog(`⬆️ New version detected: ${current.substring(0, 8)} → ${remote.substring(0, 8)}`);
+
+    // Offer restart (simple UX: confirm dialog)
+    const ok = confirm(`Neue Version verfügbar (${remote.substring(0, 8)}). Jetzt neu starten?`);
+    if (ok) {
+        window.location.reload();
+    }
+}
+
+function startVersionMonitor() {
+    if (versionCheckInterval) clearInterval(versionCheckInterval);
+
+    // First check shortly after startup (gives time for initVersionBadge)
+    setTimeout(() => {
+        checkForNewVersionInBackground();
+    }, 15000);
+
+    // Periodic check
+    versionCheckInterval = setInterval(() => {
+        // Skip when tab is hidden to avoid unnecessary traffic
+        if (document.visibilityState === 'hidden') return;
+        checkForNewVersionInBackground();
+    }, 60000);
+
+    // Also check when returning to the app
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            checkForNewVersionInBackground();
+        }
+    });
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', init);
 
@@ -719,6 +800,9 @@ function init() {
     
     // Initialize version badge
     initVersionBadge();
+
+    // Background update check (offer restart when new deploy detected)
+    startVersionMonitor();
     
     // Check for existing auth
     try {
