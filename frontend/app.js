@@ -3769,7 +3769,8 @@ async function loadHeatmap() {
 }
 
 async function updateClaimHeatmap() {
-    if (heatmapVisible) {
+    // Update heatmap if visible OR if territory layer is visible (needs the cached data)
+    if (heatmapVisible || territoryVisible) {
         await loadHeatmap();
     }
 }
