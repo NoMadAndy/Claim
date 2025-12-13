@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from sqlalchemy import func
 from geoalchemy2.functions import ST_GeomFromWKB, ST_X, ST_Y
-from typing import List
+from typing import List, Optional
 from app.database import get_db
 from app.services import loot_service
 from app.routers.auth import get_current_user
@@ -34,10 +34,10 @@ class LootReward(BaseModel):
 
 class CollectLootResponse(BaseModel):
     success: bool
-    error: str = None
-    rewards: LootReward = None
+    error: Optional[str] = None
+    rewards: Optional[LootReward] = None
     level_up: bool = False
-    new_level: int = None
+    new_level: Optional[int] = None
     total_xp: int = 0
 
 
