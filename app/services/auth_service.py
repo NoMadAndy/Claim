@@ -78,11 +78,16 @@ def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
 def update_user_xp(db: Session, user: User, xp_gain: int) -> User:
     """Update user XP and handle level-ups"""
     user.xp += xp_gain
-    
-    # Simple level calculation: 100 XP per level
-    new_level = (user.xp // 100) + 1
-    if new_level > user.level:
-        user.level = new_level
+
+    from app.services.progression_service import get_level_curve_params, level_from_xp
+
+    base, inc = get_level_curve_params(db)
+    computed_level = level_from_xp(user.xp or 0, base, inc)
+
+    # Never decrease level (keeps legacy players intact if curve changes)
+    current_level = int(user.level or 1)
+    if computed_level > current_level:
+        user.level = computed_level
     
     db.commit()
     db.refresh(user)

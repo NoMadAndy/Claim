@@ -22,6 +22,8 @@ DEFAULT_SETTINGS = {
     "loot_spawn_radius_max": {"value": 150, "type": "int", "description": "Maximum spawn radius in meters"},
     "game_enabled": {"value": True, "type": "bool", "description": "Whether the game is active"},
     "maintenance_mode": {"value": False, "type": "bool", "description": "Is server in maintenance mode?"},
+    "level_xp_base": {"value": 100, "type": "int", "description": "XP required for Level 1 -> 2"},
+    "level_xp_increment": {"value": 10, "type": "int", "description": "Additional XP required per next level-up (linear)"},
 }
 
 

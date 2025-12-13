@@ -42,11 +42,15 @@ async def get_my_stats(
         InventoryItem.user_id == current_user.id
     ).scalar() or 0
     
-    # Calculate XP to next level (100 XP per level)
-    xp_to_next = 100 - (current_user.xp % 100)
+    from app.services.progression_service import get_level_curve_params, level_from_xp, xp_to_next_level
+
+    base, inc = get_level_curve_params(db)
+    computed_level = level_from_xp(current_user.xp or 0, base, inc)
+    effective_level = max(int(current_user.level or 1), int(computed_level))
+    xp_to_next = xp_to_next_level(db, current_user.xp or 0, effective_level)
     
     return UserStats(
-        level=current_user.level or 1,
+        level=effective_level,
         xp=current_user.xp or 0,
         xp_to_next_level=xp_to_next,
         total_claim_points=current_user.total_claim_points or 0,
