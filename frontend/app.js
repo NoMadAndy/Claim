@@ -2147,18 +2147,25 @@ function updatePlayerPosition() {
     if (playerMarker) {
         // Set up smooth movement interpolation
         if (!lastPlayerPosition) {
-            lastPlayerPosition = { lat: currentPosition.lat, lng: currentPosition.lng };
+            lastPlayerPosition = { lat: currentPosition.lat, lng: currentPosition.lng, lastCheckTime: Date.now() };
         }
         
-        // Only set new target if position changed significantly (more than 2 meters)
-        const distanceChanged = calculateDistance(
-            lastPlayerPosition.lat, lastPlayerPosition.lng,
-            currentPosition.lat, currentPosition.lng
-        );
-        
-        if (distanceChanged > 2) {
-            targetPlayerPosition = { lat: currentPosition.lat, lng: currentPosition.lng };
-            playerMovementStartTime = performance.now();
+        // Throttle distance calculation to avoid excessive computation
+        const now = Date.now();
+        if (!lastPlayerPosition.lastCheckTime || (now - lastPlayerPosition.lastCheckTime) >= 500) {
+            // Only check distance every 500ms
+            const distanceChanged = calculateDistance(
+                lastPlayerPosition.lat, lastPlayerPosition.lng,
+                currentPosition.lat, currentPosition.lng
+            );
+            lastPlayerPosition.lastCheckTime = now;
+            
+            // Only set new target if position changed significantly (more than 2 meters)
+            if (distanceChanged > 2) {
+                targetPlayerPosition = { lat: currentPosition.lat, lng: currentPosition.lng };
+                playerMovementStartTime = performance.now();
+                startPlayerAnimation(); // Start animation loop if needed
+            }
         }
         
         // Update rotation if compass is enabled
@@ -2212,9 +2219,11 @@ function updatePlayerPosition() {
 }
 
 // Smooth player marker animation
+let animationFrameId = null;
 function animatePlayerMarker() {
     if (!playerMarker || !targetPlayerPosition || !lastPlayerPosition || !playerMovementStartTime) {
-        requestAnimationFrame(animatePlayerMarker);
+        // No animation needed, stop the loop
+        animationFrameId = null;
         return;
     }
     
@@ -2232,18 +2241,25 @@ function animatePlayerMarker() {
     // Update marker position
     playerMarker.setLatLng([lat, lng]);
     
-    // If animation complete, update last position
+    // If animation complete, update last position and stop loop
     if (progress >= 1) {
         lastPlayerPosition = { lat: targetPlayerPosition.lat, lng: targetPlayerPosition.lng };
         targetPlayerPosition = null;
         playerMovementStartTime = null;
+        animationFrameId = null;
+        return;
     }
     
-    requestAnimationFrame(animatePlayerMarker);
+    // Continue animation
+    animationFrameId = requestAnimationFrame(animatePlayerMarker);
 }
 
-// Start the animation loop
-requestAnimationFrame(animatePlayerMarker);
+// Helper to start animation if not already running
+function startPlayerAnimation() {
+    if (!animationFrameId) {
+        animationFrameId = requestAnimationFrame(animatePlayerMarker);
+    }
+}
 
 function maybeDropPlayerTrailDot(pos) {
     if (!pos || !map) return;

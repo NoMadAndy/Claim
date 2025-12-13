@@ -67,9 +67,10 @@ async def get_nearby_spots(
         if not spot.is_loot:
             log_status = spot_service.get_log_status(db, current_user.id, spot.id)
             # Determine status based on cooldowns
+            PARTIAL_COOLDOWN_THRESHOLD_SECONDS = 150  # 2.5 minutes
             if log_status["can_manual_log"]:
                 cooldown_status = "ready"
-            elif log_status["manual_cooldown_remaining"] < 150:  # Less than 2.5 minutes
+            elif log_status["manual_cooldown_remaining"] < PARTIAL_COOLDOWN_THRESHOLD_SECONDS:
                 cooldown_status = "partial"
             else:
                 cooldown_status = "cooldown"

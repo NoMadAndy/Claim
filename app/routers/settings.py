@@ -18,7 +18,15 @@ async def get_user_settings(
     
     if not settings:
         # Create default settings if they don't exist
-        settings = UserSettings(user_id=current_user.id)
+        settings = UserSettings(
+            user_id=current_user.id,
+            selected_map_layer="osm",
+            sounds_enabled=True,
+            sound_volume=0.3,
+            compass_enabled=False,
+            heatmap_visible=False,
+            territory_visible=True
+        )
         db.add(settings)
         db.commit()
         db.refresh(settings)
