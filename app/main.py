@@ -13,7 +13,7 @@ import logging
 import shutil
 
 from app.database import get_db
-from app.routers import auth, spots, logs, claims, tracks, items, loot, admin
+from app.routers import auth, spots, logs, claims, tracks, items, loot, admin, changelog
 from app.ws.handlers import websocket_endpoint
 from app.config import settings
 
@@ -93,6 +93,7 @@ app.include_router(tracks.router)
 app.include_router(items.router)
 app.include_router(loot.router)
 app.include_router(admin.router)
+app.include_router(changelog.router)
 
 
 # Lightweight client log sink for debugging (stdout only, no auth)
