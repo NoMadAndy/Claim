@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from sqlalchemy import func
 from geoalchemy2.functions import ST_GeomFromWKB, ST_X, ST_Y
 from typing import List
@@ -86,18 +87,38 @@ async def collect_loot(
     current_user: User = Depends(get_current_user)
 ):
     """Collect a loot spot"""
-    result = loot_service.collect_loot(
-        db,
-        current_user.id,
-        request.loot_spot_id,
-        request.latitude,
-        request.longitude
-    )
-    
-    if not result["success"]:
-        raise HTTPException(status_code=400, detail=result["error"])
-    
-    return CollectLootResponse(**result)
+    try:
+        # Serialize loot collection per (user, loot_spot) to avoid rare race/transaction issues
+        db.execute(
+            text("SELECT pg_advisory_xact_lock(:key)"),
+            {"key": int(current_user.id) * 1000000 + int(request.loot_spot_id)},
+        )
+
+        result = loot_service.collect_loot(
+            db,
+            current_user.id,
+            request.loot_spot_id,
+            request.latitude,
+            request.longitude,
+        )
+
+        if not result.get("success"):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result.get("error") or "Error")
+
+        return CollectLootResponse(**result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Ensure the session is clean for subsequent requests
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        # Return diagnostic detail so the client can surface it (helps fix the root cause)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Loot collect failed: {type(e).__name__}: {e}",
+        )
 
 
 @router.get("/active", response_model=List[SpotResponse])

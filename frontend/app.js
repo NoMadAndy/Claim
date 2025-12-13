@@ -2399,10 +2399,21 @@ async function apiRequest(endpoint, options = {}) {
         if (!response.ok) {
             let errorDetail = response.statusText;
             try {
-                const errorBody = await response.json();
-                errorDetail = errorBody.detail || errorBody.message || errorBody.error || response.statusText;
+                const raw = await response.text();
+                if (raw) {
+                    try {
+                        const errorBody = JSON.parse(raw);
+                        errorDetail = errorBody.detail || errorBody.message || errorBody.error || raw;
+                    } catch (e) {
+                        errorDetail = raw;
+                    }
+                }
             } catch (e) {
-                // If response body is not JSON, use status text
+                // ignore
+            }
+
+            if (typeof errorDetail === 'string' && errorDetail.length > 500) {
+                errorDetail = errorDetail.slice(0, 500) + '…';
             }
             
             const error = new Error(`API Error: ${errorDetail}`);
