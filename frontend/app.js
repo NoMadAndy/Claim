@@ -1602,7 +1602,8 @@ async function initializeApp() {
         setInterval(loadStats, 30000); // Update stats every 30 seconds
         setInterval(trySpawnLoot, 120000); // Try spawn loot every 2 minutes
         setInterval(updateLootBeaconBling, 1000); // Loot beacon pulse update
-        if (window.debugLog) window.debugLog('⏱️ Update loops started (AutoLog: 1s, Stats: 30s, Loot: 2m)');
+        setInterval(loadNearbySpots, 15000); // Refresh spots every 15 seconds to update cooldown colors
+        if (window.debugLog) window.debugLog('⏱️ Update loops started (AutoLog: 1s, Stats: 30s, Spots: 15s, Loot: 2m)');
         
         // Start health check every 30 seconds
         startHealthCheck();
@@ -2082,11 +2083,11 @@ function startGPSTracking() {
                         });
                         if (window.debugLog) window.debugLog(`🛫 flyTo wegen großem Sprung (${dist.toFixed(1)}m)`);
                     } else {
-                        // Normale Bewegung: sanftes panTo
+                        // Normale Bewegung: sanftes panTo mit schnellerer, flüssigerer Animation
                         map.panTo([currentPosition.lat, currentPosition.lng], {
                             animate: true,
-                            duration: 0.7,
-                            easeLinearity: 0.25
+                            duration: 0.4,
+                            easeLinearity: 0.15
                         });
                     }
                 }
@@ -2297,12 +2298,12 @@ function dropPlayerTrailDot(lat, lng, speed) {
 
     const fast = (speed != null && speed >= 2.2);
     const dot = L.circleMarker([lat, lng], {
-        radius: fast ? 8 : 6,
+        radius: fast ? 10 : 8,
         color: '#667eea',
-        weight: 2.5,
-        opacity: 0.75,
+        weight: 3,
+        opacity: 0.9,
         fillColor: '#667eea',
-        fillOpacity: fast ? 0.35 : 0.25,
+        fillOpacity: fast ? 0.5 : 0.4,
         interactive: false,
         className: fast ? 'player-trail-dot player-trail-dot-fast' : 'player-trail-dot'
     });
@@ -2977,6 +2978,9 @@ async function performAutoLog(spotId) {
         
         loadStats();
         
+        // Refresh spots to update cooldown colors
+        await loadNearbySpots();
+        
         // Update heatmap after autolog
         updateClaimHeatmap();
     } catch (error) {
@@ -3138,6 +3142,9 @@ async function submitLog(spotId, notes, photoFile) {
         }
         
         loadStats();
+        
+        // Refresh spots to update cooldown colors
+        await loadNearbySpots();
         
         // Update heatmap after manual log
         updateClaimHeatmap();

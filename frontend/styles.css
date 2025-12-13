@@ -409,20 +409,27 @@ body {
     border-radius: 50%;
     width: 15px;
     height: 15px;
-    transition: background 0.3s ease;
+    transition: background 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.6), 0 0 6px rgba(34, 197, 94, 0.8);
 }
 
 /* Cooldown-based spot colors */
 .spot-marker-ready {
     background: #22c55e; /* Green - ready to log */
+    box-shadow: 0 0 15px rgba(34, 197, 94, 0.7), 0 0 8px rgba(34, 197, 94, 0.9);
+    animation: pulse-ready 2s ease-in-out infinite;
 }
 
 .spot-marker-partial {
     background: #f59e0b; /* Orange/Yellow - partial cooldown */
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.7), 0 0 8px rgba(245, 158, 11, 0.9);
+    animation: pulse-partial 2s ease-in-out infinite;
 }
 
 .spot-marker-cooldown {
     background: #ef4444; /* Red - full cooldown */
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.6), 0 0 8px rgba(239, 68, 68, 0.8);
+    animation: pulse-cooldown 2s ease-in-out infinite;
 }
 
 .loot-marker {
@@ -492,16 +499,44 @@ body {
     }
 }
 
+/* Spot marker pulse animations */
+@keyframes pulse-ready {
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(34, 197, 94, 0.7), 0 0 8px rgba(34, 197, 94, 0.9);
+    }
+    50% {
+        box-shadow: 0 0 25px rgba(34, 197, 94, 0.9), 0 0 15px rgba(34, 197, 94, 1);
+    }
+}
+
+@keyframes pulse-partial {
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(245, 158, 11, 0.7), 0 0 8px rgba(245, 158, 11, 0.9);
+    }
+    50% {
+        box-shadow: 0 0 25px rgba(245, 158, 11, 0.9), 0 0 15px rgba(245, 158, 11, 1);
+    }
+}
+
+@keyframes pulse-cooldown {
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(239, 68, 68, 0.6), 0 0 8px rgba(239, 68, 68, 0.8);
+    }
+    50% {
+        box-shadow: 0 0 22px rgba(239, 68, 68, 0.8), 0 0 12px rgba(239, 68, 68, 1);
+    }
+}
+
 /* Player movement trail dots */
 .leaflet-overlay-pane path.player-trail-dot {
     transform-box: fill-box;
     transform-origin: center;
-    filter: drop-shadow(0 0 8px rgba(102, 126, 234, 0.4));
+    filter: drop-shadow(0 0 15px rgba(102, 126, 234, 0.7)) drop-shadow(0 0 8px rgba(102, 126, 234, 0.9));
     animation: playerTrailFade 5.2s ease-out forwards;
 }
 
 .leaflet-overlay-pane path.player-trail-dot-fast {
-    filter: drop-shadow(0 0 12px rgba(102, 126, 234, 0.55)) drop-shadow(0 0 6px rgba(102, 126, 234, 0.8));
+    filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.8)) drop-shadow(0 0 12px rgba(102, 126, 234, 1));
     animation: playerTrailFadeFast 3.8s ease-out forwards;
 }
 
@@ -511,8 +546,8 @@ body {
         transform: scale(0.85);
     }
     12% {
-        opacity: 0.9;
-        transform: scale(1.1);
+        opacity: 1;
+        transform: scale(1.15);
     }
     100% {
         opacity: 0;
@@ -527,7 +562,7 @@ body {
     }
     10% {
         opacity: 1;
-        transform: scale(1.2);
+        transform: scale(1.25);
     }
     100% {
         opacity: 0;
