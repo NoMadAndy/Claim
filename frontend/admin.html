@@ -974,6 +974,7 @@
     <script>
         const API_BASE = window.location.origin + '/api';
         const authToken = localStorage.getItem('claim_token');
+        const SERVER_LOGS_REFRESH_INTERVAL_MS = 10000; // 10 seconds
 
         // Cache for data
         let cachedUsers = [];
@@ -982,8 +983,21 @@
         let serverLogsLoaded = false;
         let changelogLoaded = false;
         let autoRefreshInterval = null;
+        let currentTab = 'settings';
 
         function switchTab(tabName) {
+            // Stop auto-refresh when switching away from server logs
+            if (currentTab === 'serverlogs' && tabName !== 'serverlogs' && autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+                const label = document.getElementById('autoRefreshLabel');
+                if (label) {
+                    label.textContent = '🔄 Auto-Refresh: Aus';
+                }
+            }
+            
+            currentTab = tabName;
+            
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
@@ -1491,12 +1505,13 @@
                 label.textContent = '🔄 Auto-Refresh: Aus';
             } else {
                 autoRefreshInterval = setInterval(() => {
-                    if (document.getElementById('serverlogs').classList.contains('active')) {
+                    if (currentTab === 'serverlogs') {
                         loadServerLogs();
                     }
-                }, 10000); // Refresh every 10 seconds
-                label.textContent = '🔄 Auto-Refresh: An (10s)';
-                showAlert('Auto-Refresh aktiviert (alle 10 Sekunden)', 'success');
+                }, SERVER_LOGS_REFRESH_INTERVAL_MS);
+                const intervalSeconds = SERVER_LOGS_REFRESH_INTERVAL_MS / 1000;
+                label.textContent = `🔄 Auto-Refresh: An (${intervalSeconds}s)`;
+                showAlert(`Auto-Refresh aktiviert (alle ${intervalSeconds} Sekunden)`, 'success');
             }
         }
 
