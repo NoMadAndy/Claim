@@ -113,16 +113,24 @@ def create_log(
         return None
     
     # Calculate rewards - manual logs get more reward
+    auto_base_xp = int(get_game_setting(db, "xp_per_log", 10))
+    auto_claim_points = int(get_game_setting(db, "claim_points_per_log", 5))
+
+    manual_base_xp = int(get_game_setting(db, "manual_log_xp", 50))
+    manual_claim_points = int(get_game_setting(db, "manual_log_claim_points", 25))
+    manual_bonus_xp = int(get_game_setting(db, "manual_log_bonus_xp", 25))
+    manual_bonus_claim_points = int(get_game_setting(db, "manual_log_bonus_claim_points", 10))
+
     if is_auto:
-        base_xp = 10
-        claim_points = 5
+        base_xp = auto_base_xp
+        claim_points = auto_claim_points
     else:
         # Manual logs with photos/notes get bonus
-        base_xp = 50  # 5x auto log
-        claim_points = 25  # 5x auto log
+        base_xp = manual_base_xp
+        claim_points = manual_claim_points
         if log_data.photo_data or log_data.notes:
-            base_xp += 25  # +25 bonus for photo or notes
-            claim_points += 10
+            base_xp += manual_bonus_xp
+            claim_points += manual_bonus_claim_points
 
     # --- RPG XP improvements: novelty + diminishing returns + movement bonus (applies to auto & manual) ---
     now = get_current_cet()
