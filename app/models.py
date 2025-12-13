@@ -95,6 +95,30 @@ class UserBuff(Base):
     user = relationship("User")
 
 
+class UserSettings(Base):
+    __tablename__ = "user_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
+
+    # Map preferences
+    selected_map_layer = Column(String(50), default="osm")  # "osm", "satellite", "topo"
+    
+    # UI preferences
+    sounds_enabled = Column(Boolean, default=True)
+    sound_volume = Column(Float, default=0.3)
+    
+    # Feature toggles
+    compass_enabled = Column(Boolean, default=False)
+    heatmap_visible = Column(Boolean, default=False)
+    territory_visible = Column(Boolean, default=True)
+    
+    created_at = Column(DateTime, default=get_cet_now)
+    updated_at = Column(DateTime, default=get_cet_now, onupdate=get_cet_now)
+
+    user = relationship("User")
+
+
 class Spot(Base):
     __tablename__ = "spots"
 

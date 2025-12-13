@@ -57,6 +57,28 @@ class Token(BaseModel):
     token_type: str
 
 
+# User Settings Schemas
+class UserSettingsUpdate(BaseModel):
+    selected_map_layer: Optional[str] = None
+    sounds_enabled: Optional[bool] = None
+    sound_volume: Optional[float] = None
+    compass_enabled: Optional[bool] = None
+    heatmap_visible: Optional[bool] = None
+    territory_visible: Optional[bool] = None
+
+
+class UserSettingsResponse(BaseModel):
+    selected_map_layer: str = "osm"
+    sounds_enabled: bool = True
+    sound_volume: float = 0.3
+    compass_enabled: bool = False
+    heatmap_visible: bool = False
+    territory_visible: bool = True
+    
+    class Config:
+        from_attributes = True
+
+
 # Location Schema
 class LocationPoint(BaseModel):
     latitude: float = Field(..., ge=-90, le=90)
@@ -84,6 +106,7 @@ class SpotResponse(SpotBase):
     creator_id: Optional[int] = None
     loot_expires_at: Optional[datetime] = None
     loot_xp: Optional[int] = None
+    cooldown_status: Optional[str] = None  # "ready", "partial", "cooldown" for non-loot spots
     
     class Config:
         from_attributes = True
