@@ -3,6 +3,16 @@
 const API_BASE = window.location.origin + '/api';
 const WS_BASE = (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + window.location.host + '/ws';
 
+// Utility function: Device detection
+function isIOSDevice() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+           (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
 // Utility function: Calculate distance between two coordinates in meters (Haversine formula)
 function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371000; // Earth's radius in meters
@@ -309,14 +319,14 @@ class SoundManager {
     // Preload all sound files to ensure they're ready to play
     async preloadAllSounds() {
         try {
-            const soundFiles = Object.values(SoundManager.SOUND_FILES);
+            const soundFileEntries = Object.entries(SoundManager.SOUND_FILES);
 
-            for (const url of soundFiles) {
+            for (const [type, url] of soundFileEntries) {
                 try {
-                    console.log('🎵 Preloading:', url);
+                    console.log('🎵 Preloading:', type, '->', url);
                     const response = await fetch(url);
                     if (!response.ok) {
-                        console.warn('Failed to preload:', url);
+                        console.warn('Failed to preload:', type, url);
                         continue;
                     }
                     const arrayBuffer = await response.arrayBuffer();
@@ -324,20 +334,25 @@ class SoundManager {
                     // Decode and cache the buffer
                     const buffer = await this.audioContext.decodeAudioData(arrayBuffer);
                     
-                    // Store in appropriate property
-                    if (url.includes('Yum_CMaj')) {
-                        this.logSoundBuffer = buffer;
-                    } else if (url.includes('Bumpy')) {
-                        this.errorSoundBuffer = buffer;
-                    } else if (url.includes('727')) {
-                        this.levelupSoundBuffer = buffer;
-                    } else if (url.includes('Yeah')) {
-                        this.lootSoundBuffer = buffer;
+                    // Store in appropriate property based on type
+                    switch (type) {
+                        case 'log':
+                            this.logSoundBuffer = buffer;
+                            break;
+                        case 'error':
+                            this.errorSoundBuffer = buffer;
+                            break;
+                        case 'levelup':
+                            this.levelupSoundBuffer = buffer;
+                            break;
+                        case 'loot':
+                            this.lootSoundBuffer = buffer;
+                            break;
                     }
                     
-                    console.log('✓ Preloaded:', url, 'duration:', buffer.duration);
+                    console.log('✓ Preloaded:', type, 'duration:', buffer.duration);
                 } catch (err) {
-                    console.warn('Failed to preload', url, ':', err.message);
+                    console.warn('Failed to preload', type, ':', err.message);
                 }
             }
             
@@ -578,8 +593,16 @@ class SoundManager {
             // Prevent concurrent resume attempts
             if (this.isResuming) {
                 console.log('⏸️ Resume already in progress, waiting...');
-                await new Promise(resolve => setTimeout(resolve, 100));
-            } else {
+                // Wait for the existing resume to complete
+                let attempts = 0;
+                while (this.isResuming && attempts < 10) {
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    attempts++;
+                }
+            }
+            
+            // Double-check state after waiting
+            if (this.audioContext.state === 'suspended' && !this.isResuming) {
                 this.isResuming = true;
                 console.log('⏸️ AudioContext suspended, attempting resume before playback');
                 if (window.debugLog) window.debugLog('⏸️ Resuming suspended context');
@@ -1680,11 +1703,9 @@ async function initializeApp() {
         }
 
         // Show helpful notification for iOS users about audio unlock
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
         const hasSeenAudioHint = localStorage.getItem('claim_audio_hint_shown');
         
-        if (isIOS && !hasSeenAudioHint && !soundManager?.unlocked) {
+        if (isIOSDevice() && !hasSeenAudioHint && !soundManager?.unlocked) {
             setTimeout(() => {
                 showNotification('🔊 Sound', 'Tippe den gelben Sound-Button um Audio zu aktivieren!', 'info', 8000);
                 localStorage.setItem('claim_audio_hint_shown', 'true');

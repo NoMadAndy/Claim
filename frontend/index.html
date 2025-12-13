@@ -393,6 +393,15 @@
             // Enable button immediately (no waiting for soundManager)
             enableAudioBtn.disabled = false;
 
+            // Constants for unlock tone (shared across functions)
+            const UNLOCK_TONE_COUNT = 3;
+            const UNLOCK_TONE_INTERVAL = 0.1;
+            const UNLOCK_TONE_VOLUME = 0.02;
+            const UNLOCK_TONE_END_VOLUME = 0.001;
+            const UNLOCK_TONE_DURATION = 0.05;
+            const UNLOCK_TONE_BASE_FREQ = 440;
+            const UNLOCK_TONE_FREQ_STEP = 100;
+
             const handleUnlock = async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -444,16 +453,7 @@
                         try {
                             const now = ctx.currentTime;
                             
-                            // Constants for unlock tone
-                            const UNLOCK_TONE_COUNT = 3;
-                            const UNLOCK_TONE_INTERVAL = 0.1;
-                            const UNLOCK_TONE_VOLUME = 0.02;
-                            const UNLOCK_TONE_END_VOLUME = 0.001;
-                            const UNLOCK_TONE_DURATION = 0.05;
-                            const UNLOCK_TONE_BASE_FREQ = 440;
-                            const UNLOCK_TONE_FREQ_STEP = 100;
-                            
-                            // Play quick beeps to ensure iOS really unlocks audio
+                            // Play quick beeps to ensure iOS really unlocks audio (using constants defined above)
                             for (let i = 0; i < UNLOCK_TONE_COUNT; i++) {
                                 const osc = ctx.createOscillator();
                                 const gain = ctx.createGain();
@@ -528,18 +528,19 @@
             enableAudioBtn.addEventListener('pointerdown', handleUnlock, { passive: false });
 
             // Show unlock button on iOS and mobile devices
-            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-                          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            // Use inline detection since app.js utility functions aren't loaded yet
+            const isIOSInline = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                               (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            const isMobileInline = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             
-            if (isIOS || isMobile) {
+            if (isIOSInline || isMobileInline) {
                 unlockLog('📱 Mobile/iOS detected - showing audio unlock button');
                 enableAudioBtn.style.display = 'block';
             }
 
             // Also show the secondary button if it exists
             const secondaryBtn = document.getElementById('btn-enable-audio-secondary');
-            if (secondaryBtn && (isIOS || isMobile)) {
+            if (secondaryBtn && (isIOSInline || isMobileInline)) {
                 secondaryBtn.style.display = 'block';
                 secondaryBtn.addEventListener('click', handleUnlock, { passive: false });
                 secondaryBtn.addEventListener('touchstart', handleUnlock, { passive: false });
