@@ -16,6 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app/ ./app/
 COPY *.sql ./
 COPY *.py ./
+COPY CHANGELOG.md ./
 
 # Create non-root user
 RUN useradd -m -u 1000 claim && chown -R claim:claim /app

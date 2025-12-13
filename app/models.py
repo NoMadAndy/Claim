@@ -2,16 +2,45 @@ from datetime import datetime
 from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text, Enum as SQLEnum, LargeBinary
 from sqlalchemy.orm import relationship
 from geoalchemy2 import Geography
+from geoalchemy2 import Geometry
 import enum
 from app.database import Base
+from app.config import settings
 import pytz
 from datetime import timezone, timedelta
+import logging
+
+logger = logging.getLogger(__name__)
 
 # CET timezone (UTC+1, or UTC+2 during DST)
 def get_cet_now():
     """Get current time in CET timezone"""
     cet = pytz.timezone('Europe/Berlin')
     return datetime.now(cet).replace(tzinfo=None)  # Store as naive datetime for compatibility
+
+
+def get_location_column(geometry_type='POINT', nullable=False):
+    """
+    Get appropriate location column type based on database.
+    
+    For PostgreSQL: Use Geography with PostGIS
+    For SQLite: Use Text to store WKT (Well-Known Text) format or use Geometry with SpatiaLite
+    
+    In production with PostgreSQL, this uses full PostGIS Geography.
+    In development/testing with SQLite, this stores coordinates as TEXT in WKT format.
+    
+    Note: WKT POINT format is "POINT(longitude latitude)" per OGC standards.
+    Example: "POINT(13.4050 52.5200)" represents longitude=13.4050°E, latitude=52.5200°N
+    """
+    if settings.is_sqlite():
+        # For SQLite: Use TEXT to store WKT (Well-Known Text) format
+        # Format: "POINT(longitude latitude)" per OGC WKT specification
+        # Example: "POINT(13.4050 52.5200)" for Berlin (13.4050°E, 52.5200°N)
+        # This allows storing location data without requiring SpatiaLite
+        return Column(Text, nullable=nullable)
+    else:
+        # For PostgreSQL: Use Geography with PostGIS for full spatial support
+        return Column(Geography(geometry_type=geometry_type, srid=4326), nullable=nullable)
 
 
 class UserRole(str, enum.Enum):
@@ -72,7 +101,7 @@ class Spot(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     description = Column(Text)
-    location = Column(Geography(geometry_type='POINT', srid=4326), nullable=False)
+    location = get_location_column(geometry_type='POINT', nullable=False)
     
     # Spot Type
     is_permanent = Column(Boolean, default=True)
@@ -104,7 +133,7 @@ class Log(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     spot_id = Column(Integer, ForeignKey("spots.id"), nullable=False)
     
-    location = Column(Geography(geometry_type='POINT', srid=4326), nullable=False)
+    location = get_location_column(geometry_type='POINT', nullable=False)
     distance = Column(Float)  # Distance to spot in meters
     
     # Log Type
@@ -155,7 +184,7 @@ class Track(Base):
     is_active = Column(Boolean, default=True)
     
     # Track as LineString
-    path = Column(Geography(geometry_type='LINESTRING', srid=4326), nullable=True)
+    path = get_location_column(geometry_type='LINESTRING', nullable=True)
     
     started_at = Column(DateTime, default=get_cet_now)
     ended_at = Column(DateTime, nullable=True)
@@ -175,7 +204,7 @@ class TrackPoint(Base):
     id = Column(Integer, primary_key=True, index=True)
     track_id = Column(Integer, ForeignKey("tracks.id"), nullable=False)
     
-    location = Column(Geography(geometry_type='POINT', srid=4326), nullable=False)
+    location = get_location_column(geometry_type='POINT', nullable=False)
     timestamp = Column(DateTime, default=get_cet_now)
     
     # Optional metadata
@@ -247,18 +276,44 @@ class GameSetting(Base):
 
 # Create tables function
 def init_db():
-    """Initialize database with PostGIS extension and create all tables"""
+    """Initialize database with PostGIS/SpatiaLite extension and create all tables"""
     from sqlalchemy import text
     from app.database import engine
     
-    # Enable PostGIS extension
-    with engine.connect() as conn:
-        conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
-        conn.commit()
+    if settings.is_postgresql():
+        # Enable PostGIS extension for PostgreSQL
+        logger.info("Initializing PostgreSQL database with PostGIS extension")
+        with engine.connect() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+            conn.commit()
+        print("PostGIS extension enabled")
+    
+    elif settings.is_sqlite():
+        # For SQLite, SpatiaLite is loaded via connection event in database.py
+        logger.info("Initializing SQLite database")
+        
+        # Initialize spatial metadata for SQLite if SpatiaLite is available
+        import sqlite3
+        from sqlalchemy.exc import OperationalError, DatabaseError
+        
+        with engine.connect() as conn:
+            try:
+                # Check if SpatiaLite is available by trying to use a spatial function
+                conn.execute(text("SELECT spatialite_version()"))
+                logger.info("SpatiaLite is available and working")
+                
+                # Initialize spatial metadata
+                conn.execute(text("SELECT InitSpatialMetaData(1)"))
+                conn.commit()
+                print("SpatiaLite spatial metadata initialized")
+            except (OperationalError, DatabaseError, sqlite3.OperationalError) as e:
+                # SpatiaLite not available or already initialized
+                logger.warning(f"SpatiaLite initialization skipped: {e}")
+                print("SQLite database will work without spatial features")
     
     # Create all tables
     Base.metadata.create_all(bind=engine)
-    print("Database initialized successfully!")
+    print("Database tables created successfully!")
 
 
 if __name__ == "__main__":
