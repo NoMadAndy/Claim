@@ -361,6 +361,62 @@ Implementierung über Services-Layer möglich ohne Core-Änderungen.
 
 ## 🛠️ Entwicklung
 
+### 🧪 Lokale Entwicklung & Testing
+
+#### Quick Start (SQLite - Ohne Docker)
+
+Für schnelles Entwickeln und Testen ohne PostgreSQL/PostGIS:
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Use SQLite for local development
+export DATABASE_URL="sqlite:///./claim_dev.db"
+
+# Initialize database
+python -m app.models
+
+# Start server
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+#### Running Tests
+
+```bash
+# Install test dependencies
+pip install -r requirements-dev.txt
+
+# Run all tests
+pytest
+
+# Run specific test file
+pytest tests/test_changelog.py -v
+
+# Run with coverage
+pytest --cov=app --cov-report=html
+```
+
+#### Database Options
+
+Das System unterstützt sowohl SQLite (für Entwicklung/Tests) als auch PostgreSQL (für Production):
+
+- **Development**: `sqlite:///./claim_dev.db` - Schnell, kein Docker benötigt
+- **Testing**: `sqlite:///:memory:` - In-Memory, ultra-schnell
+- **Production**: `postgresql://...` - Vollständiger PostGIS Support
+
+**Hinweis:** SQLite unterstützt keine räumlichen PostGIS-Queries. Für volle Funktionalität nutze PostgreSQL.
+
+#### Testing-Umgebung
+
+Das Projekt nutzt:
+- **pytest** - Test Framework
+- **pytest-asyncio** - Async Test Support
+- **httpx** - HTTP Client für API-Tests
+- **SQLite In-Memory** - Schnelle Test-Datenbank
+
+Alle Tests laufen automatisch mit SQLite in-memory Database für maximale Geschwindigkeit.
+
 ### Projektstruktur
 
 ```
@@ -386,16 +442,13 @@ Claim/
 └── README.md             # Diese Datei
 ```
 
-### Testing
+### Linting & Type Checking
 
 ```bash
-# Tests ausführen (wenn implementiert)
-pytest
-
-# Linting
+# Linting (optional)
 ruff check app/
 
-# Type Checking
+# Type Checking (optional)
 mypy app/
 ```
 
