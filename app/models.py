@@ -28,10 +28,14 @@ def get_location_column(geometry_type='POINT', nullable=False):
     
     In production with PostgreSQL, this uses full PostGIS Geography.
     In development/testing with SQLite, this stores coordinates as TEXT in WKT format.
+    
+    Note: WKT POINT format is "POINT(longitude latitude)" per OGC standards.
+    Example: "POINT(13.4050 52.5200)" represents longitude=13.4050°E, latitude=52.5200°N
     """
     if settings.is_sqlite():
         # For SQLite: Use TEXT to store WKT (Well-Known Text) format
-        # Format: "POINT(longitude latitude)" e.g., "POINT(13.4050 52.5200)"
+        # Format: "POINT(longitude latitude)" per OGC WKT specification
+        # Example: "POINT(13.4050 52.5200)" for Berlin (13.4050°E, 52.5200°N)
         # This allows storing location data without requiring SpatiaLite
         return Column(Text, nullable=nullable)
     else:
@@ -289,6 +293,9 @@ def init_db():
         logger.info("Initializing SQLite database")
         
         # Initialize spatial metadata for SQLite if SpatiaLite is available
+        import sqlite3
+        from sqlalchemy.exc import OperationalError, DatabaseError
+        
         with engine.connect() as conn:
             try:
                 # Check if SpatiaLite is available by trying to use a spatial function
@@ -299,7 +306,7 @@ def init_db():
                 conn.execute(text("SELECT InitSpatialMetaData(1)"))
                 conn.commit()
                 print("SpatiaLite spatial metadata initialized")
-            except Exception as e:
+            except (OperationalError, DatabaseError, sqlite3.OperationalError) as e:
                 # SpatiaLite not available or already initialized
                 logger.warning(f"SpatiaLite initialization skipped: {e}")
                 print("SQLite database will work without spatial features")

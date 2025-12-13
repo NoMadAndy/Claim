@@ -32,17 +32,18 @@ def create_db_engine():
         @event.listens_for(engine, "connect")
         def load_spatialite(dbapi_conn, connection_record):
             """Load SpatiaLite extension if available"""
+            import sqlite3
             dbapi_conn.enable_load_extension(True)
             try:
                 # Try common SpatiaLite module names
                 try:
                     dbapi_conn.load_extension("mod_spatialite")
                     logger.info("SpatiaLite extension loaded successfully")
-                except Exception:
+                except (sqlite3.OperationalError, OSError):
                     # Try alternative name
                     dbapi_conn.load_extension("mod_spatialite.so")
                     logger.info("SpatiaLite extension loaded successfully (mod_spatialite.so)")
-            except Exception as e:
+            except (sqlite3.OperationalError, OSError, AttributeError) as e:
                 # SpatiaLite not available - spatial queries will be limited
                 logger.warning(f"SpatiaLite extension not available: {e}. Spatial queries will be limited.")
             finally:
