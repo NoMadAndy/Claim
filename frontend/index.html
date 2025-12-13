@@ -444,19 +444,28 @@
                         try {
                             const now = ctx.currentTime;
                             
-                            // Play 3 quick beeps to ensure iOS really unlocks audio
-                            for (let i = 0; i < 3; i++) {
+                            // Constants for unlock tone
+                            const UNLOCK_TONE_COUNT = 3;
+                            const UNLOCK_TONE_INTERVAL = 0.1;
+                            const UNLOCK_TONE_VOLUME = 0.02;
+                            const UNLOCK_TONE_END_VOLUME = 0.001;
+                            const UNLOCK_TONE_DURATION = 0.05;
+                            const UNLOCK_TONE_BASE_FREQ = 440;
+                            const UNLOCK_TONE_FREQ_STEP = 100;
+                            
+                            // Play quick beeps to ensure iOS really unlocks audio
+                            for (let i = 0; i < UNLOCK_TONE_COUNT; i++) {
                                 const osc = ctx.createOscillator();
                                 const gain = ctx.createGain();
                                 osc.connect(gain);
                                 gain.connect(ctx.destination);
                                 
-                                const startTime = now + i * 0.1;
-                                gain.gain.setValueAtTime(0.02, startTime);
-                                gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.05);
-                                osc.frequency.value = 440 + (i * 100);
+                                const startTime = now + i * UNLOCK_TONE_INTERVAL;
+                                gain.gain.setValueAtTime(UNLOCK_TONE_VOLUME, startTime);
+                                gain.gain.exponentialRampToValueAtTime(UNLOCK_TONE_END_VOLUME, startTime + UNLOCK_TONE_DURATION);
+                                osc.frequency.value = UNLOCK_TONE_BASE_FREQ + (i * UNLOCK_TONE_FREQ_STEP);
                                 osc.start(startTime);
-                                osc.stop(startTime + 0.05);
+                                osc.stop(startTime + UNLOCK_TONE_DURATION);
                             }
                             return true;
                         } catch (err) {

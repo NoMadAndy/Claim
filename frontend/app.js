@@ -157,6 +157,7 @@ class SoundManager {
         this.unlocked = false; // Track if unlock button was pressed
         this.preloadAttempted = false; // Track if we've preloaded sounds
         this.stateChangeListenerAdded = false;
+        this.isResuming = false; // Prevent concurrent resume attempts
         this.setupGlobalListeners();
         this.setupVisibilityListeners();
         // Version tag for debugging
@@ -297,15 +298,18 @@ class SoundManager {
         }
     }
 
+    // Sound file configuration
+    static SOUND_FILES = {
+        log: '/sounds/Yum_CMaj.wav',
+        error: '/sounds/Sound%20LD%20Bumpy%20Reconstruction_keyC%23min.wav',
+        levelup: '/sounds/TR%20727%20Beat%203_125bpm.wav',
+        loot: '/sounds/DN_DSV_Vocal_Yeah_02_KeyBmin_56bpm.wav'
+    };
+
     // Preload all sound files to ensure they're ready to play
     async preloadAllSounds() {
         try {
-            const soundFiles = [
-                '/sounds/Yum_CMaj.wav',
-                '/sounds/Sound%20LD%20Bumpy%20Reconstruction_keyC%23min.wav',
-                '/sounds/TR%20727%20Beat%203_125bpm.wav',
-                '/sounds/DN_DSV_Vocal_Yeah_02_KeyBmin_56bpm.wav'
-            ];
+            const soundFiles = Object.values(SoundManager.SOUND_FILES);
 
             for (const url of soundFiles) {
                 try {
@@ -571,16 +575,25 @@ class SoundManager {
 
         // CRITICAL for iOS: Always try to resume if suspended
         if (this.audioContext.state === 'suspended') {
-            console.log('⏸️ AudioContext suspended, attempting resume before playback');
-            if (window.debugLog) window.debugLog('⏸️ Resuming suspended context');
-            try {
-                await this.audioContext.resume();
-                console.log('✓ AudioContext resumed, new state:', this.audioContext.state);
-                if (window.debugLog) window.debugLog('✓ Resumed to: ' + this.audioContext.state);
-            } catch (err) {
-                console.warn('⚠ Failed to resume AudioContext:', err);
-                if (window.debugLog) window.debugLog('⚠ Resume failed: ' + err.message);
-                // Continue anyway, might still work
+            // Prevent concurrent resume attempts
+            if (this.isResuming) {
+                console.log('⏸️ Resume already in progress, waiting...');
+                await new Promise(resolve => setTimeout(resolve, 100));
+            } else {
+                this.isResuming = true;
+                console.log('⏸️ AudioContext suspended, attempting resume before playback');
+                if (window.debugLog) window.debugLog('⏸️ Resuming suspended context');
+                try {
+                    await this.audioContext.resume();
+                    console.log('✓ AudioContext resumed, new state:', this.audioContext.state);
+                    if (window.debugLog) window.debugLog('✓ Resumed to: ' + this.audioContext.state);
+                } catch (err) {
+                    console.warn('⚠ Failed to resume AudioContext:', err);
+                    if (window.debugLog) window.debugLog('⚠ Resume failed: ' + err.message);
+                    // Continue anyway, might still work
+                } finally {
+                    this.isResuming = false;
+                }
             }
         }
 
