@@ -1,5 +1,23 @@
 # Changelog
 
+## 2025-12-13 Visual & UX Enhancements: Trail, Spot Glow & Map Following
+**Highlights:**
+- ✨ **Deutlich sichtbarere Player-Trails**: Trail-Punkte sind nun größer (8→10/6→8px) mit stärkeren Glow-Effekten und höherer Opazität für bessere Sichtbarkeit
+- 🌟 **Farbige Glow-Effekte für Spots**: Spots haben jetzt pulsierende Glow-Effekte basierend auf ihrer Abklingzeit
+  - 🟢 Grün-Glow: Bereit zum Loggen (pulse-ready Animation)
+  - 🟡 Orange-Glow: Teilweise Abklingzeit (pulse-partial Animation)
+  - 🔴 Rot-Glow: Volle Abklingzeit (pulse-cooldown Animation)
+- 🔄 **Automatische Spot-Aktualisierung**: Spots werden alle 15 Sekunden automatisch aktualisiert und direkt nach jedem Log (auto/manual)
+- 🗺️ **Flüssigere Kartenfolge**: Karte folgt dem Spieler nun schneller und geschmeidiger (0.7s→0.4s Dauer, optimierte Easing)
+**Technische Details:**
+- Trail-Dots: Erhöhte Größe, Opazität (0.4/0.5) und verbesserte Drop-Shadow-Filter
+- Spot-Marker: Neue CSS-Animationen für pulsierende Glow-Effekte bei allen Cooldown-Zuständen
+- Spot-Refresh-Intervall: 15 Sekunden periodisch + sofort nach jedem Log
+- Map panTo: Reduzierte Dauer (0.4s) und optimierte easeLinearity (0.15) für flüssigere Bewegung
+**Wichtige Dateien:**
+- `frontend/app.js` - Trail-Parameter, Spot-Refresh-Intervall, panTo-Optimierung
+- `frontend/styles.css` - Trail-Effekte, Spot-Glow-Animationen
+
 ## 2025-12-13 Major Feature Release: Enhanced Gameplay & User Experience
 **Highlights:**
 - 🎨 Spots werden jetzt abhängig von ihrer Abklingzeit eingefärbt (Grün=bereit, Gelb=teilweise, Rot=Abklingzeit)
