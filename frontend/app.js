@@ -590,15 +590,23 @@ class SoundManager {
 
         // CRITICAL for iOS: Always try to resume if suspended
         if (this.audioContext.state === 'suspended') {
-            // Prevent concurrent resume attempts
+            // Prevent concurrent resume attempts with Promise-based coordination
             if (this.isResuming) {
                 console.log('⏸️ Resume already in progress, waiting...');
-                // Wait for the existing resume to complete
-                let attempts = 0;
-                while (this.isResuming && attempts < 10) {
-                    await new Promise(resolve => setTimeout(resolve, 50));
-                    attempts++;
-                }
+                // Create a promise that resolves when resume completes
+                await new Promise((resolve) => {
+                    const checkInterval = setInterval(() => {
+                        if (!this.isResuming || this.audioContext.state !== 'suspended') {
+                            clearInterval(checkInterval);
+                            resolve();
+                        }
+                    }, 50);
+                    // Timeout after 1 second
+                    setTimeout(() => {
+                        clearInterval(checkInterval);
+                        resolve();
+                    }, 1000);
+                });
             }
             
             // Double-check state after waiting
@@ -1705,11 +1713,14 @@ async function initializeApp() {
         // Show helpful notification for iOS users about audio unlock
         const hasSeenAudioHint = localStorage.getItem('claim_audio_hint_shown');
         
-        if (isIOSDevice() && !hasSeenAudioHint && !soundManager?.unlocked) {
-            setTimeout(() => {
-                showNotification('🔊 Sound', 'Tippe den gelben Sound-Button um Audio zu aktivieren!', 'info', 8000);
-                localStorage.setItem('claim_audio_hint_shown', 'true');
-            }, 2000);
+        if (isIOSDevice() && !hasSeenAudioHint) {
+            // Check if soundManager exists and is not unlocked
+            if (soundManager && !soundManager.unlocked) {
+                setTimeout(() => {
+                    showNotification('🔊 Sound', 'Tippe den gelben Sound-Button um Audio zu aktivieren!', 'info', 8000);
+                    localStorage.setItem('claim_audio_hint_shown', 'true');
+                }, 2000);
+            }
         }
         
         // Fetch current user
