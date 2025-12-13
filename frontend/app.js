@@ -4239,25 +4239,40 @@ function switchSettingsTab(tabName) {
     // Update tab content
     const settingsTab = document.getElementById('settings-tab');
     const changelogTab = document.getElementById('changelog-tab');
+    const serverLogsTab = document.getElementById('server-logs-tab');
     
+    // Hide all tabs first
+    if (settingsTab) {
+        settingsTab.classList.remove('active');
+        settingsTab.style.display = 'none';
+    }
+    if (changelogTab) {
+        changelogTab.classList.remove('active');
+        changelogTab.style.display = 'none';
+    }
+    if (serverLogsTab) {
+        serverLogsTab.classList.remove('active');
+        serverLogsTab.style.display = 'none';
+    }
+    
+    // Show selected tab
     if (tabName === 'settings') {
         if (settingsTab) {
             settingsTab.classList.add('active');
             settingsTab.style.display = 'block';
         }
-        if (changelogTab) {
-            changelogTab.classList.remove('active');
-            changelogTab.style.display = 'none';
-        }
     } else if (tabName === 'changelog') {
-        if (settingsTab) {
-            settingsTab.classList.remove('active');
-            settingsTab.style.display = 'none';
-        }
         if (changelogTab) {
             changelogTab.classList.add('active');
             changelogTab.style.display = 'block';
         }
+    } else if (tabName === 'server-logs') {
+        if (serverLogsTab) {
+            serverLogsTab.classList.add('active');
+            serverLogsTab.style.display = 'block';
+        }
+        // Load server logs when tab is opened
+        loadServerLogs();
     }
 }
 
@@ -4322,6 +4337,21 @@ async function loadChangelog() {
                 html += '</ul>';
             }
             
+            // Files - show files list (or as fallback if no description)
+            if (entry.files && entry.files.length > 0) {
+                const showFiles = !entry.description || entry.files.length > 0;
+                if (showFiles) {
+                    html += '<div class="changelog-files">';
+                    html += '<div class="changelog-files-label">Modified files:</div>';
+                    html += '<ul class="changelog-files-list">';
+                    entry.files.forEach(file => {
+                        html += `<li><code>${escapeHtml(file)}</code></li>`;
+                    });
+                    html += '</ul>';
+                    html += '</div>';
+                }
+            }
+            
             html += '</div>';
         });
         
@@ -4331,6 +4361,49 @@ async function loadChangelog() {
     } catch (error) {
         console.error('Error loading changelog:', error);
         changelogContent.innerHTML = '<p style="text-align: center; color: #d9534f;">Failed to load changelog. Please try again later.</p>';
+    }
+}
+
+// Server Logs Loading
+let serverLogsLoaded = false;
+
+async function loadServerLogs() {
+    // Allow reloading logs (unlike changelog which loads once)
+    const serverLogsContent = document.getElementById('server-logs-content');
+    if (!serverLogsContent) return;
+    
+    try {
+        serverLogsContent.innerHTML = '<p style="text-align: center; color: #666;">Loading server logs...</p>';
+        
+        const response = await fetch('/api/server-logs');
+        if (!response.ok) {
+            throw new Error('Failed to load server logs');
+        }
+        
+        const data = await response.json();
+        
+        // Check if logs are empty
+        if (!data.logs || data.logs.trim() === '') {
+            const message = data.message || 'No logs available yet.';
+            serverLogsContent.innerHTML = `<p style="text-align: center; color: #666;">${escapeHtml(message)}</p>`;
+            serverLogsLoaded = true;
+            return;
+        }
+        
+        // Render logs in a preformatted text area
+        const logLines = data.logs.trim();
+        serverLogsContent.innerHTML = `
+            <div class="server-logs-info">
+                <span>📊 ${data.line_count} lines (last 200)</span>
+            </div>
+            <pre class="server-logs-display">${escapeHtml(logLines)}</pre>
+        `;
+        
+        serverLogsLoaded = true;
+        
+    } catch (error) {
+        console.error('Error loading server logs:', error);
+        serverLogsContent.innerHTML = '<p style="text-align: center; color: #d9534f;">Failed to load server logs. Please try again later.</p>';
     }
 }
 
