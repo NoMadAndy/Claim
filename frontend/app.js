@@ -240,6 +240,10 @@ class SoundManager {
             
             const ctx = new AudioContext({ latencyHint: 'interactive' });
             
+            // Log sample rate for debugging (iOS uses 48kHz, most desktops 44.1kHz)
+            console.log('🎵 AudioContext created - Sample rate:', ctx.sampleRate, 'Hz, State:', ctx.state);
+            if (window.debugLog) window.debugLog('🎵 SR: ' + ctx.sampleRate + 'Hz');
+            
             // Add state change listener to monitor context
             if (!this.stateChangeListenerAdded) {
                 ctx.addEventListener('statechange', () => {
@@ -1660,6 +1664,18 @@ async function initializeApp() {
         // Auto-unlock audio on iOS (workaround for audio device lock)
         if (soundManager) {
             await soundManager.autoUnlockOnLoad();
+        }
+
+        // Show helpful notification for iOS users about audio unlock
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const hasSeenAudioHint = localStorage.getItem('claim_audio_hint_shown');
+        
+        if (isIOS && !hasSeenAudioHint && !soundManager?.unlocked) {
+            setTimeout(() => {
+                showNotification('🔊 Sound', 'Tippe den gelben Sound-Button um Audio zu aktivieren!', 'info', 8000);
+                localStorage.setItem('claim_audio_hint_shown', 'true');
+            }, 2000);
         }
         
         // Fetch current user

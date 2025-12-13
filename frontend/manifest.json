@@ -1,17 +1,20 @@
 {
   "name": "Claim GPS Game",
   "short_name": "Claim",
-  "description": "GPS-basiertes Echtzeit-Spiel",
+  "description": "GPS-basiertes Echtzeit-Spiel mit Sound-Effekten",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#667eea",
   "theme_color": "#667eea",
+  "categories": ["games", "navigation"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "favicon.svg",
       "sizes": "any",
-      "type": "image/svg+xml"
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     }
   ]
 }
