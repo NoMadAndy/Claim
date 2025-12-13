@@ -168,18 +168,33 @@ def collect_loot(db: Session, user_id: int, loot_spot_id: int, user_lat: float, 
         WHERE id = :spot_id
     """)
     
-    result = db.execute(distance_query, {
-        "user_location": f"SRID=4326;POINT({user_lng} {user_lat})",
-        "spot_id": loot_spot_id
-    }).fetchone()
-    
-    distance = result[0] if result else None
+    try:
+        result = db.execute(distance_query, {
+            "user_location": f"SRID=4326;POINT({user_lng} {user_lat})",
+            "spot_id": loot_spot_id
+        }).fetchone()
+    except Exception:
+        return {"success": False, "error": "Distance calculation failed"}
+
+    distance = None
+    if result and result[0] is not None:
+        try:
+            distance = float(result[0])
+        except Exception:
+            distance = None
     
     modifiers = buff_service.get_active_modifiers(db, user_id)
-    max_distance = float(settings.MANUAL_LOG_DISTANCE) + float(modifiers.range_bonus_m)
+    try:
+        max_distance = float(settings.MANUAL_LOG_DISTANCE) + float(modifiers.range_bonus_m)
+    except Exception:
+        max_distance = float(settings.MANUAL_LOG_DISTANCE)
 
     if distance is None or distance > max_distance:
-        return {"success": False, "error": f"Too far away (distance: {distance:.0f}m, max: {max_distance:.0f}m)"}
+        distance_str = "unknown" if distance is None else f"{distance:.0f}m"
+        return {
+            "success": False,
+            "error": f"Too far away (distance: {distance_str}, max: {max_distance:.0f}m)"
+        }
     
     # Collect rewards
     user = db.query(User).filter(User.id == user_id).first()
