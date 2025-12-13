@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 import re
+import traceback
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
@@ -112,6 +113,7 @@ def parse_changelog(content: str) -> List[Dict[str, Any]]:
             
             if in_highlights and line.startswith("- "):
                 highlight = line[2:].strip()
+                # Skip file paths that are mistakenly in highlights section
                 if highlight and not highlight.startswith('`'):
                     entry["highlights"].append(highlight)
             elif in_files and line.startswith("- "):
@@ -172,6 +174,5 @@ async def get_changelog() -> List[Dict[str, Any]]:
         raise HTTPException(status_code=404, detail="CHANGELOG.md not found")
     except Exception as e:
         # Log error for debugging
-        import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error parsing changelog: {str(e)}")
