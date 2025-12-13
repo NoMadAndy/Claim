@@ -1710,18 +1710,6 @@ async function initializeApp() {
             await soundManager.autoUnlockOnLoad();
         }
 
-        // Show helpful notification for iOS users about audio unlock
-        const hasSeenAudioHint = localStorage.getItem('claim_audio_hint_shown');
-        
-        if (isIOSDevice() && !hasSeenAudioHint) {
-            // Check if soundManager exists and is not unlocked
-            if (soundManager && !soundManager.unlocked) {
-                setTimeout(() => {
-                    showNotification('🔊 Sound', 'Tippe den gelben Sound-Button um Audio zu aktivieren!', 'info', 8000);
-                    localStorage.setItem('claim_audio_hint_shown', 'true');
-                }, 2000);
-            }
-        }
         
         // Fetch current user
         const response = await apiRequest('/auth/me');
