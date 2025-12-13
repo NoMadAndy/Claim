@@ -1,5 +1,30 @@
 # Changelog
 
+## 2025-12-13 Major Feature Release: Enhanced Gameplay & User Experience
+**Highlights:**
+- 🎨 Spots werden jetzt abhängig von ihrer Abklingzeit eingefärbt (Grün=bereit, Gelb=teilweise, Rot=Abklingzeit)
+- 🏃 Spielerbewegung ist jetzt weich und flüssig mit Interpolation statt abrupten Sprüngen
+- ✨ Verbesserter Spieler-Trail-Effekt mit deutlich sichtbareren und animierten Punkten
+- 🔧 Popup-Zittern beim Verschieben der Karte behoben
+- 💾 Alle Benutzereinstellungen werden jetzt pro Spieler in der Datenbank gespeichert
+- 🗺️ Kartenebene-Auswahl wird automatisch gespeichert und beim nächsten Login wiederhergestellt
+- 🔊 Sound- und Kompass-Einstellungen werden persistent gespeichert
+- 📊 Heatmap- und Territory-Overlay-Einstellungen werden pro Benutzer gespeichert
+**Technische Details:**
+- Neue `UserSettings` Datenbanktabelle für persistente Benutzereinstellungen
+- API-Endpunkte hinzugefügt: `GET/PUT /api/settings`
+- Spots-API gibt jetzt `cooldown_status` zurück (ready/partial/cooldown)
+- Spieler-Marker verwendet jetzt 800ms Ease-Out-Interpolation für sanfte Bewegungen
+- Trail-Dots haben verbesserte Animationen und erhöhte Sichtbarkeit
+- CSS-Klassen hinzugefügt: `spot-marker-ready`, `spot-marker-partial`, `spot-marker-cooldown`
+**Wichtige Dateien:**
+- `app/models.py` - UserSettings Model
+- `app/routers/settings.py` - Settings API (neu)
+- `app/routers/spots.py` - Cooldown-Status-Integration
+- `app/schemas.py` - UserSettings Schemas
+- `frontend/app.js` - Smooth Movement, Settings-Speicherung, Cooldown-Farben
+- `frontend/styles.css` - Cooldown-Farben, verbesserte Trail-Animationen
+
 ## 2025-12-13 UI Improvements: Changelog Readability & Admin Server Logs
 **Highlights:**
 - Verbesserte Changelog-Lesbarkeit: Schwarze Schriftfarbe für bessere Lesbarkeit
