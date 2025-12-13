@@ -4969,6 +4969,10 @@ function changeVolume() {
     saveUserSettings({ sound_volume: volume });
 }
 
+function isAudioReady() {
+    return soundManager.audioInitialized && soundManager.unlocked;
+}
+
 function handleAudioUnlock() {
     const AUDIO_UNLOCK_DELAY = 500; // Delay to show feedback before updating UI
     const btn = document.getElementById('btn-audio-unlock');
@@ -4994,8 +4998,8 @@ function handleAudioUnlock() {
             text.textContent = 'Audio freigeschaltet!';
             btn.disabled = false;
             
-            // Play a confirmation sound if audio is initialized and sounds are enabled
-            if (soundManager.audioInitialized && soundManager.soundsEnabled) {
+            // Play a confirmation sound if audio is ready and sounds are enabled
+            if (isAudioReady() && soundManager.soundsEnabled) {
                 soundManager.playSound('log');
             }
             
@@ -5031,7 +5035,7 @@ function updateAudioUnlockButton() {
     }
     
     // Update button state based on audio context
-    if (soundManager.audioInitialized && soundManager.unlocked) {
+    if (isAudioReady()) {
         btn.classList.remove('pulse');
         btn.classList.add('unlocked');
         icon.textContent = '✅';
