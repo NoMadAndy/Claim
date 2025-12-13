@@ -7,31 +7,27 @@ router = APIRouter(prefix="/api", tags=["changelog"])
 
 
 def is_meaningful_entry(entry: Dict[str, Any]) -> bool:
-    """
-    Determine if a changelog entry is meaningful (not just .pyc or merge conflicts).
+    """Filter out build commits and merge conflicts"""
     
-    Returns True if:
-    - Entry has highlights (feature release)
-    - Entry modifies non-.pyc files
-    - Entry modifies multiple files
-    """
-    # Check if it's a feature release with highlights
-    if entry.get("highlights"):
+    # Skip git merge conflicts
+    if any(marker in entry.get('title', '') for marker in ['<<<<<<<', '=======', '>>>>>>>']):
+        return False
+    
+    # Prioritize feature releases with highlights
+    if entry.get('highlights'):
         return True
     
-    # Check modified files
-    files = entry.get("files", [])
+    # Skip entries with no files (after .pyc filtering)
+    files = entry.get('files', [])
     if not files:
         return False
     
-    # Filter out .pyc files
-    non_pyc_files = [f for f in files if not f.endswith(".pyc")]
+    # Skip if only .pyc files changed
+    only_pyc = all('.pyc' in f or '__pycache__' in f for f in files)
+    if only_pyc:
+        return False
     
-    # Meaningful if has non-.pyc files
-    if non_pyc_files:
-        return True
-    
-    return False
+    return True
 
 
 def parse_changelog(content: str) -> List[Dict[str, Any]]:
@@ -115,16 +111,33 @@ def parse_changelog(content: str) -> List[Dict[str, Any]]:
                 continue
             
             if in_highlights and line.startswith("- "):
-                entry["highlights"].append(line[2:].strip())
+                highlight = line[2:].strip()
+                if highlight and not highlight.startswith('`'):
+                    entry["highlights"].append(highlight)
             elif in_files and line.startswith("- "):
-                file_path = line[2:].strip().strip('`')
-                entry["files"].append(file_path)
+                # Handle multiple file formats:
+                # - `file.py`
+                # - `file1.py`, `file2.py`, Backend: `file3.py`
+                line_content = line[2:].strip()
+                
+                # Extract all files wrapped in backticks
+                file_matches = re.findall(r'`([^`]+)`', line_content)
+                if file_matches:
+                    entry["files"].extend(file_matches)
+                else:
+                    # Fallback: treat whole line as single file (strip backticks)
+                    file_path = line_content.strip('`')
+                    if file_path:
+                        entry["files"].append(file_path)
             elif line and not in_files:
                 description_parts.append(line)
         
         # Join description parts
         if description_parts:
             entry["description"] = " ".join(description_parts)
+        
+        # Filter out .pyc files from the file list
+        entry["files"] = [f for f in entry["files"] if '.pyc' not in f and '__pycache__' not in f]
         
         # Only add meaningful entries
         if is_meaningful_entry(entry):
@@ -156,6 +169,9 @@ async def get_changelog() -> List[Dict[str, Any]]:
         return entries[:15]
         
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Changelog file not found")
+        raise HTTPException(status_code=404, detail="CHANGELOG.md not found")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading changelog: {str(e)}")
+        # Log error for debugging
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error parsing changelog: {str(e)}")
