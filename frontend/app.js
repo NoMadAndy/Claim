@@ -4999,6 +4999,7 @@ function handleAudioUnlock() {
             btn.disabled = false;
             
             // Play a confirmation sound if audio is ready and sounds are enabled
+            // Using 'log' sound as it's a pleasant confirmation tone
             if (isAudioReady() && soundManager.soundsEnabled) {
                 soundManager.playSound('log');
             }
