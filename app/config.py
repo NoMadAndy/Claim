@@ -16,8 +16,19 @@ class Settings(BaseSettings):
     LOG_COOLDOWN: int = Field(default=300)  # seconds (5 minutes)
     CLAIM_DECAY_RATE: float = Field(default=0.01)  # per hour
     
+    # Testing/Development Settings
+    TESTING: bool = Field(default=False)  # Set to True to disable spatial features for testing
+    
     class Config:
         env_file = ".env"
         case_sensitive = True
+    
+    def is_sqlite(self) -> bool:
+        """Check if the configured database is SQLite"""
+        return self.DATABASE_URL.startswith("sqlite")
+    
+    def is_postgresql(self) -> bool:
+        """Check if the configured database is PostgreSQL"""
+        return self.DATABASE_URL.startswith("postgresql")
 
 settings = Settings()

@@ -4,8 +4,12 @@ from sqlalchemy.orm import relationship
 from geoalchemy2 import Geography
 import enum
 from app.database import Base
+from app.config import settings
 import pytz
 from datetime import timezone, timedelta
+import logging
+
+logger = logging.getLogger(__name__)
 
 # CET timezone (UTC+1, or UTC+2 during DST)
 def get_cet_now():
@@ -247,18 +251,41 @@ class GameSetting(Base):
 
 # Create tables function
 def init_db():
-    """Initialize database with PostGIS extension and create all tables"""
+    """Initialize database with PostGIS/SpatiaLite extension and create all tables"""
     from sqlalchemy import text
     from app.database import engine
     
-    # Enable PostGIS extension
-    with engine.connect() as conn:
-        conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
-        conn.commit()
+    if settings.is_postgresql():
+        # Enable PostGIS extension for PostgreSQL
+        logger.info("Initializing PostgreSQL database with PostGIS extension")
+        with engine.connect() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+            conn.commit()
+        print("PostGIS extension enabled")
+    
+    elif settings.is_sqlite():
+        # For SQLite, SpatiaLite is loaded via connection event in database.py
+        logger.info("Initializing SQLite database")
+        
+        # Initialize spatial metadata for SQLite if SpatiaLite is available
+        with engine.connect() as conn:
+            try:
+                # Check if SpatiaLite is available by trying to use a spatial function
+                conn.execute(text("SELECT spatialite_version()"))
+                logger.info("SpatiaLite is available and working")
+                
+                # Initialize spatial metadata
+                conn.execute(text("SELECT InitSpatialMetaData(1)"))
+                conn.commit()
+                print("SpatiaLite spatial metadata initialized")
+            except Exception as e:
+                # SpatiaLite not available or already initialized
+                logger.warning(f"SpatiaLite initialization skipped: {e}")
+                print("SQLite database will work without spatial features")
     
     # Create all tables
     Base.metadata.create_all(bind=engine)
-    print("Database initialized successfully!")
+    print("Database tables created successfully!")
 
 
 if __name__ == "__main__":
