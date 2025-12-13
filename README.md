@@ -348,6 +348,11 @@ Kurze, präzise Beschreibung der Änderung (1 Zeile)
 - Alle Creator-Rechte
 - Spots löschen
 - Systemverwaltung
+- **Zugriff auf Admin Dashboard** (`/admin.html`)
+  - Benutzer-, Spot- und Log-Verwaltung
+  - Server Logs Einsicht mit Auto-Refresh
+  - Changelog-Ansicht
+  - Spieleinstellungen konfigurieren
 
 ## 🔮 Geplante Features (KI-Vorbereitung)
 
