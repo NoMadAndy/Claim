@@ -2,6 +2,7 @@ from datetime import datetime
 from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text, Enum as SQLEnum, LargeBinary
 from sqlalchemy.orm import relationship
 from geoalchemy2 import Geography
+from geoalchemy2 import Geometry
 import enum
 from app.database import Base
 from app.config import settings
@@ -16,6 +17,26 @@ def get_cet_now():
     """Get current time in CET timezone"""
     cet = pytz.timezone('Europe/Berlin')
     return datetime.now(cet).replace(tzinfo=None)  # Store as naive datetime for compatibility
+
+
+def get_location_column(geometry_type='POINT', nullable=False):
+    """
+    Get appropriate location column type based on database.
+    
+    For PostgreSQL: Use Geography with PostGIS
+    For SQLite: Use Text to store WKT (Well-Known Text) format or use Geometry with SpatiaLite
+    
+    In production with PostgreSQL, this uses full PostGIS Geography.
+    In development/testing with SQLite, this stores coordinates as TEXT in WKT format.
+    """
+    if settings.is_sqlite():
+        # For SQLite: Use TEXT to store WKT (Well-Known Text) format
+        # Format: "POINT(longitude latitude)" e.g., "POINT(13.4050 52.5200)"
+        # This allows storing location data without requiring SpatiaLite
+        return Column(Text, nullable=nullable)
+    else:
+        # For PostgreSQL: Use Geography with PostGIS for full spatial support
+        return Column(Geography(geometry_type=geometry_type, srid=4326), nullable=nullable)
 
 
 class UserRole(str, enum.Enum):
@@ -76,7 +97,7 @@ class Spot(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     description = Column(Text)
-    location = Column(Geography(geometry_type='POINT', srid=4326), nullable=False)
+    location = get_location_column(geometry_type='POINT', nullable=False)
     
     # Spot Type
     is_permanent = Column(Boolean, default=True)
@@ -108,7 +129,7 @@ class Log(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     spot_id = Column(Integer, ForeignKey("spots.id"), nullable=False)
     
-    location = Column(Geography(geometry_type='POINT', srid=4326), nullable=False)
+    location = get_location_column(geometry_type='POINT', nullable=False)
     distance = Column(Float)  # Distance to spot in meters
     
     # Log Type
@@ -159,7 +180,7 @@ class Track(Base):
     is_active = Column(Boolean, default=True)
     
     # Track as LineString
-    path = Column(Geography(geometry_type='LINESTRING', srid=4326), nullable=True)
+    path = get_location_column(geometry_type='LINESTRING', nullable=True)
     
     started_at = Column(DateTime, default=get_cet_now)
     ended_at = Column(DateTime, nullable=True)
@@ -179,7 +200,7 @@ class TrackPoint(Base):
     id = Column(Integer, primary_key=True, index=True)
     track_id = Column(Integer, ForeignKey("tracks.id"), nullable=False)
     
-    location = Column(Geography(geometry_type='POINT', srid=4326), nullable=False)
+    location = get_location_column(geometry_type='POINT', nullable=False)
     timestamp = Column(DateTime, default=get_cet_now)
     
     # Optional metadata
