@@ -106,15 +106,17 @@
                 background: #ffcc00;
                 color: #000;
                 border: 2px solid #000;
-                padding: 8px 14px;
-                border-radius: 4px;
+                padding: 10px 16px;
+                border-radius: 8px;
                 font-weight: bold;
                 z-index: 12000;
                 cursor: pointer;
-                font-size: 14px;
+                font-size: 16px;
                 width: auto;
-                min-width: 90px;
-            " disabled>Sound an</button>
+                min-width: 100px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                animation: pulse-glow 2s ease-in-out infinite;
+            " disabled>🔊 Sound</button>
         </div>
     </div>
     
@@ -299,7 +301,7 @@
         white-space: nowrap;
     ">--:-- • --</div>
 
-    <button id="btn-enable-audio" style="
+    <button id="btn-enable-audio-secondary" style="
         display: none;
         position: fixed;
         top: 80px;
@@ -307,16 +309,18 @@
         background: #ffcc00;
         color: #000;
         border: 2px solid #000;
-        padding: 8px 14px;
-        border-radius: 4px;
+        padding: 10px 16px;
+        border-radius: 8px;
         font-weight: bold;
         z-index: 12000;
         cursor: pointer;
         pointer-events: auto;
-        font-size: 14px;
+        font-size: 16px;
         width: auto;
-        min-width: 90px;
-    " onclick="window.handleUnlockButton && window.handleUnlockButton(event)">🔊 Unlock</button>
+        min-width: 100px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        animation: pulse-glow 2s ease-in-out infinite;
+    " onclick="window.handleUnlockButton && window.handleUnlockButton(event)">🔊 Sound</button>
 
     <!-- Notification Container -->
     <div id="notifications" class="notifications"></div>
@@ -389,6 +393,15 @@
             // Enable button immediately (no waiting for soundManager)
             enableAudioBtn.disabled = false;
 
+            // Constants for unlock tone (shared across functions)
+            const UNLOCK_TONE_COUNT = 3;
+            const UNLOCK_TONE_INTERVAL = 0.1;
+            const UNLOCK_TONE_VOLUME = 0.02;
+            const UNLOCK_TONE_END_VOLUME = 0.001;
+            const UNLOCK_TONE_DURATION = 0.05;
+            const UNLOCK_TONE_BASE_FREQ = 440;
+            const UNLOCK_TONE_FREQ_STEP = 100;
+
             const handleUnlock = async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -397,32 +410,62 @@
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 if (!AudioContext) {
                     unlockLog('✗ No AudioContext support', 'ERROR');
+                    enableAudioBtn.textContent = '❌ No Support';
+                    enableAudioBtn.style.background = '#ff3333';
                     return;
                 }
 
                 try {
-                    // Create fresh context
-                    let ctx = new AudioContext({ latencyHint: 'interactive' });
-                    unlockLog('🎵 AudioContext created, state: ' + ctx.state);
+                    // Show loading state
+                    enableAudioBtn.textContent = '⏳ Unlocking...';
+                    enableAudioBtn.style.background = '#ffaa00';
+                    enableAudioBtn.disabled = true;
 
-                    // Play unlock tone immediately (this triggers audio on iOS)
+                    // Create fresh context or reuse existing
+                    let ctx;
+                    if (window.soundManager && window.soundManager.audioContext && 
+                        window.soundManager.audioContext.state !== 'closed') {
+                        ctx = window.soundManager.audioContext;
+                        unlockLog('🎵 Reusing existing AudioContext, state: ' + ctx.state);
+                    } else {
+                        ctx = new AudioContext({ latencyHint: 'interactive' });
+                        unlockLog('🎵 AudioContext created, state: ' + ctx.state);
+                    }
+
+                    // Play silent buffer first (critical for iOS)
+                    const playSilentBuffer = () => {
+                        try {
+                            const buffer = ctx.createBuffer(1, 1, 22050);
+                            const source = ctx.createBufferSource();
+                            source.buffer = buffer;
+                            source.connect(ctx.destination);
+                            source.start(0);
+                            unlockLog('🔇 Silent buffer played');
+                            return true;
+                        } catch (err) {
+                            unlockLog('⚠ Silent buffer error: ' + err.message, 'WARN');
+                            return false;
+                        }
+                    };
+
+                    // Play unlock tone (audible feedback for user)
                     const playTone = () => {
                         try {
                             const now = ctx.currentTime;
                             
-                            // Play 3 quick beeps to ensure iOS really unlocks audio
-                            for (let i = 0; i < 3; i++) {
+                            // Play quick beeps to ensure iOS really unlocks audio (using constants defined above)
+                            for (let i = 0; i < UNLOCK_TONE_COUNT; i++) {
                                 const osc = ctx.createOscillator();
                                 const gain = ctx.createGain();
                                 osc.connect(gain);
                                 gain.connect(ctx.destination);
                                 
-                                const startTime = now + i * 0.1;
-                                gain.gain.setValueAtTime(0.0001, startTime);
-                                gain.gain.exponentialRampToValueAtTime(0.00001, startTime + 0.03);
-                                osc.frequency.value = 440 + (i * 100);
+                                const startTime = now + i * UNLOCK_TONE_INTERVAL;
+                                gain.gain.setValueAtTime(UNLOCK_TONE_VOLUME, startTime);
+                                gain.gain.exponentialRampToValueAtTime(UNLOCK_TONE_END_VOLUME, startTime + UNLOCK_TONE_DURATION);
+                                osc.frequency.value = UNLOCK_TONE_BASE_FREQ + (i * UNLOCK_TONE_FREQ_STEP);
                                 osc.start(startTime);
-                                osc.stop(startTime + 0.03);
+                                osc.stop(startTime + UNLOCK_TONE_DURATION);
                             }
                             return true;
                         } catch (err) {
@@ -431,34 +474,49 @@
                         }
                     };
 
-                    if (playTone()) {
-                        unlockLog('🎵 Tone played');
-                    }
-
-                    // Try resume but don't wait forever
+                    // Execute unlock sequence
+                    playSilentBuffer();
+                    
+                    // Try resume (critical for iOS)
                     unlockLog('🎵 Attempting resume...');
                     try {
-                        ctx.resume().catch(err => {
-                            unlockLog('⚠ Resume rejected: ' + err.message, 'WARN');
-                        });
+                        await ctx.resume();
+                        unlockLog('✓ Resume succeeded, state: ' + ctx.state);
                     } catch (err) {
-                        unlockLog('⚠ Resume threw: ' + err.message, 'WARN');
+                        unlockLog('⚠ Resume rejected: ' + err.message, 'WARN');
+                    }
+
+                    // Play audible tone for confirmation
+                    if (playTone()) {
+                        unlockLog('🎵 Tone played');
                     }
 
                     // Store context via SoundManager's setUnlocked method
                     if (window.soundManager) {
                         window.soundManager.setUnlocked(ctx);
+                        unlockLog('✓ SoundManager notified');
                     }
 
                     unlockLog('✓ Audio unlocked (context ready for playback)');
                     enableAudioBtn.textContent = '✅ Ready';
                     enableAudioBtn.style.background = '#00ff00';
+                    enableAudioBtn.style.animation = 'none';
+                    enableAudioBtn.disabled = false;
+                    
                     setTimeout(() => {
-                        enableAudioBtn.textContent = '🔊 Unlock';
-                        enableAudioBtn.style.background = '#ffcc00';
+                        enableAudioBtn.textContent = '🔊 Enabled';
+                        enableAudioBtn.style.background = '#00cc00';
                     }, 2000);
                 } catch (err) {
                     unlockLog('✗ Error: ' + err.message, 'ERROR');
+                    enableAudioBtn.textContent = '❌ Failed';
+                    enableAudioBtn.style.background = '#ff3333';
+                    enableAudioBtn.disabled = false;
+                    
+                    setTimeout(() => {
+                        enableAudioBtn.textContent = '🔊 Retry';
+                        enableAudioBtn.style.background = '#ffcc00';
+                    }, 3000);
                 }
             };
 
@@ -468,6 +526,26 @@
             enableAudioBtn.addEventListener('click', handleUnlock, { passive: false });
             enableAudioBtn.addEventListener('touchstart', handleUnlock, { passive: false });
             enableAudioBtn.addEventListener('pointerdown', handleUnlock, { passive: false });
+
+            // Show unlock button on iOS and mobile devices
+            // Use inline detection since app.js utility functions aren't loaded yet
+            const isIOSInline = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                               (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            const isMobileInline = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            if (isIOSInline || isMobileInline) {
+                unlockLog('📱 Mobile/iOS detected - showing audio unlock button');
+                enableAudioBtn.style.display = 'block';
+            }
+
+            // Also show the secondary button if it exists
+            const secondaryBtn = document.getElementById('btn-enable-audio-secondary');
+            if (secondaryBtn && (isIOSInline || isMobileInline)) {
+                secondaryBtn.style.display = 'block';
+                secondaryBtn.addEventListener('click', handleUnlock, { passive: false });
+                secondaryBtn.addEventListener('touchstart', handleUnlock, { passive: false });
+                secondaryBtn.addEventListener('pointerdown', handleUnlock, { passive: false });
+            }
         });
     </script>
     
