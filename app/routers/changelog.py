@@ -156,18 +156,23 @@ def get_changelog_path() -> Path:
     """
     Get the changelog path with robust resolution for different deployment scenarios.
     
-    Tries multiple methods:
-    1. Environment variable CHANGELOG_PATH
-    2. Relative to this file (Path(__file__).parent.parent.parent)
+    Tries multiple methods in order:
+    1. Environment variable CHANGELOG_PATH (with filename validation)
+    2. Relative to this file (app/routers/changelog.py -> repository root)
     3. Relative to current working directory
+    
+    Security: CHANGELOG_PATH must point to a file named "CHANGELOG.md" to prevent
+    accidental misconfiguration. The file is read-only. Directory whitelisting is
+    not enforced as CHANGELOG_PATH is an administrative control set at deployment.
     """
-    # Method 1: Check environment variable
+    # Method 1: Check environment variable (administrative control)
     env_path = os.environ.get("CHANGELOG_PATH")
     if env_path:
         try:
-            # Resolve to absolute path for security and validation
+            # Resolve to absolute path and validate filename
             path = Path(env_path).resolve()
             # Validate: must exist, be a file, and be named CHANGELOG.md
+            # This prevents accidental misconfiguration but trusts admin control
             if path.exists() and path.is_file() and path.name == "CHANGELOG.md":
                 logger.info(f"Using CHANGELOG_PATH from environment: {path}")
                 return path
@@ -177,12 +182,14 @@ def get_changelog_path() -> Path:
             logger.warning(f"Invalid CHANGELOG_PATH from environment: {env_path}, error: {e}")
     
     # Method 2: Relative to this file (standard location)
+    # Structure: app/routers/changelog.py -> .parent -> app/routers -> .parent -> app -> .parent -> root
     try:
-        file_path = Path(__file__).resolve().parent.parent.parent / "CHANGELOG.md"
+        repo_root = Path(__file__).resolve().parents[2]  # Go up 2 levels from changelog.py
+        file_path = repo_root / "CHANGELOG.md"
         if file_path.exists():
             logger.debug(f"Found changelog at: {file_path}")
             return file_path
-    except (AttributeError, OSError, RuntimeError) as e:
+    except (AttributeError, OSError, RuntimeError, IndexError) as e:
         logger.warning(f"Failed to resolve path relative to __file__: {e}")
     
     # Method 3: Relative to current working directory
