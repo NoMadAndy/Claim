@@ -1,8 +1,12 @@
 from fastapi import APIRouter, HTTPException
 import re
-import traceback
+import logging
+import os
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+
+# Setup logging
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["changelog"])
 
@@ -148,31 +152,113 @@ def parse_changelog(content: str) -> List[Dict[str, Any]]:
     return entries
 
 
+def get_changelog_path() -> Path:
+    """
+    Get the changelog path with robust resolution for different deployment scenarios.
+    
+    Tries multiple methods in order:
+    1. Environment variable CHANGELOG_PATH (with filename validation)
+    2. Relative to this file (app/routers/changelog.py -> repository root)
+    3. Relative to current working directory
+    
+    Security: CHANGELOG_PATH must point to a file named "CHANGELOG.md" to prevent
+    accidental misconfiguration. The file is read-only. Directory whitelisting is
+    not enforced as CHANGELOG_PATH is an administrative control set at deployment.
+    """
+    # Method 1: Check environment variable (administrative control)
+    env_path = os.environ.get("CHANGELOG_PATH")
+    if env_path:
+        try:
+            # Resolve to absolute path and validate filename
+            path = Path(env_path).resolve()
+            # Validate: must exist, be a file, and be named CHANGELOG.md
+            # This prevents accidental misconfiguration but trusts admin control
+            if path.exists() and path.is_file() and path.name == "CHANGELOG.md":
+                logger.info(f"Using CHANGELOG_PATH from environment: {path}")
+                return path
+            else:
+                logger.warning(f"CHANGELOG_PATH from environment is invalid (must be a file named CHANGELOG.md): {path}")
+        except (ValueError, OSError) as e:
+            logger.warning(f"Invalid CHANGELOG_PATH from environment: {env_path}, error: {e}")
+    
+    # Method 2: Relative to this file (standard location)
+    # Structure: app/routers/changelog.py -> .parent -> app/routers -> .parent -> app -> .parent -> root
+    try:
+        repo_root = Path(__file__).resolve().parents[2]  # Go up 2 levels from changelog.py
+        file_path = repo_root / "CHANGELOG.md"
+        if file_path.exists():
+            logger.debug(f"Found changelog at: {file_path}")
+            return file_path
+    except (AttributeError, OSError, RuntimeError, IndexError) as e:
+        logger.warning(f"Failed to resolve path relative to __file__: {e}")
+    
+    # Method 3: Relative to current working directory
+    cwd_path = Path.cwd() / "CHANGELOG.md"
+    if cwd_path.exists():
+        logger.info(f"Found changelog in current working directory: {cwd_path}")
+        return cwd_path
+    
+    # If we get here, file not found
+    env_path_str = env_path if env_path else "None"
+    logger.error(f"CHANGELOG.md not found. Tried: env_path={env_path_str}, __file__ relative, cwd={cwd_path}")
+    raise FileNotFoundError("CHANGELOG.md not found in any expected location")
+
+
 @router.get("/changelog")
 async def get_changelog() -> List[Dict[str, Any]]:
     """
     Parse CHANGELOG.md and return structured changelog entries.
     
     Returns the last 15 meaningful entries (excluding .pyc only changes and merge conflicts).
+    
+    Returns:
+    - 200: List of changelog entries (can be empty if no meaningful entries)
+    - 404: CHANGELOG.md file not found
+    - 500: Error parsing changelog
     """
     try:
-        changelog_path = Path(__file__).parent.parent.parent / "CHANGELOG.md"
+        # Get changelog path with robust resolution
+        changelog_path = get_changelog_path()
+        logger.info(f"Reading changelog from: {changelog_path}")
         
-        if not changelog_path.exists():
-            raise HTTPException(status_code=404, detail="Changelog not found")
-        
-        with open(changelog_path, 'r', encoding='utf-8') as f:
-            content = f.read()
+        # Read file content
+        try:
+            with open(changelog_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+        except PermissionError as e:
+            logger.error(f"Permission denied reading changelog: {e}")
+            raise HTTPException(status_code=500, detail="Permission denied reading changelog")
+        except (IOError, OSError, UnicodeDecodeError) as e:
+            logger.error(f"Error reading changelog file: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Error reading changelog file")
         
         # Parse changelog entries
-        entries = parse_changelog(content)
+        try:
+            entries = parse_changelog(content)
+            logger.debug(f"Parsed {len(entries)} meaningful entries from changelog")
+        except (ValueError, AttributeError, KeyError, IndexError) as e:
+            # parse_changelog may raise these on malformed content
+            logger.error(f"Error parsing changelog content: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Error parsing changelog content")
         
-        # Return last 15 meaningful entries
-        return entries[:15]
+        # Return last 15 meaningful entries (or empty array if none)
+        result = entries[:15]
         
-    except FileNotFoundError:
+        if not result:
+            logger.info("No meaningful entries found in changelog after filtering")
+        
+        return result
+        
+    except FileNotFoundError as e:
+        logger.error(f"Changelog file not found: {e}")
         raise HTTPException(status_code=404, detail="CHANGELOG.md not found")
+    except HTTPException:
+        # Re-raise HTTP exceptions from inner try blocks without wrapping them.
+        # This is necessary because HTTPException inherits from Exception, so without
+        # this handler, HTTPExceptions would be caught by the generic Exception handler
+        # below and wrapped with a generic error message, losing the specific error details.
+        raise
     except Exception as e:
-        # Log error for debugging
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Error parsing changelog: {str(e)}")
+        # Catch-all for unexpected errors
+        logger.error(f"Unexpected error in get_changelog: {type(e).__name__}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error processing changelog")
