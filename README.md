@@ -19,10 +19,11 @@ Ein ortsbasiertes Echtzeit-GPS-Spiel mit FastAPI, WebSockets, PostGIS und Leafle
 - **Auto-Log**: Automatisch bei ≤20m Entfernung
 - **Manual-Log**: Manuell bei ≤100m Entfernung
 - **Cooldown**: 5 Minuten pro Spot
-- **Visuelle Cooldown-Anzeige**: Spots werden farbig markiert
-  - 🟢 Grün: Bereit zum Loggen
-  - 🟡 Gelb: Teilweise Abklingzeit (< 2.5 Min)
-  - 🔴 Rot: Volle Abklingzeit
+- **Visuelle Cooldown-Anzeige**: Spots werden farbig markiert mit pulsierenden Glow-Effekten
+  - 🟢 Grün mit Glow: Bereit zum Loggen
+  - 🟡 Gelb/Orange mit Glow: Teilweise Abklingzeit (< 2.5 Min)
+  - 🔴 Rot mit Glow: Volle Abklingzeit
+  - Automatische Aktualisierung alle 15 Sekunden und direkt nach jedem Log
 - Belohnungen: XP, Claim-Punkte, optional Items
 
 #### Claims & Dominanz
@@ -37,7 +38,8 @@ Ein ortsbasiertes Echtzeit-GPS-Spiel mit FastAPI, WebSockets, PostGIS und Leafle
 - Historische Tracks anzeigen
 - Statistiken: Distanz, Dauer
 - **Smooth Player Movement**: Flüssige Spielerbewegung mit Interpolation
-- **Sichtbare Trail-Effekte**: Verbesserte Trail-Punkte beim Bewegen
+- **Deutlich sichtbare Trail-Effekte**: Größere Trail-Punkte mit stärkeren Glow-Effekten beim Bewegen
+- **Optimierte Kartenfolge**: Schnellere und flüssigere Kartenanpassung im Follow-Modus
 
 #### Kompass & Heading
 - Device Orientation API Unterstützung
