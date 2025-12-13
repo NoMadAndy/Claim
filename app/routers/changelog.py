@@ -177,7 +177,7 @@ def get_changelog_path() -> Path:
         if file_path.exists():
             logger.debug(f"Found changelog at: {file_path}")
             return file_path
-    except Exception as e:
+    except (AttributeError, OSError, RuntimeError) as e:
         logger.warning(f"Failed to resolve path relative to __file__: {e}")
     
     # Method 3: Relative to current working directory
@@ -187,7 +187,8 @@ def get_changelog_path() -> Path:
         return cwd_path
     
     # If we get here, file not found
-    logger.error(f"CHANGELOG.md not found. Tried: env_path={env_path}, __file__ relative, cwd={cwd_path}")
+    env_path_str = env_path if env_path else "None"
+    logger.error(f"CHANGELOG.md not found. Tried: env_path={env_path_str}, __file__ relative, cwd={cwd_path}")
     raise FileNotFoundError("CHANGELOG.md not found in any expected location")
 
 
@@ -239,7 +240,8 @@ async def get_changelog() -> List[Dict[str, Any]]:
         logger.error(f"Changelog file not found: {e}")
         raise HTTPException(status_code=404, detail="CHANGELOG.md not found")
     except HTTPException:
-        # Re-raise HTTP exceptions without wrapping
+        # Re-raise HTTP exceptions from inner try blocks without wrapping them
+        # This preserves the original status code and error message
         raise
     except Exception as e:
         # Catch-all for unexpected errors
