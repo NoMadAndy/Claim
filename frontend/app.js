@@ -4970,6 +4970,7 @@ function changeVolume() {
 }
 
 function handleAudioUnlock() {
+    const AUDIO_UNLOCK_DELAY = 500; // Delay to show feedback before updating UI
     const btn = document.getElementById('btn-audio-unlock');
     const icon = document.getElementById('audio-unlock-icon');
     const text = document.getElementById('audio-unlock-text');
@@ -4993,13 +4994,13 @@ function handleAudioUnlock() {
             text.textContent = 'Audio freigeschaltet!';
             btn.disabled = false;
             
-            // Play a confirmation sound
-            if (soundManager.audioInitialized) {
+            // Play a confirmation sound if audio is initialized and sounds are enabled
+            if (soundManager.audioInitialized && soundManager.soundsEnabled) {
                 soundManager.playSound('log');
             }
             
             showNotification('Audio', '🔊 Audio erfolgreich freigeschaltet!', 'success');
-        }, 500);
+        }, AUDIO_UNLOCK_DELAY);
     } catch (error) {
         console.error('Audio unlock failed:', error);
         setTimeout(() => {
@@ -5007,7 +5008,7 @@ function handleAudioUnlock() {
             text.textContent = 'Fehler - Erneut versuchen';
             btn.disabled = false;
             showNotification('Audio', '❌ Audio-Freischaltung fehlgeschlagen', 'error');
-        }, 500);
+        }, AUDIO_UNLOCK_DELAY);
     }
 }
 
@@ -5019,11 +5020,11 @@ function updateAudioUnlockButton() {
     
     if (!btn || !icon || !text || !hint) return;
     
-    // Check if we're on a mobile device
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    // Use feature detection for mobile/touch devices
+    const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
     
-    // Show hint on mobile devices
-    if (isMobile) {
+    // Show hint on touch-enabled devices (mobile/tablet)
+    if (isTouchDevice) {
         hint.style.display = 'block';
     } else {
         hint.style.display = 'none';
@@ -5035,7 +5036,7 @@ function updateAudioUnlockButton() {
         btn.classList.add('unlocked');
         icon.textContent = '✅';
         text.textContent = 'Audio freigeschaltet!';
-    } else if (isMobile) {
+    } else if (isTouchDevice) {
         btn.classList.add('pulse');
         btn.classList.remove('unlocked');
         icon.textContent = '🔓';
