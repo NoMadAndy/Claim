@@ -636,6 +636,95 @@
                 font-size: 0.85em;
             }
         }
+
+        /* Changelog Styles for Admin Panel */
+        .changelog-entry-admin {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--primary);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .changelog-date-admin {
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .changelog-title-admin {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 8px 0;
+            color: #000000;
+        }
+
+        .changelog-description-admin {
+            font-size: 14px;
+            color: #333333;
+            margin: 8px 0;
+            line-height: 1.5;
+        }
+
+        .changelog-highlights-admin {
+            font-size: 14px;
+            color: #000000;
+            margin: 12px 0;
+            padding-left: 20px;
+            list-style: none;
+        }
+
+        .changelog-highlights-admin li {
+            padding: 6px 0 6px 20px;
+            position: relative;
+        }
+
+        .changelog-highlights-admin li:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .changelog-files-admin {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border);
+        }
+
+        .changelog-files-label-admin {
+            font-size: 12px;
+            color: var(--primary);
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .changelog-files-list-admin {
+            margin: 0;
+            padding-left: 0;
+            list-style: none;
+        }
+
+        .changelog-files-list-admin li {
+            padding: 4px 0;
+            font-size: 12px;
+            color: #333333;
+        }
+
+        .changelog-files-list-admin code {
+            background: #f3f4f6;
+            padding: 3px 8px;
+            border-radius: 4px;
+            color: #000000;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
@@ -678,6 +767,8 @@
             <button class="tab-btn" onclick="switchTab('users')">👥 Benutzer</button>
             <button class="tab-btn" onclick="switchTab('spots')">📍 Spots</button>
             <button class="tab-btn" onclick="switchTab('logs')">📝 Logs</button>
+            <button class="tab-btn" onclick="switchTab('serverlogs')">🖥️ Server Logs</button>
+            <button class="tab-btn" onclick="switchTab('changelog')">📋 Changelog</button>
         </div>
 
         <!-- Settings Tab -->
@@ -804,6 +895,42 @@
                 </div>
             </div>
         </div>
+
+        <!-- Server Logs Tab -->
+        <div id="serverlogs" class="tab-content">
+            <h2 style="margin-bottom: 20px; color: var(--dark);">Server Logs</h2>
+            
+            <div class="controls">
+                <button class="btn btn-primary" onclick="refreshServerLogs()">🔄 Aktualisieren</button>
+                <button class="btn btn-secondary" onclick="toggleAutoRefreshServerLogs()">
+                    <span id="autoRefreshLabel">🔄 Auto-Refresh: Aus</span>
+                </button>
+            </div>
+
+            <div id="serverLogsInfo" style="margin: 20px 0; padding: 15px; background: #f3f4f6; border-radius: 8px; color: var(--dark);">
+                <p id="serverLogsStatus">Status wird geladen...</p>
+            </div>
+
+            <div id="serverLogsContainer" style="margin-top: 20px; padding: 20px; background: #1f2937; border-radius: 8px; max-height: 60vh; overflow-y: auto;">
+                <pre id="serverLogsContent" style="color: #e5e7eb; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word;">Loading server logs...</pre>
+            </div>
+        </div>
+
+        <!-- Changelog Tab -->
+        <div id="changelog" class="tab-content">
+            <h2 style="margin-bottom: 20px; color: var(--dark);">Changelog</h2>
+            
+            <div class="controls">
+                <button class="btn btn-primary" onclick="refreshChangelog()">🔄 Aktualisieren</button>
+            </div>
+
+            <div id="changelogContainer" style="margin-top: 20px; max-height: 65vh; overflow-y: auto;">
+                <div class="empty-state">
+                    <div class="loading"></div>
+                    <p>Changelog wird geladen...</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Create Spot Modal -->
@@ -852,6 +979,9 @@
         let cachedUsers = [];
         let cachedSpots = [];
         let cachedLogs = [];
+        let serverLogsLoaded = false;
+        let changelogLoaded = false;
+        let autoRefreshInterval = null;
 
         function switchTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(tab => {
@@ -868,6 +998,8 @@
             if (tabName === 'spots' && cachedSpots.length === 0) loadSpots();
             if (tabName === 'logs' && cachedLogs.length === 0) loadLogs();
             if (tabName === 'settings') loadSettings();
+            if (tabName === 'serverlogs' && !serverLogsLoaded) loadServerLogs();
+            if (tabName === 'changelog' && !changelogLoaded) loadChangelog();
         }
 
         async function apiRequest(endpoint, method = 'GET', body = null) {
@@ -1301,6 +1433,151 @@
 
         function refreshUsers() { loadUsers(); }
         function refreshLogs() { loadLogs(); }
+
+        // Server Logs Functions
+        async function loadServerLogs() {
+            const container = document.getElementById('serverLogsContent');
+            const statusEl = document.getElementById('serverLogsStatus');
+            
+            try {
+                container.textContent = 'Loading server logs...';
+                statusEl.textContent = 'Loading...';
+                
+                const response = await fetch(`${API_BASE}/server-logs`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                serverLogsLoaded = true;
+                
+                if (!data.file_exists) {
+                    container.textContent = data.message || 'Log file not created yet. Make some client logs to see them here.';
+                    statusEl.innerHTML = '<strong>Status:</strong> Log file does not exist yet.';
+                    return;
+                }
+                
+                if (data.logs && data.logs.length > 0) {
+                    container.textContent = data.logs;
+                    statusEl.innerHTML = `<strong>Status:</strong> Loaded ${data.line_count} lines from log file.`;
+                } else {
+                    container.textContent = 'Log file is empty.';
+                    statusEl.innerHTML = '<strong>Status:</strong> Log file exists but is empty.';
+                }
+            } catch (error) {
+                console.error('Error loading server logs:', error);
+                container.textContent = `Error loading server logs: ${error.message}`;
+                statusEl.innerHTML = '<strong>Status:</strong> Error loading logs.';
+                showAlert('Fehler beim Laden der Server Logs', 'error');
+            }
+        }
+
+        function refreshServerLogs() {
+            serverLogsLoaded = false;
+            loadServerLogs();
+        }
+
+        function toggleAutoRefreshServerLogs() {
+            const label = document.getElementById('autoRefreshLabel');
+            
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+                label.textContent = '🔄 Auto-Refresh: Aus';
+            } else {
+                autoRefreshInterval = setInterval(() => {
+                    if (document.getElementById('serverlogs').classList.contains('active')) {
+                        loadServerLogs();
+                    }
+                }, 10000); // Refresh every 10 seconds
+                label.textContent = '🔄 Auto-Refresh: An (10s)';
+                showAlert('Auto-Refresh aktiviert (alle 10 Sekunden)', 'success');
+            }
+        }
+
+        // Changelog Functions
+        async function loadChangelog() {
+            const container = document.getElementById('changelogContainer');
+            
+            try {
+                container.innerHTML = '<div class="empty-state"><div class="loading"></div><p>Changelog wird geladen...</p></div>';
+                
+                const response = await fetch(`${API_BASE}/changelog`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const entries = await response.json();
+                changelogLoaded = true;
+                
+                if (!entries || entries.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><p>Keine Changelog-Einträge verfügbar.</p></div>';
+                    return;
+                }
+                
+                // Render changelog entries
+                let html = '';
+                for (const entry of entries) {
+                    html += '<div class="changelog-entry-admin">';
+                    
+                    if (entry.date) {
+                        html += `<div class="changelog-date-admin">${escapeHtml(entry.date)}</div>`;
+                    }
+                    if (entry.title) {
+                        html += `<div class="changelog-title-admin">${escapeHtml(entry.title)}</div>`;
+                    }
+                    if (entry.description) {
+                        html += `<div class="changelog-description-admin">${escapeHtml(entry.description)}</div>`;
+                    }
+                    if (entry.highlights && entry.highlights.length > 0) {
+                        html += '<ul class="changelog-highlights-admin">';
+                        entry.highlights.forEach(h => {
+                            html += `<li>${escapeHtml(h)}</li>`;
+                        });
+                        html += '</ul>';
+                    }
+                    if (entry.files && entry.files.length > 0) {
+                        html += '<div class="changelog-files-admin">';
+                        html += '<div class="changelog-files-label-admin">Modified files:</div>';
+                        html += '<ul class="changelog-files-list-admin">';
+                        entry.files.forEach(f => {
+                            html += `<li><code>${escapeHtml(f)}</code></li>`;
+                        });
+                        html += '</ul>';
+                        html += '</div>';
+                    }
+                    
+                    html += '</div>';
+                }
+                
+                container.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading changelog:', error);
+                container.innerHTML = '<div class="empty-state"><p style="color: var(--danger);">Fehler beim Laden des Changelogs. Bitte später erneut versuchen.</p></div>';
+                showAlert('Fehler beim Laden des Changelogs', 'error');
+            }
+        }
+
+        function refreshChangelog() {
+            changelogLoaded = false;
+            loadChangelog();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
 
         function showAlert(message, type = 'success') {
             const alert = document.createElement('div');

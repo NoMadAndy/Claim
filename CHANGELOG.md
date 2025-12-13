@@ -1,5 +1,17 @@
 # Changelog
 
+## 2025-12-13 UI Improvements: Changelog Readability & Admin Server Logs
+**Highlights:**
+- Verbesserte Changelog-Lesbarkeit: Schwarze Schriftfarbe für bessere Lesbarkeit
+- Admin Dashboard: Neue Server Logs Ansicht mit Auto-Refresh Funktion
+- Admin Dashboard: Changelog-Tab für einfachen Zugriff auf Änderungshistorie
+- Server Logs API: Zeigt "Not created yet" Nachricht wenn Log-Datei noch nicht existiert
+**Wichtige Dateien:**
+- `frontend/styles.css` - Changelog-Styling auf schwarze Schrift geändert
+- `frontend/admin.html` - Server Logs und Changelog Tabs hinzugefügt
+- `app/routers/server_logs.py` - Backend für Server Logs (bereits vorhanden)
+- `app/routers/changelog.py` - Backend für Changelog (bereits vorhanden)
+
 ## 2025-12-10 22:22:32
 **Files:** 1filechanged,0insertions(+),0deletions(-)
 **Modified:**
