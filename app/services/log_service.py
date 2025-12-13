@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -18,6 +18,48 @@ def get_current_cet():
     """Get current time in CET timezone (naive datetime for DB compatibility)"""
     return datetime.now(CET).replace(tzinfo=None)
 from app.services.auth_service import update_user_xp
+
+
+def _repeat_multiplier(seconds_since_last_spot_log: Optional[float]) -> float:
+    """Diminishing returns per spot (no hard cap)."""
+    if seconds_since_last_spot_log is None:
+        return 1.0
+    if seconds_since_last_spot_log < 10 * 60:
+        return 0.15
+    if seconds_since_last_spot_log < 60 * 60:
+        return 0.45
+    if seconds_since_last_spot_log < 24 * 60 * 60:
+        return 0.75
+    return 1.0
+
+
+def _novelty_multiplier(seconds_since_last_spot_log: Optional[float]) -> float:
+    """Rewards returning after a longer time; first-time counts as very novel."""
+    if seconds_since_last_spot_log is None:
+        return 1.6
+    if seconds_since_last_spot_log >= 7 * 24 * 60 * 60:
+        return 1.6
+    if seconds_since_last_spot_log >= 24 * 60 * 60:
+        return 1.25
+    return 1.0
+
+
+def _movement_bonus_xp(distance_m: Optional[float]) -> int:
+    """Small additive XP bonus for moving between logs."""
+    if distance_m is None:
+        return 0
+    try:
+        d = float(distance_m)
+    except Exception:
+        return 0
+    if d < 0:
+        return 0
+    bonus = int(round(d / 120.0))
+    if bonus < 0:
+        return 0
+    if bonus > 18:
+        return 18
+    return bonus
 
 def get_game_setting(db: Session, setting_name: str, default_value: float) -> float:
     """Get a game setting from database with fallback to default"""
@@ -72,15 +114,50 @@ def create_log(
     
     # Calculate rewards - manual logs get more reward
     if is_auto:
-        xp_gained = 10
+        base_xp = 10
         claim_points = 5
     else:
         # Manual logs with photos/notes get bonus
-        xp_gained = 50  # 5x auto log
+        base_xp = 50  # 5x auto log
         claim_points = 25  # 5x auto log
         if log_data.photo_data or log_data.notes:
-            xp_gained += 25  # +25 bonus for photo or notes
+            base_xp += 25  # +25 bonus for photo or notes
             claim_points += 10
+
+    # --- RPG XP improvements: novelty + diminishing returns + movement bonus (applies to auto & manual) ---
+    now = get_current_cet()
+    last_spot_log = (
+        db.query(Log)
+        .filter(Log.user_id == user.id, Log.spot_id == spot.id)
+        .order_by(Log.timestamp.desc())
+        .first()
+    )
+    seconds_since_last_spot_log: Optional[float] = None
+    if last_spot_log and getattr(last_spot_log, 'timestamp', None):
+        try:
+            seconds_since_last_spot_log = float((now - last_spot_log.timestamp).total_seconds())
+        except Exception:
+            seconds_since_last_spot_log = None
+
+    novelty = _novelty_multiplier(seconds_since_last_spot_log)
+    repeat = _repeat_multiplier(seconds_since_last_spot_log)
+
+    last_user_log = (
+        db.query(Log)
+        .filter(Log.user_id == user.id)
+        .order_by(Log.timestamp.desc())
+        .first()
+    )
+
+    move_dist_m: Optional[float] = None
+    if last_user_log and getattr(last_user_log, 'location', None) is not None:
+        try:
+            move_dist_m = db.query(ST_DistanceSphere(last_user_log.location, user_point)).scalar()
+        except Exception:
+            move_dist_m = None
+    move_bonus = _movement_bonus_xp(move_dist_m)
+
+    xp_gained = int(round(float(base_xp) * float(novelty) * float(repeat))) + int(move_bonus)
 
     # Apply active buff multipliers
     try:
