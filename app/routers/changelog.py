@@ -216,7 +216,7 @@ async def get_changelog() -> List[Dict[str, Any]]:
         except PermissionError as e:
             logger.error(f"Permission denied reading changelog: {e}")
             raise HTTPException(status_code=500, detail="Permission denied reading changelog")
-        except Exception as e:
+        except (IOError, OSError, UnicodeDecodeError) as e:
             logger.error(f"Error reading changelog file: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Error reading changelog file")
         
@@ -224,7 +224,8 @@ async def get_changelog() -> List[Dict[str, Any]]:
         try:
             entries = parse_changelog(content)
             logger.debug(f"Parsed {len(entries)} meaningful entries from changelog")
-        except Exception as e:
+        except (ValueError, AttributeError, KeyError, IndexError) as e:
+            # parse_changelog may raise these on malformed content
             logger.error(f"Error parsing changelog content: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Error parsing changelog content")
         
