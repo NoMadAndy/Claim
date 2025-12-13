@@ -1319,6 +1319,16 @@ function setupEventListeners() {
     document.getElementById('setting-sound-toggle')?.addEventListener('change', toggleSound);
     document.getElementById('setting-volume-slider')?.addEventListener('input', changeVolume);
     
+    // Settings tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const tabName = e.target.dataset.tab;
+            if (tabName) {
+                switchSettingsTab(tabName);
+            }
+        });
+    });
+    
     // Inventory modal
     document.getElementById('btn-close-inventory')?.addEventListener('click', closeInventory);
     
@@ -4201,11 +4211,120 @@ function showSettings() {
     if (soundToggle) soundToggle.checked = soundManager.soundsEnabled;
     if (volumeSlider) volumeSlider.value = soundManager.volume * 100;
     if (volumeValue) volumeValue.textContent = Math.round(soundManager.volume * 100) + '%';
+    
+    // Show settings tab by default
+    switchSettingsTab('settings');
+    
+    // Load changelog if not already loaded
+    loadChangelog();
 }
 
 function closeSettings() {
     const settingsModal = document.getElementById('settings-modal');
     if (settingsModal) settingsModal.classList.add('hidden');
+}
+
+// Settings Tab Switching
+function switchSettingsTab(tabName) {
+    // Update tab buttons
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(btn => {
+        if (btn.dataset.tab === tabName) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    
+    // Update tab content
+    const settingsTab = document.getElementById('settings-tab');
+    const changelogTab = document.getElementById('changelog-tab');
+    
+    if (tabName === 'settings') {
+        if (settingsTab) {
+            settingsTab.classList.add('active');
+            settingsTab.style.display = 'block';
+        }
+        if (changelogTab) {
+            changelogTab.classList.remove('active');
+            changelogTab.style.display = 'none';
+        }
+    } else if (tabName === 'changelog') {
+        if (settingsTab) {
+            settingsTab.classList.remove('active');
+            settingsTab.style.display = 'none';
+        }
+        if (changelogTab) {
+            changelogTab.classList.add('active');
+            changelogTab.style.display = 'block';
+        }
+    }
+}
+
+// Changelog Loading
+let changelogLoaded = false;
+
+async function loadChangelog() {
+    if (changelogLoaded) return;
+    
+    const changelogContent = document.getElementById('changelog-content');
+    if (!changelogContent) return;
+    
+    try {
+        changelogContent.innerHTML = '<p style="text-align: center; color: #666;">Loading changelog...</p>';
+        
+        const response = await fetch('/api/changelog');
+        if (!response.ok) {
+            throw new Error('Failed to load changelog');
+        }
+        
+        const entries = await response.json();
+        
+        if (!entries || entries.length === 0) {
+            changelogContent.innerHTML = '<p style="text-align: center; color: #666;">No changelog entries available.</p>';
+            changelogLoaded = true;
+            return;
+        }
+        
+        // Render changelog entries
+        let html = '';
+        entries.forEach(entry => {
+            html += '<div class="changelog-entry">';
+            
+            // Date
+            if (entry.date) {
+                html += `<div class="changelog-date">${entry.date}</div>`;
+            }
+            
+            // Title
+            if (entry.title) {
+                html += `<div class="changelog-title">${entry.title}</div>`;
+            }
+            
+            // Description
+            if (entry.description) {
+                html += `<div class="changelog-description">${entry.description}</div>`;
+            }
+            
+            // Highlights
+            if (entry.highlights && entry.highlights.length > 0) {
+                html += '<ul class="changelog-highlights">';
+                entry.highlights.forEach(highlight => {
+                    html += `<li>${highlight}</li>`;
+                });
+                html += '</ul>';
+            }
+            
+            html += '</div>';
+        });
+        
+        changelogContent.innerHTML = html;
+        changelogLoaded = true;
+        
+    } catch (error) {
+        console.error('Error loading changelog:', error);
+        changelogContent.innerHTML = '<p style="text-align: center; color: #d9534f;">Failed to load changelog. Please try again later.</p>';
+    }
 }
 
 // Inventory Functions
