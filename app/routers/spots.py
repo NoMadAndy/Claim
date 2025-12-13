@@ -62,6 +62,19 @@ async def get_nearby_spots(
         lat = db.execute(text("SELECT ST_Y(location::geometry) FROM spots WHERE id = :id"), {"id": spot.id}).scalar()
         lon = db.execute(text("SELECT ST_X(location::geometry) FROM spots WHERE id = :id"), {"id": spot.id}).scalar()
         
+        # Get cooldown status for non-loot spots
+        cooldown_status = None
+        if not spot.is_loot:
+            log_status = spot_service.get_log_status(db, current_user.id, spot.id)
+            # Determine status based on cooldowns
+            PARTIAL_COOLDOWN_THRESHOLD_SECONDS = 150  # 2.5 minutes
+            if log_status["can_manual_log"]:
+                cooldown_status = "ready"
+            elif log_status["manual_cooldown_remaining"] < PARTIAL_COOLDOWN_THRESHOLD_SECONDS:
+                cooldown_status = "partial"
+            else:
+                cooldown_status = "cooldown"
+        
         result.append(SpotResponse(
             id=spot.id,
             name=spot.name,
@@ -73,7 +86,8 @@ async def get_nearby_spots(
             created_at=spot.created_at,
             creator_id=spot.creator_id,
             loot_expires_at=spot.loot_expires_at,
-            loot_xp=spot.loot_xp
+            loot_xp=spot.loot_xp,
+            cooldown_status=cooldown_status
         ))
     
     return result

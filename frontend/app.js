@@ -693,6 +693,12 @@ let activeBufFs = new Map(); // Track active buffs: Map<itemId, {name, effects, 
 let heatmapLayers = new Map(); // Map of userId -> heatmapLayer
 let isPopupOpen = false; // Track if a popup is currently open
 
+// Smooth player movement
+let lastPlayerPosition = null;
+let targetPlayerPosition = null;
+let playerMovementStartTime = null;
+const PLAYER_MOVEMENT_DURATION = 800; // 800ms for smooth transition
+
 // Territory (Hex Grid) Overlay
 let territoryVisible = true;
 let territoryLayer = null;
@@ -1510,6 +1516,14 @@ async function initializeApp() {
         currentUser = response;
         if (window.debugLog) window.debugLog(`👤 User loaded: ${currentUser.username} (${currentUser.role})`);
         
+        // Load user settings from server
+        try {
+            await loadUserSettings();
+            if (window.debugLog) window.debugLog('⚙️ User settings loaded');
+        } catch (settingsError) {
+            console.warn('Failed to load user settings, using defaults:', settingsError);
+        }
+        
         // Update logout button with username
         const logoutBtn = document.getElementById('btn-logout');
         if (logoutBtn && currentUser.username) {
@@ -2131,8 +2145,28 @@ function updatePlayerPosition() {
     }
     
     if (playerMarker) {
-        // Smooth animation to new position
-        playerMarker.setLatLng([currentPosition.lat, currentPosition.lng]);
+        // Set up smooth movement interpolation
+        if (!lastPlayerPosition) {
+            lastPlayerPosition = { lat: currentPosition.lat, lng: currentPosition.lng, lastCheckTime: Date.now() };
+        }
+        
+        // Throttle distance calculation to avoid excessive computation
+        const now = Date.now();
+        if (!lastPlayerPosition.lastCheckTime || (now - lastPlayerPosition.lastCheckTime) >= 500) {
+            // Only check distance every 500ms
+            const distanceChanged = calculateDistance(
+                lastPlayerPosition.lat, lastPlayerPosition.lng,
+                currentPosition.lat, currentPosition.lng
+            );
+            lastPlayerPosition.lastCheckTime = now;
+            
+            // Only set new target if position changed significantly (more than 2 meters)
+            if (distanceChanged > 2) {
+                targetPlayerPosition = { lat: currentPosition.lat, lng: currentPosition.lng };
+                playerMovementStartTime = performance.now();
+                startPlayerAnimation(); // Start animation loop if needed
+            }
+        }
         
         // Update rotation if compass is enabled
         if (compassEnabled && currentPosition.heading !== null) {
@@ -2184,6 +2218,49 @@ function updatePlayerPosition() {
     }
 }
 
+// Smooth player marker animation
+let animationFrameId = null;
+function animatePlayerMarker() {
+    if (!playerMarker || !targetPlayerPosition || !lastPlayerPosition || !playerMovementStartTime) {
+        // No animation needed, stop the loop
+        animationFrameId = null;
+        return;
+    }
+    
+    const now = performance.now();
+    const elapsed = now - playerMovementStartTime;
+    const progress = Math.min(elapsed / PLAYER_MOVEMENT_DURATION, 1);
+    
+    // Easing function for smooth movement (ease-out)
+    const eased = 1 - Math.pow(1 - progress, 3);
+    
+    // Interpolate position
+    const lat = lastPlayerPosition.lat + (targetPlayerPosition.lat - lastPlayerPosition.lat) * eased;
+    const lng = lastPlayerPosition.lng + (targetPlayerPosition.lng - lastPlayerPosition.lng) * eased;
+    
+    // Update marker position
+    playerMarker.setLatLng([lat, lng]);
+    
+    // If animation complete, update last position and stop loop
+    if (progress >= 1) {
+        lastPlayerPosition = { lat: targetPlayerPosition.lat, lng: targetPlayerPosition.lng };
+        targetPlayerPosition = null;
+        playerMovementStartTime = null;
+        animationFrameId = null;
+        return;
+    }
+    
+    // Continue animation
+    animationFrameId = requestAnimationFrame(animatePlayerMarker);
+}
+
+// Helper to start animation if not already running
+function startPlayerAnimation() {
+    if (!animationFrameId) {
+        animationFrameId = requestAnimationFrame(animatePlayerMarker);
+    }
+}
+
 function maybeDropPlayerTrailDot(pos) {
     if (!pos || !map) return;
     if (pos.accuracy != null && Number(pos.accuracy) > 45) return; // too noisy
@@ -2220,12 +2297,12 @@ function dropPlayerTrailDot(lat, lng, speed) {
 
     const fast = (speed != null && speed >= 2.2);
     const dot = L.circleMarker([lat, lng], {
-        radius: fast ? 6 : 5,
+        radius: fast ? 8 : 6,
         color: '#667eea',
-        weight: 2,
-        opacity: 0.55,
+        weight: 2.5,
+        opacity: 0.75,
         fillColor: '#667eea',
-        fillOpacity: fast ? 0.18 : 0.14,
+        fillOpacity: fast ? 0.35 : 0.25,
         interactive: false,
         className: fast ? 'player-trail-dot player-trail-dot-fast' : 'player-trail-dot'
     });
@@ -2694,26 +2771,37 @@ async function loadNearbySpots() {
             
             if (spot.is_loot) lootCount++;
             
+            // Determine marker class based on cooldown status (for non-loot spots)
+            let markerClass = 'spot-marker';
+            if (spot.is_loot) {
+                markerClass = 'loot-marker';
+            } else if (spot.cooldown_status) {
+                // Use cooldown status if provided (from enhanced API)
+                markerClass = `spot-marker spot-marker-${spot.cooldown_status}`;
+            }
+            
             const marker = L.marker([spot.latitude, spot.longitude], {
                 icon: L.divIcon({
-                    className: spot.is_loot ? 'loot-marker' : 'spot-marker',
+                    className: markerClass,
                     iconSize: [15, 15],
                     iconAnchor: [7, 7],  // Center the icon on the coordinate (half of iconSize)
                     popupAnchor: [0, -7]  // Position popup above the icon
                 })
             }).addTo(map);
             
+            // Store cooldown status for later updates
+            marker._cooldownStatus = spot.cooldown_status;
+            
             // Bind popup with click handler to load details dynamically
             marker.bindPopup(() => {
                 return createSpotPopupContent(spot);
             }, {
-                autoPan: true,
-                autoPanPadding: [50, 50],
+                autoPan: false,  // Disable auto-pan to prevent popup jitter when map moves
                 maxWidth: 250,
                 autoClose: false,
                 closeOnClick: false,
                 closeOnEscapeKey: false,
-                keepInView: true
+                keepInView: false  // Disable to prevent popup repositioning issues
             });
             
             // Track popup state
@@ -3550,6 +3638,9 @@ function toggleCompass() {
             updatePlayerPosition();
         }
     }
+    
+    // Save compass setting
+    saveUserSettings({ compass_enabled: compassEnabled });
 }
 
 function requestDeviceOrientation() {
@@ -3826,6 +3917,8 @@ function showLayerMenu() {
                     }
                 });
                 window.mapLayers[e.target.value].addTo(map);
+                // Save layer selection
+                saveUserSettings({ selected_map_layer: e.target.value });
             }
         });
     });
@@ -3841,6 +3934,8 @@ function showLayerMenu() {
                 toggleHeatmap();
             }
         }
+        // Save heatmap visibility
+        saveUserSettings({ heatmap_visible: e.target.checked });
     });
     
     // Handle tracks overlay
@@ -3870,6 +3965,8 @@ function showLayerMenu() {
                 map.removeLayer(territoryLayer);
             }
         }
+        // Save territory visibility
+        saveUserSettings({ territory_visible: territoryVisible });
     });
     
     // Close button
@@ -4408,6 +4505,59 @@ async function loadServerLogs() {
     }
 }
 
+// User Settings Functions
+async function loadUserSettings() {
+    try {
+        const settings = await apiRequest('/settings/');
+        
+        // Apply loaded settings
+        if (settings.selected_map_layer && currentLayer !== settings.selected_map_layer) {
+            switchLayer(settings.selected_map_layer);
+        }
+        
+        if (settings.sounds_enabled !== undefined) {
+            soundManager.soundsEnabled = settings.sounds_enabled;
+        }
+        
+        if (settings.sound_volume !== undefined) {
+            soundManager.setVolume(settings.sound_volume);
+        }
+        
+        if (settings.compass_enabled !== undefined) {
+            compassEnabled = settings.compass_enabled;
+            if (compassEnabled) {
+                document.getElementById('btn-compass')?.classList.add('active');
+            }
+        }
+        
+        if (settings.heatmap_visible !== undefined) {
+            heatmapVisible = settings.heatmap_visible;
+        }
+        
+        if (settings.territory_visible !== undefined) {
+            territoryVisible = settings.territory_visible;
+        }
+        
+        if (window.debugLog) window.debugLog('✅ Settings applied:', settings);
+    } catch (error) {
+        console.error('Failed to load user settings:', error);
+        // Use defaults on error
+    }
+}
+
+async function saveUserSettings(partialSettings) {
+    try {
+        await apiRequest('/settings/', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(partialSettings)
+        });
+        if (window.debugLog) window.debugLog('✅ Settings saved:', partialSettings);
+    } catch (error) {
+        console.error('Failed to save user settings:', error);
+    }
+}
+
 // Inventory Functions
 async function showInventory() {
     const inventoryModal = document.getElementById('inventory-modal');
@@ -4560,6 +4710,8 @@ function toggleSound() {
     const enabled = soundManager.toggle();
     soundManager.playSound('log'); // Play sound to confirm
     showNotification('Sound', enabled ? '🔊 Aktiviert' : '🔇 Deaktiviert', 'info');
+    // Save sound setting
+    saveUserSettings({ sounds_enabled: enabled });
 }
 
 function updateActivBuffsDisplay() {
@@ -4602,6 +4754,8 @@ function changeVolume() {
     const volume = slider.value / 100;
     soundManager.setVolume(volume);
     volumeValue.textContent = slider.value + '%';
+    // Save volume setting
+    saveUserSettings({ sound_volume: volume });
 }
 
 // Show all logs for a spot with photos

@@ -409,6 +409,20 @@ body {
     border-radius: 50%;
     width: 15px;
     height: 15px;
+    transition: background 0.3s ease;
+}
+
+/* Cooldown-based spot colors */
+.spot-marker-ready {
+    background: #22c55e; /* Green - ready to log */
+}
+
+.spot-marker-partial {
+    background: #f59e0b; /* Orange/Yellow - partial cooldown */
+}
+
+.spot-marker-cooldown {
+    background: #ef4444; /* Red - full cooldown */
 }
 
 .loot-marker {
@@ -482,13 +496,13 @@ body {
 .leaflet-overlay-pane path.player-trail-dot {
     transform-box: fill-box;
     transform-origin: center;
-    filter: drop-shadow(0 0 6px rgba(102, 126, 234, 0.25));
+    filter: drop-shadow(0 0 8px rgba(102, 126, 234, 0.4));
     animation: playerTrailFade 5.2s ease-out forwards;
 }
 
 .leaflet-overlay-pane path.player-trail-dot-fast {
-    filter: drop-shadow(0 0 10px rgba(102, 126, 234, 0.35));
-    animation-duration: 3.8s;
+    filter: drop-shadow(0 0 12px rgba(102, 126, 234, 0.55)) drop-shadow(0 0 6px rgba(102, 126, 234, 0.8));
+    animation: playerTrailFadeFast 3.8s ease-out forwards;
 }
 
 @keyframes playerTrailFade {
@@ -497,12 +511,27 @@ body {
         transform: scale(0.85);
     }
     12% {
-        opacity: 0.85;
-        transform: scale(1);
+        opacity: 0.9;
+        transform: scale(1.1);
     }
     100% {
         opacity: 0;
-        transform: scale(0.55);
+        transform: scale(0.6);
+    }
+}
+
+@keyframes playerTrailFadeFast {
+    0% {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    10% {
+        opacity: 1;
+        transform: scale(1.2);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.65);
     }
 }
 

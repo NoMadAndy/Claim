@@ -2,7 +2,7 @@
 
 Ein ortsbasiertes Echtzeit-GPS-Spiel mit FastAPI, WebSockets, PostGIS und Leaflet.
 
-**Aktuelle Version:** v1.0.0
+**Aktuelle Version:** v1.1.0
 
 ## 🎮 Spielprinzip
 
@@ -19,6 +19,10 @@ Ein ortsbasiertes Echtzeit-GPS-Spiel mit FastAPI, WebSockets, PostGIS und Leafle
 - **Auto-Log**: Automatisch bei ≤20m Entfernung
 - **Manual-Log**: Manuell bei ≤100m Entfernung
 - **Cooldown**: 5 Minuten pro Spot
+- **Visuelle Cooldown-Anzeige**: Spots werden farbig markiert
+  - 🟢 Grün: Bereit zum Loggen
+  - 🟡 Gelb: Teilweise Abklingzeit (< 2.5 Min)
+  - 🔴 Rot: Volle Abklingzeit
 - Belohnungen: XP, Claim-Punkte, optional Items
 
 #### Claims & Dominanz
@@ -32,6 +36,8 @@ Ein ortsbasiertes Echtzeit-GPS-Spiel mit FastAPI, WebSockets, PostGIS und Leafle
 - Automatische Streckenspeicherung
 - Historische Tracks anzeigen
 - Statistiken: Distanz, Dauer
+- **Smooth Player Movement**: Flüssige Spielerbewegung mit Interpolation
+- **Sichtbare Trail-Effekte**: Verbesserte Trail-Punkte beim Bewegen
 
 #### Kompass & Heading
 - Device Orientation API Unterstützung
@@ -42,6 +48,14 @@ Ein ortsbasiertes Echtzeit-GPS-Spiel mit FastAPI, WebSockets, PostGIS und Leafle
 - Spielerbezogene Loot-Generierung
 - Temporäre Spots mit XP und Items
 - Ablaufzeit (Timeout)
+
+#### Benutzereinstellungen
+- **Persistente Einstellungen**: Alle Einstellungen werden pro Spieler gespeichert
+- Kartenebene-Auswahl (OSM, Satellite, Topo)
+- Sound- und Lautstärke-Einstellungen
+- Kompass-Präferenzen
+- Heatmap- und Territory-Overlay-Einstellungen
+- Einstellungen werden automatisch beim nächsten Login wiederhergestellt
 
 ## 🚀 Setup & Installation
 
@@ -226,12 +240,13 @@ Nach dem Start verfügbar unter:
 #### Haupt-Endpunkte:
 
 - **Auth**: `/api/auth` - Registrierung, Login, Token
-- **Spots**: `/api/spots` - Spots erstellen, abrufen, löschen
+- **Spots**: `/api/spots` - Spots erstellen, abrufen, löschen (mit Cooldown-Status)
 - **Logs**: `/api/logs` - Logging von Spot-Besuchen
 - **Claims**: `/api/claims` - Claim-Daten, Heatmaps
 - **Tracks**: `/api/tracks` - Tracking starten, beenden, Punkte hinzufügen
 - **Items**: `/api/items` - Items und Inventar
 - **Stats**: `/api/stats` - Spieler-Statistiken
+- **Settings**: `/api/settings` - Benutzereinstellungen laden und speichern
 
 ### WebSocket Events
 
