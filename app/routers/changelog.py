@@ -164,12 +164,17 @@ def get_changelog_path() -> Path:
     # Method 1: Check environment variable
     env_path = os.environ.get("CHANGELOG_PATH")
     if env_path:
-        path = Path(env_path)
-        if path.exists():
-            logger.info(f"Using CHANGELOG_PATH from environment: {path}")
-            return path
-        else:
-            logger.warning(f"CHANGELOG_PATH from environment does not exist: {path}")
+        try:
+            # Resolve to absolute path for security and validation
+            path = Path(env_path).resolve()
+            # Validate: must exist, be a file, and be named CHANGELOG.md
+            if path.exists() and path.is_file() and path.name == "CHANGELOG.md":
+                logger.info(f"Using CHANGELOG_PATH from environment: {path}")
+                return path
+            else:
+                logger.warning(f"CHANGELOG_PATH from environment is invalid (must be a file named CHANGELOG.md): {path}")
+        except (ValueError, OSError) as e:
+            logger.warning(f"Invalid CHANGELOG_PATH from environment: {env_path}, error: {e}")
     
     # Method 2: Relative to this file (standard location)
     try:
@@ -241,8 +246,10 @@ async def get_changelog() -> List[Dict[str, Any]]:
         logger.error(f"Changelog file not found: {e}")
         raise HTTPException(status_code=404, detail="CHANGELOG.md not found")
     except HTTPException:
-        # Re-raise HTTP exceptions from inner try blocks without wrapping them
-        # This preserves the original status code and error message
+        # Re-raise HTTP exceptions from inner try blocks without wrapping them.
+        # This is necessary because HTTPException inherits from Exception, so without
+        # this handler, HTTPExceptions would be caught by the generic Exception handler
+        # below and wrapped with a generic error message, losing the specific error details.
         raise
     except Exception as e:
         # Catch-all for unexpected errors
