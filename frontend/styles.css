@@ -945,3 +945,15 @@ body {
     max-height: 55vh;
     overflow-y: auto;
 }
+
+/* Unlock Button Animation */
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 2px 16px rgba(255, 204, 0, 0.6);
+        transform: scale(1.05);
+    }
+}

@@ -154,13 +154,16 @@ class SoundManager {
         this.sounds = {};
         this.contextResumed = false;
         this.resumeAttempts = 0;
-        this.unlocked = false; // NEW: Track if unlock button was pressed
+        this.unlocked = false; // Track if unlock button was pressed
+        this.preloadAttempted = false; // Track if we've preloaded sounds
+        this.stateChangeListenerAdded = false;
         this.setupGlobalListeners();
+        this.setupVisibilityListeners();
         // Version tag for debugging
-        if (window.debugLog) window.debugLog('SoundManager init v1765059200');
-        console.log('SoundManager init v1765059200');
+        const version = 'v' + Date.now();
+        if (window.debugLog) window.debugLog('SoundManager init ' + version);
+        console.log('SoundManager init ' + version);
         // Do NOT auto-create AudioContext on load (iOS blocks it). Create lazily on first gesture or play.
-        // Do NOT setup global listeners - only manual unlock button
     }
 
     setupGlobalListeners() {
@@ -173,6 +176,47 @@ class SoundManager {
         // Listen for EVERY user interaction (not just first)
         document.addEventListener('click', unlockAudio, { passive: true });
         document.addEventListener('touchstart', unlockAudio, { passive: true });
+        document.addEventListener('touchend', unlockAudio, { passive: true });
+    }
+
+    setupVisibilityListeners() {
+        // Handle page visibility changes (critical for iOS)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && this.audioContext) {
+                console.log('🔄 Page visible - checking AudioContext state');
+                if (window.debugLog) window.debugLog('🔄 Page visible - state: ' + this.audioContext.state);
+                
+                // AudioContext often gets suspended when page is hidden on iOS
+                if (this.audioContext.state === 'suspended') {
+                    console.log('⏸️ AudioContext suspended - attempting resume');
+                    this.audioContext.resume().then(() => {
+                        console.log('✓ AudioContext resumed after visibility change');
+                        if (window.debugLog) window.debugLog('✓ Resumed after visibility change');
+                    }).catch(err => {
+                        console.warn('✗ Resume after visibility failed:', err);
+                        if (window.debugLog) window.debugLog('✗ Visibility resume failed: ' + err.message);
+                    });
+                }
+            }
+        });
+
+        // Handle page focus/blur (additional layer for iOS)
+        window.addEventListener('focus', () => {
+            if (this.audioContext && this.audioContext.state === 'suspended') {
+                console.log('🔄 Window focused - resuming AudioContext');
+                this.audioContext.resume().catch(err => {
+                    console.warn('Focus resume failed:', err);
+                });
+            }
+        });
+
+        // Prevent AudioContext interruption on blur (iOS specific)
+        window.addEventListener('blur', () => {
+            if (this.audioContext) {
+                console.log('🔄 Window blurred - AudioContext state:', this.audioContext.state);
+                if (window.debugLog) window.debugLog('🔄 Blur - state: ' + this.audioContext.state);
+            }
+        });
     }
 
     performUnlock() {
@@ -183,12 +227,48 @@ class SoundManager {
                 return;
             }
             
+            // Don't create multiple contexts
+            if (this.audioContext && this.audioContext.state !== 'closed') {
+                // Just resume existing context
+                if (this.audioContext.state === 'suspended') {
+                    this.audioContext.resume().catch(err => {
+                        console.warn('AudioContext resume failed:', err);
+                    });
+                }
+                return;
+            }
+            
             const ctx = new AudioContext({ latencyHint: 'interactive' });
             
-            // Don't play beeps - just create context silently
-            ctx.resume().catch(err => {
+            // Add state change listener to monitor context
+            if (!this.stateChangeListenerAdded) {
+                ctx.addEventListener('statechange', () => {
+                    console.log('🎵 AudioContext state changed to:', ctx.state);
+                    if (window.debugLog) window.debugLog('🎵 State: ' + ctx.state);
+                    
+                    // Auto-resume if suspended
+                    if (ctx.state === 'suspended' && this.unlocked) {
+                        console.log('🔄 Auto-resuming suspended context');
+                        ctx.resume().catch(err => {
+                            console.warn('Auto-resume failed:', err);
+                        });
+                    }
+                });
+                this.stateChangeListenerAdded = true;
+            }
+            
+            // Resume context and play silent buffer (critical for iOS)
+            ctx.resume().then(() => {
+                // Play a very short silent buffer to truly unlock iOS audio
+                const buffer = ctx.createBuffer(1, 1, 22050);
+                const source = ctx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(ctx.destination);
+                source.start(0);
+            }).catch(err => {
                 console.warn('AudioContext resume failed:', err);
             });
+            
             this.setUnlocked(ctx);
         } catch (error) {
             console.error('AudioContext creation failed:', error);
@@ -203,6 +283,62 @@ class SoundManager {
         this.unlocked = true;
         this.audioContext = ctx;
         this.audioInitialized = true;
+        
+        // Eagerly preload all sounds after unlocking (critical for iOS)
+        if (!this.preloadAttempted) {
+            this.preloadAttempted = true;
+            console.log('🎵 Preloading sounds after unlock');
+            if (window.debugLog) window.debugLog('🎵 Preloading sounds');
+            this.preloadAllSounds();
+        }
+    }
+
+    // Preload all sound files to ensure they're ready to play
+    async preloadAllSounds() {
+        try {
+            const soundFiles = [
+                '/sounds/Yum_CMaj.wav',
+                '/sounds/Sound%20LD%20Bumpy%20Reconstruction_keyC%23min.wav',
+                '/sounds/TR%20727%20Beat%203_125bpm.wav',
+                '/sounds/DN_DSV_Vocal_Yeah_02_KeyBmin_56bpm.wav'
+            ];
+
+            for (const url of soundFiles) {
+                try {
+                    console.log('🎵 Preloading:', url);
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        console.warn('Failed to preload:', url);
+                        continue;
+                    }
+                    const arrayBuffer = await response.arrayBuffer();
+                    
+                    // Decode and cache the buffer
+                    const buffer = await this.audioContext.decodeAudioData(arrayBuffer);
+                    
+                    // Store in appropriate property
+                    if (url.includes('Yum_CMaj')) {
+                        this.logSoundBuffer = buffer;
+                    } else if (url.includes('Bumpy')) {
+                        this.errorSoundBuffer = buffer;
+                    } else if (url.includes('727')) {
+                        this.levelupSoundBuffer = buffer;
+                    } else if (url.includes('Yeah')) {
+                        this.lootSoundBuffer = buffer;
+                    }
+                    
+                    console.log('✓ Preloaded:', url, 'duration:', buffer.duration);
+                } catch (err) {
+                    console.warn('Failed to preload', url, ':', err.message);
+                }
+            }
+            
+            console.log('✓ All sounds preloaded');
+            if (window.debugLog) window.debugLog('✓ All sounds preloaded');
+        } catch (err) {
+            console.warn('Preload error:', err);
+            if (window.debugLog) window.debugLog('⚠ Preload error: ' + err.message);
+        }
     }
 
     // Workaround: Use actual audio file to unlock iOS audio
@@ -426,6 +562,21 @@ class SoundManager {
                 if (window.debugLog) window.debugLog('🔊 Recreate failed: ' + e.message);
                 this.playHaptic([30]);
                 return;
+            }
+        }
+
+        // CRITICAL for iOS: Always try to resume if suspended
+        if (this.audioContext.state === 'suspended') {
+            console.log('⏸️ AudioContext suspended, attempting resume before playback');
+            if (window.debugLog) window.debugLog('⏸️ Resuming suspended context');
+            try {
+                await this.audioContext.resume();
+                console.log('✓ AudioContext resumed, new state:', this.audioContext.state);
+                if (window.debugLog) window.debugLog('✓ Resumed to: ' + this.audioContext.state);
+            } catch (err) {
+                console.warn('⚠ Failed to resume AudioContext:', err);
+                if (window.debugLog) window.debugLog('⚠ Resume failed: ' + err.message);
+                // Continue anyway, might still work
             }
         }
 
