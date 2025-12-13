@@ -5019,12 +5019,11 @@ function updateAudioUnlockButton() {
     
     if (!btn || !icon || !text || !hint) return;
     
-    // Check if we're on iOS or mobile device
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    // Check if we're on a mobile device
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
-    // Show hint on iOS/mobile
-    if (isIOS || isMobile) {
+    // Show hint on mobile devices
+    if (isMobile) {
         hint.style.display = 'block';
     } else {
         hint.style.display = 'none';
@@ -5036,7 +5035,7 @@ function updateAudioUnlockButton() {
         btn.classList.add('unlocked');
         icon.textContent = '✅';
         text.textContent = 'Audio freigeschaltet!';
-    } else if (isIOS || isMobile) {
+    } else if (isMobile) {
         btn.classList.add('pulse');
         btn.classList.remove('unlocked');
         icon.textContent = '🔓';
