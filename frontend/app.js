@@ -4322,6 +4322,21 @@ async function loadChangelog() {
                 html += '</ul>';
             }
             
+            // Files - show files list (or as fallback if no description)
+            if (entry.files && entry.files.length > 0) {
+                const showFiles = !entry.description || entry.files.length > 0;
+                if (showFiles) {
+                    html += '<div class="changelog-files">';
+                    html += '<div class="changelog-files-label">Modified files:</div>';
+                    html += '<ul class="changelog-files-list">';
+                    entry.files.forEach(file => {
+                        html += `<li><code>${escapeHtml(file)}</code></li>`;
+                    });
+                    html += '</ul>';
+                    html += '</div>';
+                }
+            }
+            
             html += '</div>';
         });
         
