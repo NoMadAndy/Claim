@@ -4264,6 +4264,13 @@ function switchSettingsTab(tabName) {
 // Changelog Loading
 let changelogLoaded = false;
 
+// Helper function to escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 async function loadChangelog() {
     if (changelogLoaded) return;
     
@@ -4293,24 +4300,24 @@ async function loadChangelog() {
             
             // Date
             if (entry.date) {
-                html += `<div class="changelog-date">${entry.date}</div>`;
+                html += `<div class="changelog-date">${escapeHtml(entry.date)}</div>`;
             }
             
             // Title
             if (entry.title) {
-                html += `<div class="changelog-title">${entry.title}</div>`;
+                html += `<div class="changelog-title">${escapeHtml(entry.title)}</div>`;
             }
             
             // Description
             if (entry.description) {
-                html += `<div class="changelog-description">${entry.description}</div>`;
+                html += `<div class="changelog-description">${escapeHtml(entry.description)}</div>`;
             }
             
             // Highlights
             if (entry.highlights && entry.highlights.length > 0) {
                 html += '<ul class="changelog-highlights">';
                 entry.highlights.forEach(highlight => {
-                    html += `<li>${highlight}</li>`;
+                    html += `<li>${escapeHtml(highlight)}</li>`;
                 });
                 html += '</ul>';
             }

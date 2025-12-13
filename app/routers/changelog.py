@@ -74,9 +74,9 @@ def parse_changelog(content: str) -> List[Dict[str, Any]]:
         }
         
         # Parse date and title from header
-        # Format can be:
-        # "2025-12-10 22:22:32" or
-        # "2025-12-09 Feature Release: Loot Spots & Logging"
+        # Supported formats:
+        #   - "2025-12-10 22:22:32"
+        #   - "2025-12-09 Feature Release: Loot Spots & Logging"
         date_match = re.match(r'^(\d{4}-\d{2}-\d{2}(?:\s+\d{2}:\d{2}:\d{2})?)\s*(.*)', header)
         if date_match:
             entry["date"] = date_match.group(1).strip()
