@@ -56,6 +56,26 @@ async def get_nearby_spots(
     """Get spots within radius of a location"""
     spots_with_distance = spot_service.get_spots_in_radius(db, latitude, longitude, radius)
     
+    # Fetch dominant player colors for all spots in one query to avoid N+1 problem
+    spot_ids = [spot.id for spot, _ in spots_with_distance if not spot.is_loot]
+    dominant_colors = {}
+    if spot_ids:
+        # Get top claim for each spot with user's color
+        top_claims = db.query(
+            Claim.spot_id,
+            User.heatmap_color
+        ).join(
+            User, Claim.user_id == User.id
+        ).filter(
+            Claim.spot_id.in_(spot_ids),
+            Claim.claim_value > 0
+        ).distinct(Claim.spot_id).order_by(
+            Claim.spot_id,
+            Claim.claim_value.desc()
+        ).all()
+        
+        dominant_colors = {spot_id: color for spot_id, color in top_claims}
+    
     result = []
     for spot, distance in spots_with_distance:
         from sqlalchemy import text
@@ -75,19 +95,8 @@ async def get_nearby_spots(
             else:
                 cooldown_status = "cooldown"
         
-        # Get dominant player color for non-loot spots
-        dominant_player_color = None
-        if not spot.is_loot:
-            top_claim = db.query(Claim, User).join(
-                User, Claim.user_id == User.id
-            ).filter(
-                Claim.spot_id == spot.id,
-                Claim.claim_value > 0
-            ).order_by(Claim.claim_value.desc()).first()
-            
-            if top_claim:
-                _, top_user = top_claim
-                dominant_player_color = top_user.heatmap_color
+        # Get dominant player color from pre-fetched data
+        dominant_player_color = dominant_colors.get(spot.id)
         
         result.append(SpotResponse(
             id=spot.id,

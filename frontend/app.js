@@ -3032,18 +3032,20 @@ async function loadNearbySpots() {
             }
             
             // Create div icon with dominant player color if available
-            const iconHtml = spot.dominant_player_color 
-                ? `<div class="${markerClass}" data-dominant-color="${spot.dominant_player_color}" style="--dominant-color: ${spot.dominant_player_color};"></div>`
-                : '';
+            const iconOptions = {
+                className: markerClass,
+                iconSize: [15, 15],
+                iconAnchor: [7, 7],  // Center the icon on the coordinate (half of iconSize)
+                popupAnchor: [0, -7]  // Position popup above the icon
+            };
+            
+            // Add HTML with dominant color if available
+            if (spot.dominant_player_color) {
+                iconOptions.html = `<div class="${markerClass}" data-dominant-color="${spot.dominant_player_color}" style="--dominant-color: ${spot.dominant_player_color};"></div>`;
+            }
             
             const marker = L.marker([spot.latitude, spot.longitude], {
-                icon: L.divIcon({
-                    className: markerClass,
-                    html: iconHtml,
-                    iconSize: [15, 15],
-                    iconAnchor: [7, 7],  // Center the icon on the coordinate (half of iconSize)
-                    popupAnchor: [0, -7]  // Position popup above the icon
-                })
+                icon: L.divIcon(iconOptions)
             }).addTo(map);
             
             // Store cooldown status for later updates
