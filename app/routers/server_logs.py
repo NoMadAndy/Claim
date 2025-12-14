@@ -140,7 +140,7 @@ async def get_server_logs() -> Dict[str, Any]:
                 "logs": "",
                 "line_count": 0,
                 "file_exists": False,
-                "message": "Log file not created yet. Make some client logs to see them here."
+                "message": "Log file not found. It will be created when the app sends its first client log. Use the app to generate logs."
             }
         
         # Read log lines

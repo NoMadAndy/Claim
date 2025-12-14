@@ -143,11 +143,12 @@ class EnergyMonitor {
                 } else if (this.battery?.charging) {
                     document.getElementById('time-remaining').textContent = 'Charging...';
                 } else {
-                    document.getElementById('time-remaining').textContent = 'Calculating...';
+                    document.getElementById('time-remaining').textContent = 'Collecting data...';
                 }
             }
         } catch (error) {
             console.error('Failed to update time remaining:', error);
+            document.getElementById('time-remaining').textContent = 'N/A';
         }
     }
 
@@ -388,31 +389,31 @@ class EnergyMonitor {
                 const icon = this.getConsumerIcon(consumer.type);
                 const percentage = Math.round(consumer.percentage);
                 return `
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <span>${icon} ${consumer.type}</span>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <div style="width: 100px; height: 10px; background: rgba(0,0,0,0.2); border-radius: 5px; overflow: hidden;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 13px;">${icon} ${consumer.type}</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 80px; height: 8px; background: rgba(0,0,0,0.2); border-radius: 4px; overflow: hidden;">
                                 <div style="width: ${percentage}%; height: 100%; background: #667eea;"></div>
                             </div>
-                            <span style="min-width: 40px; text-align: right;">${percentage}%</span>
+                            <span style="min-width: 35px; text-align: right; font-size: 13px;">${percentage}%</span>
                         </div>
                     </div>
                 `;
             }).join('');
             consumersDiv.innerHTML = html;
         } else {
-            consumersDiv.innerHTML = '<p style="text-align: center; color: #aaa;">No data yet. Keep using the app to collect energy metrics.</p>';
+            consumersDiv.innerHTML = '<p style="text-align: center; color: #aaa; font-size: 13px; padding: 8px 0;">🔄 Collecting energy data... Use the app to generate metrics.</p>';
         }
         
         // Display optimization suggestions
         const suggestionsDiv = document.getElementById('optimization-suggestions');
         if (stats.optimization_suggestions && stats.optimization_suggestions.length > 0) {
             const html = stats.optimization_suggestions.map(suggestion => {
-                return `<div style="padding: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; margin-bottom: 8px; font-size: 13px;">${suggestion}</div>`;
+                return `<div style="padding: 6px 8px; background: rgba(255,255,255,0.05); border-radius: 4px; margin-bottom: 6px; font-size: 12px; line-height: 1.4;">${suggestion}</div>`;
             }).join('');
             suggestionsDiv.innerHTML = html;
         } else {
-            suggestionsDiv.innerHTML = '<p style="text-align: center; color: #aaa;">No suggestions at this time.</p>';
+            suggestionsDiv.innerHTML = '<p style="text-align: center; color: #aaa; font-size: 13px; padding: 8px 0;">✅ No specific suggestions - app is running efficiently.</p>';
         }
     }
 

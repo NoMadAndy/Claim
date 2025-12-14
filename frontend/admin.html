@@ -737,7 +737,10 @@
             </h1>
             <div class="user-info">
                 <p id="user-display">Benutzer wird geladen...</p>
-                <button class="logout-btn" onclick="logout()">Logout</button>
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button class="btn btn-secondary" onclick="window.location.href='/'">← Zurück zur App</button>
+                    <button class="logout-btn" onclick="logout()">Logout</button>
+                </div>
             </div>
         </div>
 
@@ -1471,8 +1474,8 @@
                 serverLogsLoaded = true;
                 
                 if (!data.file_exists) {
-                    container.textContent = data.message || 'Log file not created yet. Make some client logs to see them here.';
-                    statusEl.innerHTML = '<strong>Status:</strong> Log file does not exist yet.';
+                    container.textContent = data.message || 'Log file not found. It will be created when the app sends its first client log.';
+                    statusEl.innerHTML = '<strong>Status:</strong> Log file does not exist yet. Use the app to generate logs.';
                     return;
                 }
                 
