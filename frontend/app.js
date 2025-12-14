@@ -1725,6 +1725,14 @@ async function initializeApp() {
             console.warn('Failed to load user settings, using defaults:', settingsError);
         }
         
+        // Load player colors
+        try {
+            await loadPlayerColors();
+            if (window.debugLog) window.debugLog('🎨 Player colors loaded');
+        } catch (colorsError) {
+            console.warn('Failed to load player colors:', colorsError);
+        }
+        
         // Update logout button with username
         const logoutBtn = document.getElementById('btn-logout');
         if (logoutBtn && currentUser.username) {
@@ -3917,16 +3925,14 @@ function requestDeviceOrientation() {
                     // iOS uses relative orientation with magnetometer when available
                     // The magnetometer is accessed via deviceorientation with absolute property check
                     window.addEventListener('deviceorientation', handleOrientationEvent, false);
-                    document.getElementById('debug-heading').textContent = 'Compass active (WebKit)...';
                 }
             })
             .catch(err => {
-                document.getElementById('debug-heading').textContent = 'Permission denied';
+                console.warn('Device orientation permission denied');
             });
     } else {
         // Non-iOS: Try deviceorientationabsolute
         window.addEventListener('deviceorientationabsolute', handleOrientationEvent, false);
-        document.getElementById('debug-heading').textContent = 'Compass active...';
     }
 }
 
@@ -3943,22 +3949,16 @@ function handleOrientationEvent(event) {
     if (typeof event.webkitCompassHeading !== 'undefined') {
         // Direct magnetometer heading from WebKit
         heading = event.webkitCompassHeading;
-        document.getElementById('debug-heading').textContent = Math.round(heading) + '° (webkitCompassHeading)';
     } else if (event.absolute) {
         // deviceorientationabsolute with magnetometer
         heading = rawAlpha;
-        document.getElementById('debug-heading').textContent = Math.round(heading) + '° (absolute)';
     } else {
         // Fallback: relative orientation - apply correction formula
         // raw 270° = North, need to convert to 0°
         heading = (270 - rawAlpha) % 360;
-        document.getElementById('debug-heading').textContent = Math.round(heading) + '° (relative, corrected)';
     }
     
     currentPosition.heading = heading;
-    
-    document.getElementById('debug-beta').textContent = Math.round(beta);
-    document.getElementById('debug-gamma').textContent = Math.round(gamma);
     
     if (!playerMarker) {
         updatePlayerPosition();
@@ -4777,8 +4777,15 @@ async function loadUserSettings() {
         }
         
         // Apply loaded settings
-        if (settings.selected_map_layer && currentLayer !== settings.selected_map_layer) {
-            switchLayer(settings.selected_map_layer);
+        if (settings.selected_map_layer && window.mapLayers && window.mapLayers[settings.selected_map_layer]) {
+            // Remove current tile layers
+            map.eachLayer(layer => {
+                if (layer instanceof L.TileLayer) {
+                    map.removeLayer(layer);
+                }
+            });
+            // Add the saved layer
+            window.mapLayers[settings.selected_map_layer].addTo(map);
         }
         
         if (settings.sounds_enabled !== undefined && soundManager) {
@@ -4824,6 +4831,71 @@ async function saveUserSettings(partialSettings) {
         if (window.debugLog) window.debugLog('✅ Settings saved:', partialSettings);
     } catch (error) {
         console.error('Failed to save user settings:', error);
+    }
+}
+
+async function loadPlayerColors() {
+    try {
+        const response = await apiRequest('/admin/player-colors');
+        const playerColorsList = document.getElementById('player-colors-list');
+        
+        if (!playerColorsList) return;
+        
+        if (!response || !response.players || response.players.length === 0) {
+            playerColorsList.innerHTML = '<p style="text-align: center; color: #aaa; font-size: 12px;">No players found</p>';
+            return;
+        }
+        
+        const isAdmin = currentUser && currentUser.role === 'admin';
+        
+        playerColorsList.innerHTML = response.players.map(player => {
+            const colorInput = isAdmin 
+                ? `<input type="color" value="${player.color}" data-user-id="${player.id}" class="player-color-picker" style="width: 30px; height: 30px; border: none; cursor: pointer; border-radius: 4px;">` 
+                : `<div style="width: 30px; height: 30px; background: ${player.color}; border-radius: 4px; border: 2px solid rgba(255,255,255,0.3);"></div>`;
+            
+            return `
+                <div style="display: flex; align-items: center; gap: 10px; padding: 4px;">
+                    ${colorInput}
+                    <span style="flex: 1; font-size: 14px;">${player.username}</span>
+                </div>
+            `;
+        }).join('');
+        
+        // Add event listeners for color pickers if admin
+        if (isAdmin) {
+            document.querySelectorAll('.player-color-picker').forEach(input => {
+                input.addEventListener('change', async (e) => {
+                    const userId = parseInt(e.target.dataset.userId);
+                    const newColor = e.target.value;
+                    
+                    try {
+                        await apiRequest(`/admin/player-colors/${userId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ color: newColor })
+                        });
+                        
+                        showNotification(`Color updated for player`, 'success');
+                        
+                        // Reload heatmap to show new colors
+                        if (heatmapVisible || territoryVisible) {
+                            await loadHeatmap();
+                        }
+                    } catch (error) {
+                        console.error('Failed to update player color:', error);
+                        showNotification('Failed to update color', 'error');
+                        // Revert the color picker
+                        loadPlayerColors();
+                    }
+                });
+            });
+        }
+    } catch (error) {
+        console.error('Failed to load player colors:', error);
+        const playerColorsList = document.getElementById('player-colors-list');
+        if (playerColorsList) {
+            playerColorsList.innerHTML = '<p style="text-align: center; color: #aaa; font-size: 12px;">Failed to load</p>';
+        }
     }
 }
 

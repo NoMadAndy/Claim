@@ -299,3 +299,34 @@ def create_spot(
         db.rollback()
         print(f"Error creating spot: {e}")
         return None
+
+
+def get_player_colors(db: Session) -> List[Dict[str, Any]]:
+    """Get all players with their heatmap colors"""
+    users = db.query(User).filter(User.is_active == True).order_by(User.username).all()
+    
+    return [
+        {
+            "id": u.id,
+            "username": u.username,
+            "color": u.heatmap_color or "#808080",  # Default gray if no color set
+        }
+        for u in users
+    ]
+
+
+def update_player_color(db: Session, user_id: int, color: str) -> bool:
+    """Update a player's heatmap color (admin only)"""
+    import re
+    
+    # Validate color format (hex color #RRGGBB)
+    if not color or not re.match(r'^#[0-9A-Fa-f]{6}$', color):
+        return False
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return False
+    
+    user.heatmap_color = color.upper()
+    db.commit()
+    return True
