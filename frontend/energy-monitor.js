@@ -41,12 +41,15 @@ class EnergyMonitor {
                 this.setupBatteryListeners();
                 console.log('✅ Battery API connected');
             } catch (error) {
-                console.warn('Battery API not available:', error);
+                console.warn('⚠️ Battery API not available:', error);
                 this.batterySupported = false;
             }
         } else {
-            console.warn('Battery API not supported in this browser');
+            console.warn('⚠️ Battery API not supported in this browser (this is normal on iOS/iPhone)');
         }
+        
+        // Update battery UI (will show "N/A" if battery API not available)
+        this.updateBatteryUI();
         
         // Load energy settings from backend
         await this.loadEnergySettings();
@@ -59,6 +62,13 @@ class EnergyMonitor {
         
         // Check if we should auto-enable energy saving
         this.checkAutoEnableEnergySaving();
+        
+        // If energy tab is already open, load stats immediately
+        const energyTab = document.getElementById('energy-tab');
+        if (this._isElementVisible(energyTab)) {
+            console.log('📊 Energy tab is already open, loading stats...');
+            this.updateEnergyStats();
+        }
     }
 
     setupBatteryListeners() {
@@ -374,46 +384,94 @@ class EnergyMonitor {
             
             if (response.ok) {
                 const stats = await response.json();
+                console.log('📊 Energy stats received:', stats);
                 this.displayEnergyStats(stats);
+            } else {
+                console.error('Failed to fetch energy stats:', response.status, response.statusText);
+                // Display error message to user
+                const consumersDiv = document.getElementById('energy-consumers');
+                const suggestionsDiv = document.getElementById('optimization-suggestions');
+                if (consumersDiv) {
+                    consumersDiv.innerHTML = this._createErrorMessage('⚠️ Unable to load energy data. Please try again later.');
+                }
+                if (suggestionsDiv) {
+                    suggestionsDiv.innerHTML = this._createErrorMessage('⚠️ Unable to load optimization tips. Please try again later.');
+                }
             }
         } catch (error) {
             console.error('Failed to update energy stats:', error);
+            // Display error message to user
+            const consumersDiv = document.getElementById('energy-consumers');
+            const suggestionsDiv = document.getElementById('optimization-suggestions');
+            if (consumersDiv) {
+                consumersDiv.innerHTML = this._createErrorMessage('⚠️ Unable to load energy data. Please check your connection.');
+            }
+            if (suggestionsDiv) {
+                suggestionsDiv.innerHTML = this._createErrorMessage('⚠️ Unable to load optimization tips. Please check your connection.');
+            }
         }
     }
 
+    // Helper method to create error message HTML
+    // Note: message should be a safe, developer-controlled string
+    _createErrorMessage(message) {
+        const p = document.createElement('p');
+        p.style.textAlign = 'center';
+        p.style.color = '#f59e0b';
+        p.style.fontSize = '13px';
+        p.style.padding = '8px 0';
+        p.textContent = message;
+        return p.outerHTML;
+    }
+    
+    // Helper method to check if element is visible
+    _isElementVisible(element) {
+        if (!element) return false;
+        return element.style.display !== 'none' && !element.classList.contains('hidden');
+    }
+
     displayEnergyStats(stats) {
+        console.log('📊 Displaying energy stats:', {
+            top_consumers_count: stats.top_consumers?.length || 0,
+            suggestions_count: stats.optimization_suggestions?.length || 0
+        });
+        
         // Display top consumers
         const consumersDiv = document.getElementById('energy-consumers');
-        if (stats.top_consumers && stats.top_consumers.length > 0) {
-            const html = stats.top_consumers.map(consumer => {
-                const icon = this.getConsumerIcon(consumer.type);
-                const percentage = Math.round(consumer.percentage);
-                return `
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span style="font-size: 13px;">${icon} ${consumer.type}</span>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <div style="width: 80px; height: 8px; background: rgba(0,0,0,0.2); border-radius: 4px; overflow: hidden;">
-                                <div style="width: ${percentage}%; height: 100%; background: #667eea;"></div>
+        if (consumersDiv) {
+            if (stats.top_consumers && stats.top_consumers.length > 0) {
+                const html = stats.top_consumers.map(consumer => {
+                    const icon = this.getConsumerIcon(consumer.type);
+                    const percentage = Math.round(consumer.percentage);
+                    return `
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 13px;">${icon} ${consumer.type}</span>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div style="width: 80px; height: 8px; background: rgba(0,0,0,0.2); border-radius: 4px; overflow: hidden;">
+                                    <div style="width: ${percentage}%; height: 100%; background: #667eea;"></div>
+                                </div>
+                                <span style="min-width: 35px; text-align: right; font-size: 13px;">${percentage}%</span>
                             </div>
-                            <span style="min-width: 35px; text-align: right; font-size: 13px;">${percentage}%</span>
                         </div>
-                    </div>
-                `;
-            }).join('');
-            consumersDiv.innerHTML = html;
-        } else {
-            consumersDiv.innerHTML = '<p style="text-align: center; color: #aaa; font-size: 13px; padding: 8px 0;">🔄 Collecting energy data... Use the app to generate metrics.</p>';
+                    `;
+                }).join('');
+                consumersDiv.innerHTML = html;
+            } else {
+                consumersDiv.innerHTML = '<p style="text-align: center; color: #aaa; font-size: 13px; padding: 8px 0;">🔄 Collecting energy data... Use the app to generate metrics.</p>';
+            }
         }
         
         // Display optimization suggestions
         const suggestionsDiv = document.getElementById('optimization-suggestions');
-        if (stats.optimization_suggestions && stats.optimization_suggestions.length > 0) {
-            const html = stats.optimization_suggestions.map(suggestion => {
-                return `<div style="padding: 6px 8px; background: rgba(255,255,255,0.05); border-radius: 4px; margin-bottom: 6px; font-size: 12px; line-height: 1.4;">${suggestion}</div>`;
-            }).join('');
-            suggestionsDiv.innerHTML = html;
-        } else {
-            suggestionsDiv.innerHTML = '<p style="text-align: center; color: #aaa; font-size: 13px; padding: 8px 0;">✅ No specific suggestions - app is running efficiently.</p>';
+        if (suggestionsDiv) {
+            if (stats.optimization_suggestions && stats.optimization_suggestions.length > 0) {
+                const html = stats.optimization_suggestions.map(suggestion => {
+                    return `<div style="padding: 6px 8px; background: rgba(255,255,255,0.05); border-radius: 4px; margin-bottom: 6px; font-size: 12px; line-height: 1.4;">${suggestion}</div>`;
+                }).join('');
+                suggestionsDiv.innerHTML = html;
+            } else {
+                suggestionsDiv.innerHTML = '<p style="text-align: center; color: #aaa; font-size: 13px; padding: 8px 0;">✅ No specific suggestions - app is running efficiently.</p>';
+            }
         }
     }
 
@@ -517,7 +575,7 @@ class EnergyMonitor {
         // Update stats at configured interval
         this.statsUpdateInterval = setInterval(() => {
             const energyTab = document.getElementById('energy-tab');
-            if (energyTab && !energyTab.classList.contains('hidden') && energyTab.style.display !== 'none') {
+            if (this._isElementVisible(energyTab)) {
                 this.updateEnergyStats();
             }
         }, EnergyMonitor.STATS_UPDATE_INTERVAL);
