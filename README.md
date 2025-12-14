@@ -66,6 +66,24 @@ Ein ortsbasiertes Echtzeit-GPS-Spiel mit FastAPI, WebSockets, PostGIS und Leafle
 - Heatmap- und Territory-Overlay-Einstellungen
 - Einstellungen werden automatisch beim nächsten Login wiederhergestellt
 
+#### Energie-Monitoring & Optimierung 🔋
+Claim bietet umfassende Funktionen zur Überwachung und Optimierung des Energieverbrauchs:
+
+- **Batterie-Status-Anzeige**: Echtzeit-Überwachung des Batterielevels und Ladestatus
+- **Verbrauchsanalyse**: Identifikation der energieintensivsten Prozesse (GPS, Netzwerk, Tracking, etc.)
+- **Restlaufzeit-Schätzung**: Berechnung der geschätzten verbleibenden Akkulaufzeit basierend auf aktuellem Verbrauchsmuster
+- **Energiesparmodus**: Manuell aktivierbar oder automatisch bei niedrigem Akkustand
+- **Intelligente Optimierungen**:
+  - Reduzierte GPS-Update-Frequenz im Energiesparmodus
+  - Verringerte WebSocket-Update-Rate
+  - Niedrigere GPS-Genauigkeit bei kritischem Akkustand
+  - Batch-Verarbeitung von Netzwerk-Anfragen
+- **Optimierungsvorschläge**: Personalisierte Tipps basierend auf Nutzungsmustern
+- **Konfigurierbare Schwellwerte**: Anpassbare Einstellungen für automatische Aktivierung
+- **Metriken-Tracking**: Automatische Aufzeichnung des Energieverbrauchs für Analysen
+
+**Zugriff**: Öffne die Einstellungen (⚙️) → Tab "🔋 Energy" für alle Energie-Features
+
 #### iPhone/iOS Audio Support
 Claim implementiert umfangreiche Optimierungen für zuverlässige Soundausgabe auf iPhones:
 
@@ -273,6 +291,12 @@ Nach dem Start verfügbar unter:
 - **Items**: `/api/items` - Items und Inventar
 - **Stats**: `/api/stats` - Spieler-Statistiken
 - **Settings**: `/api/settings` - Benutzereinstellungen laden und speichern
+- **Energy**: `/api/energy` - Energie-Monitoring und Optimierungseinstellungen
+  - `POST /api/energy/metrics` - Energie-Metrik aufzeichnen
+  - `GET /api/energy/metrics` - Energie-Metriken abrufen
+  - `POST /api/energy/stats` - Energie-Statistiken mit Optimierungsvorschlägen
+  - `GET /api/energy/settings` - Energie-Einstellungen abrufen
+  - `PATCH /api/energy/settings` - Energie-Einstellungen aktualisieren
 
 ### WebSocket Events
 
