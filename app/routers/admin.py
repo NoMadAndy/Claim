@@ -183,7 +183,9 @@ async def update_player_color(
     admin: User = Depends(check_admin)
 ):
     """Update a player's color (admin only)"""
-    success = admin_service.update_player_color(db, user_id, color_data.get("color"))
-    if not success:
-        raise HTTPException(status_code=404, detail="User not found or invalid color")
+    error = admin_service.update_player_color(db, user_id, color_data.get("color"))
+    if error == "invalid_color":
+        raise HTTPException(status_code=400, detail="Invalid color format. Use hex format #RRGGBB")
+    elif error == "user_not_found":
+        raise HTTPException(status_code=404, detail="User not found")
     return {"success": True}

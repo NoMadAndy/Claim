@@ -315,18 +315,25 @@ def get_player_colors(db: Session) -> List[Dict[str, Any]]:
     ]
 
 
-def update_player_color(db: Session, user_id: int, color: str) -> bool:
-    """Update a player's heatmap color (admin only)"""
+def update_player_color(db: Session, user_id: int, color: str) -> Optional[str]:
+    """
+    Update a player's heatmap color (admin only)
+    
+    Returns:
+        None if successful
+        "invalid_color" if color format is invalid
+        "user_not_found" if user doesn't exist
+    """
     import re
     
     # Validate color format (hex color #RRGGBB)
     if not color or not re.match(r'^#[0-9A-Fa-f]{6}$', color):
-        return False
+        return "invalid_color"
     
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        return False
+        return "user_not_found"
     
     user.heatmap_color = color.upper()
     db.commit()
-    return True
+    return None

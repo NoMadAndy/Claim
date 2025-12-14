@@ -53,7 +53,7 @@ def test_update_player_color_invalid_format(client, test_user, admin_headers):
         headers=admin_headers,
         json={"color": "invalid"}
     )
-    assert response.status_code == 404
+    assert response.status_code == 400
     
     # Test with short hex color
     response = client.put(
@@ -61,7 +61,7 @@ def test_update_player_color_invalid_format(client, test_user, admin_headers):
         headers=admin_headers,
         json={"color": "#FFF"}
     )
-    assert response.status_code == 404
+    assert response.status_code == 400
 
 
 def test_update_nonexistent_user_color(client, admin_headers):
