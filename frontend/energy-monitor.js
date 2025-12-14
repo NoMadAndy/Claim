@@ -413,8 +413,15 @@ class EnergyMonitor {
     }
 
     // Helper method to create error message HTML
+    // Note: message should be a safe, developer-controlled string
     _createErrorMessage(message) {
-        return `<p style="text-align: center; color: #f59e0b; font-size: 13px; padding: 8px 0;">${message}</p>`;
+        const p = document.createElement('p');
+        p.style.textAlign = 'center';
+        p.style.color = '#f59e0b';
+        p.style.fontSize = '13px';
+        p.style.padding = '8px 0';
+        p.textContent = message;
+        return p.outerHTML;
     }
     
     // Helper method to check if element is visible
