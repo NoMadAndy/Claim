@@ -2959,8 +2959,8 @@ async function loadSpotDetails(spotId, container) {
             <strong>Status:</strong><br>
             <small style="display: block; margin-left: 10px; line-height: 1.6;">${logStatusText}</small>
             <strong style="display: block; margin-top: 5px;">Meine Punkte:</strong> ${Math.round(details.my_claim_value)}<br>
-            <strong style="display: block; margin-top: 5px;">Top Claimer:</strong>
-            <small>${dominanceText}</small>
+            <strong style="display: block; margin-top: 5px;">Top Claimer:</strong><br>
+            <small style="display: block; margin-left: 10px; line-height: 1.6;">${dominanceText}</small>
         `;
     } catch (error) {
         // Check if container and element still exist before updating
@@ -3039,7 +3039,7 @@ async function loadNearbySpots() {
                 markerClass = `spot-marker spot-marker-${spot.cooldown_status}`;
             }
             
-            // Create div icon with dominant player color if available
+            // Create div icon
             const iconOptions = {
                 className: markerClass,
                 iconSize: [15, 15],
@@ -3047,14 +3047,18 @@ async function loadNearbySpots() {
                 popupAnchor: [0, -7]  // Position popup above the icon
             };
             
-            // Add HTML with dominant color if available (validate hex color format for security)
-            if (spot.dominant_player_color && /^#[0-9A-Fa-f]{6}$/.test(spot.dominant_player_color)) {
-                iconOptions.html = `<div class="${markerClass}" data-dominant-color="${spot.dominant_player_color}" style="--dominant-color: ${spot.dominant_player_color};"></div>`;
-            }
-            
             const marker = L.marker([spot.latitude, spot.longitude], {
                 icon: L.divIcon(iconOptions)
             }).addTo(map);
+            
+            // Add dominant color styling after marker creation if available (validate hex color format for security)
+            if (spot.dominant_player_color && /^#[0-9A-Fa-f]{6}$/.test(spot.dominant_player_color)) {
+                const iconElement = marker.getElement();
+                if (iconElement) {
+                    iconElement.setAttribute('data-dominant-color', spot.dominant_player_color);
+                    iconElement.style.setProperty('--dominant-color', spot.dominant_player_color);
+                }
+            }
             
             // Store cooldown status for later updates
             marker._cooldownStatus = spot.cooldown_status;
