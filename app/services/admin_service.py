@@ -1,5 +1,6 @@
 """Admin service for managing game settings and database operations"""
 import json
+import re
 from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -303,7 +304,7 @@ def create_spot(
 
 def get_player_colors(db: Session) -> List[Dict[str, Any]]:
     """Get all players with their heatmap colors"""
-    users = db.query(User).filter(User.is_active == True).order_by(User.username).all()
+    users = db.query(User).filter(User.is_active).order_by(User.username).all()
     
     return [
         {
@@ -324,8 +325,6 @@ def update_player_color(db: Session, user_id: int, color: str) -> Optional[str]:
         "invalid_color" if color format is invalid
         "user_not_found" if user doesn't exist
     """
-    import re
-    
     # Validate color format (hex color #RRGGBB)
     if not color or not re.match(r'^#[0-9A-Fa-f]{6}$', color):
         return "invalid_color"

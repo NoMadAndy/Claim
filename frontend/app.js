@@ -4850,7 +4850,7 @@ async function loadPlayerColors() {
         
         playerColorsList.innerHTML = response.players.map(player => {
             const colorInput = isAdmin 
-                ? `<input type="color" value="${player.color}" data-user-id="${player.id}" class="player-color-picker" style="width: 30px; height: 30px; border: none; cursor: pointer; border-radius: 4px;">` 
+                ? `<input type="color" value="${player.color}" data-user-id="${player.id}" data-username="${player.username}" class="player-color-picker" style="width: 30px; height: 30px; border: none; cursor: pointer; border-radius: 4px;">` 
                 : `<div style="width: 30px; height: 30px; background: ${player.color}; border-radius: 4px; border: 2px solid rgba(255,255,255,0.3);"></div>`;
             
             return `
@@ -4866,6 +4866,7 @@ async function loadPlayerColors() {
             document.querySelectorAll('.player-color-picker').forEach(input => {
                 input.addEventListener('change', async (e) => {
                     const userId = parseInt(e.target.dataset.userId);
+                    const username = e.target.dataset.username;
                     const newColor = e.target.value;
                     
                     try {
@@ -4875,7 +4876,7 @@ async function loadPlayerColors() {
                             body: JSON.stringify({ color: newColor })
                         });
                         
-                        showNotification(`Color updated for player`, 'success');
+                        showNotification(`Color updated for ${username}`, 'success');
                         
                         // Reload heatmap to show new colors
                         if (heatmapVisible || territoryVisible) {
