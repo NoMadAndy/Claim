@@ -163,3 +163,29 @@ async def get_logs(
     """Get recent logs"""
     logs = admin_service.get_logs_list(db, skip, limit)
     return {"logs": logs}
+
+
+@router.get("/player-colors")
+async def get_player_colors(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get all players with their colors (available to all authenticated users)"""
+    players = admin_service.get_player_colors(db)
+    return {"players": players}
+
+
+@router.put("/player-colors/{user_id}")
+async def update_player_color(
+    user_id: int,
+    color_data: dict,
+    db: Session = Depends(get_db),
+    admin: User = Depends(check_admin)
+):
+    """Update a player's color (admin only)"""
+    error = admin_service.update_player_color(db, user_id, color_data.get("color"))
+    if error == "invalid_color":
+        raise HTTPException(status_code=400, detail="Invalid color format. Use hex format #RRGGBB")
+    elif error == "user_not_found":
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"success": True}
