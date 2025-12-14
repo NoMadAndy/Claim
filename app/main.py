@@ -52,7 +52,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Claim GPS Game",
     description="Location-based GPS game with claims, tracking, and real-time updates",
-    version="1.0.0",
+    version="1.2.0",
     lifespan=lifespan
 )
 

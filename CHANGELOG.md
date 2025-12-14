@@ -1,5 +1,70 @@
 # Changelog
 
+## Version 1.2.0 - 2025-12-14
+**Major Feature Release: Comprehensive UX & Gameplay Improvements**
+
+### Zusammenfassung der neuen Features
+Dieses Release bündelt alle wichtigen Verbesserungen der letzten Wochen in einer stabilen Version und markiert einen signifikanten Fortschritt in Spielerlebnis, Benutzerfreundlichkeit und technischer Stabilität.
+
+### Highlights
+
+#### 🎨 Visuelle Verbesserungen
+- **Deutlich sichtbarere Player-Trails**: Trail-Punkte größer (8→10/6→8px) mit stärkeren Glow-Effekten
+- **Farbige Glow-Effekte für Spots**: Pulsierende Animationen basierend auf Cooldown-Status
+  - 🟢 Grün-Glow: Bereit zum Loggen (pulse-ready)
+  - 🟡 Orange-Glow: Teilweise Abklingzeit (pulse-partial)
+  - 🔴 Rot-Glow: Volle Abklingzeit (pulse-cooldown)
+- **Flüssigere Kartenfolge**: Optimierte panTo-Animation (0.7s→0.4s)
+
+#### 🎮 Gameplay-Erweiterungen
+- **Smooth Player Movement**: Flüssige Spielerbewegung mit 800ms Ease-Out-Interpolation
+- **Spots-Cooldown-Färbung**: Grün/Gelb/Rot-Markierung abhängig von Abklingzeit
+- **Automatische Spot-Aktualisierung**: 15-Sekunden-Intervall + sofort nach jedem Log
+- **Loot-Spots System**: Temporäre, sammelbare Spots mit XP/Items
+- **Verbesserte Logging-Mechanik**: Zuverlässigeres Auto- und Manual-Logging
+
+#### 💾 Persistente Benutzereinstellungen
+- Alle Einstellungen werden pro Spieler in der Datenbank gespeichert
+- Kartenebene-Auswahl wird automatisch wiederhergestellt
+- Sound- und Kompass-Einstellungen persistent
+- Heatmap- und Territory-Overlay-Einstellungen pro Benutzer
+
+#### 🔊 iPhone/iOS Audio-Unterstützung
+- Audio-Unlock-Button in Einstellungen
+- Automatische Context-Wiederherstellung nach App-Wechsel
+- Eager Sound-Preloading
+- Haptic Feedback als Fallback
+- Umfassende State Monitoring
+
+#### 🎛️ Admin-Dashboard-Verbesserungen
+- Server Logs Ansicht mit Auto-Refresh
+- Changelog-Tab für einfachen Zugriff
+- Verbesserte Lesbarkeit mit schwarzer Schriftfarbe
+
+#### 🗺️ Multi-User-Heatmap
+- Gleichzeitige Anzeige mehrerer Spieler-Heatmaps
+- UI-Toggles für einfache Steuerung
+
+### Technische Änderungen
+- Neue `UserSettings` Datenbanktabelle
+- API-Endpunkte: `GET/PUT /api/settings`
+- `cooldown_status` in Spots-API (ready/partial/cooldown)
+- CSS-Klassen: `spot-marker-ready`, `spot-marker-partial`, `spot-marker-cooldown`
+- Optimierte Trail-Animationen und Drop-Shadow-Filter
+- Neue Spot-Glow-CSS-Animationen (@keyframes)
+
+### Wichtige Dateien
+- `app/models.py` - UserSettings Model
+- `app/routers/settings.py` - Settings API
+- `app/routers/spots.py` - Cooldown-Status-Integration
+- `app/routers/loot.py` - Loot-Spots Backend
+- `app/services/loot_service.py` - Loot-Logik
+- `frontend/app.js` - Hauptlogik für alle Features
+- `frontend/styles.css` - Visuelle Verbesserungen
+- `frontend/admin.html` - Admin-Dashboard-Updates
+
+---
+
 ## 2025-12-13 Visual & UX Enhancements: Trail, Spot Glow & Map Following
 **Highlights:**
 - ✨ **Deutlich sichtbarere Player-Trails**: Trail-Punkte sind nun größer (8→10/6→8px) mit stärkeren Glow-Effekten und höherer Opazität für bessere Sichtbarkeit
