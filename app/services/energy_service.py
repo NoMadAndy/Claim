@@ -34,6 +34,14 @@ logger = logging.getLogger(__name__)
 
 class EnergyService:
     """Service for energy monitoring and optimization"""
+    
+    # Configuration constants
+    BATTERY_LOW_THRESHOLD = 20.0  # Battery level considered "low" (%)
+    BATTERY_CRITICAL_THRESHOLD = 30.0  # Battery level for showing suggestions (%)
+    CONSUMER_HIGH_THRESHOLD = 30.0  # Percentage threshold for "high consumer" (%)
+    
+    # These match the default settings in EnergySettings model
+    """Service for energy monitoring and optimization"""
 
     @staticmethod
     def create_energy_metric(
@@ -235,7 +243,7 @@ class EnergyService:
         suggestions = []
         
         # Check if battery is low
-        if current_battery and current_battery < 20 and not is_charging:
+        if current_battery and current_battery < EnergyService.BATTERY_LOW_THRESHOLD and not is_charging:
             suggestions.append("🔋 Battery is low! Consider enabling energy saving mode.")
         
         # Analyze top consumers and provide targeted suggestions
@@ -243,7 +251,7 @@ class EnergyService:
             consumer_type = consumer['type']
             percentage = consumer['percentage']
             
-            if percentage > 30:  # If consuming more than 30%
+            if percentage > EnergyService.CONSUMER_HIGH_THRESHOLD:  # If consuming more than threshold
                 if consumer_type == 'gps':
                     suggestions.append(
                         "📍 GPS is consuming significant battery. "
@@ -272,7 +280,7 @@ class EnergyService:
         # Always suggest energy saving mode if not enabled and battery is not charging
         settings = EnergyService.get_or_create_settings(db, user_id)
         if not settings.energy_saving_enabled and not is_charging:
-            if current_battery and current_battery < 30:
+            if current_battery and current_battery < EnergyService.BATTERY_CRITICAL_THRESHOLD:
                 suggestions.append(
                     "💡 Enable energy saving mode to extend battery life."
                 )

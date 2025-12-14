@@ -2,6 +2,13 @@
 // Handles battery monitoring, energy consumption tracking, and optimization
 
 class EnergyMonitor {
+    // Configuration constants
+    static METRIC_THROTTLE_INTERVAL = 60000; // Milliseconds between metric recordings per type (1 minute)
+    static WEBSOCKET_UPDATE_INTERVAL_SAVING = 10000; // WebSocket update interval in energy saving mode (10 seconds)
+    static WEBSOCKET_UPDATE_INTERVAL_NORMAL = 3000; // WebSocket update interval in normal mode (3 seconds)
+    static BATTERY_UPDATE_INTERVAL = 30000; // Battery UI update interval (30 seconds)
+    static STATS_UPDATE_INTERVAL = 300000; // Energy stats update interval (5 minutes)
+    
     constructor() {
         this.battery = null;
         this.batterySupported = 'getBattery' in navigator;
@@ -254,7 +261,7 @@ class EnergyMonitor {
                 if (window.currentPosition) {
                     window.sendPositionUpdate(window.currentPosition);
                 }
-            }, 10000); // Increase from default to 10 seconds
+            }, EnergyMonitor.WEBSOCKET_UPDATE_INTERVAL_SAVING);
             console.log('🔌 WebSocket update frequency reduced');
         }
         
@@ -288,7 +295,7 @@ class EnergyMonitor {
                 if (window.currentPosition) {
                     window.sendPositionUpdate(window.currentPosition);
                 }
-            }, 3000); // Restore to default 3 seconds
+            }, EnergyMonitor.WEBSOCKET_UPDATE_INTERVAL_NORMAL);
             console.log('🔌 WebSocket restored to normal frequency');
         }
         
@@ -424,9 +431,9 @@ class EnergyMonitor {
 
     // Record energy metrics
     async recordMetric(type, data = {}) {
-        // Don't record too frequently (max once per minute per type)
+        // Don't record too frequently (throttle to configured interval per type)
         const now = Date.now();
-        if (this.lastMetricTime[type] && now - this.lastMetricTime[type] < 60000) {
+        if (this.lastMetricTime[type] && now - this.lastMetricTime[type] < EnergyMonitor.METRIC_THROTTLE_INTERVAL) {
             return;
         }
         this.lastMetricTime[type] = now;
@@ -501,18 +508,18 @@ class EnergyMonitor {
     }
 
     startMonitoring() {
-        // Update battery UI every 30 seconds
+        // Update battery UI at configured interval
         this.updateInterval = setInterval(() => {
             this.updateBatteryUI();
-        }, 30000);
+        }, EnergyMonitor.BATTERY_UPDATE_INTERVAL);
         
-        // Update stats every 5 minutes
+        // Update stats at configured interval
         this.statsUpdateInterval = setInterval(() => {
             const energyTab = document.getElementById('energy-tab');
             if (energyTab && !energyTab.classList.contains('hidden') && energyTab.style.display !== 'none') {
                 this.updateEnergyStats();
             }
-        }, 300000);
+        }, EnergyMonitor.STATS_UPDATE_INTERVAL);
     }
 
     cleanup() {
