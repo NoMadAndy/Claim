@@ -1,5 +1,31 @@
 # Changelog
 
+## Version 1.2.1 - 2025-12-14
+**Dominance Display & Player Recognition Enhancements**
+
+### Neue Features
+- **Hex-Tiles zeigen dominanten Spieler**: Territory-Overlay zeigt nun die Farbe des Spielers mit der größten Dominanz in jedem Hex-Bereich
+  - Jeder Hex wird separat berechnet und zeigt die Farbe des führenden Spielers
+  - Mehrere Spieler-Heatmaps werden gleichzeitig verarbeitet
+- **Spot-Markierungen mit Dominanz-Indikator**: Spots zeigen zusätzlich einen farbigen Ring, der den dominierenden Spieler anzeigt
+  - Cooldown-Status (grün/gelb/rot) bleibt sichtbar als Spot-Farbe
+  - Dominanz wird als zusätzlicher Ring um den Spot dargestellt
+  - Kombiniert visuelle Informationen: Cooldown + Dominanz gleichzeitig erkennbar
+- **Verbesserte Settings-Ladung**: Robustere Fehlerbehandlung beim Laden von Benutzereinstellungen
+  - Zusätzliche Null-Checks für soundManager
+  - Bessere Fehler-Logs für Debugging
+
+### API-Änderungen
+- Erweiterung des `SpotResponse` Schemas um `dominant_player_color` Feld
+- `/api/spots/nearby` Endpoint liefert jetzt dominant_player_color für jeden Spot
+- Backend berechnet automatisch den dominierenden Spieler basierend auf claim_value
+
+### Technische Details
+- `cachedTerritoryHeatmap` → `cachedTerritoryHeatmaps` (Array statt einzelnes Objekt)
+- `updateTerritoryOverlay()` berechnet nun Dominanz pro Hex über alle Spieler
+- Neue CSS-Klassen für Spots mit Dominanz-Indikator
+- CSS Custom Properties (`--dominant-color`) für dynamische Farbanpassung
+
 ## Version 1.2.0 - 2025-12-14
 **Major Feature Release: Comprehensive UX & Gameplay Improvements**
 

@@ -432,6 +432,33 @@ body {
     animation: pulse-cooldown 2s ease-in-out infinite;
 }
 
+/* Spot marker with dominant player indicator */
+.spot-marker[data-dominant-color] {
+    /* Create a ring around the spot using box-shadow */
+    box-shadow: 0 0 0 3px var(--dominant-color, white), 
+                0 0 15px rgba(255, 255, 255, 0.4),
+                0 0 8px rgba(255, 255, 255, 0.6);
+}
+
+/* Keep the cooldown pulse animations, but enhance with dominant color */
+.spot-marker-ready[data-dominant-color] {
+    box-shadow: 0 0 0 3px var(--dominant-color, white),
+                0 0 15px rgba(34, 197, 94, 0.7), 
+                0 0 8px rgba(34, 197, 94, 0.9);
+}
+
+.spot-marker-partial[data-dominant-color] {
+    box-shadow: 0 0 0 3px var(--dominant-color, white),
+                0 0 15px rgba(245, 158, 11, 0.7), 
+                0 0 8px rgba(245, 158, 11, 0.9);
+}
+
+.spot-marker-cooldown[data-dominant-color] {
+    box-shadow: 0 0 0 3px var(--dominant-color, white),
+                0 0 15px rgba(239, 68, 68, 0.6), 
+                0 0 8px rgba(239, 68, 68, 0.8);
+}
+
 .loot-marker {
     background: gold;
     border: 3px solid #ff6b00;

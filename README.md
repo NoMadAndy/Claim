@@ -2,7 +2,7 @@
 
 Ein ortsbasiertes Echtzeit-GPS-Spiel mit FastAPI, WebSockets, PostGIS und Leaflet.
 
-**Aktuelle Version:** v1.2.0
+**Aktuelle Version:** v1.2.1
 
 ## 🎮 Spielprinzip
 
@@ -31,6 +31,13 @@ Ein ortsbasiertes Echtzeit-GPS-Spiel mit FastAPI, WebSockets, PostGIS und Leafle
 - Zeitbasierter Abfall (Decay)
 - Heatmap zeigt Claim-Dichte
 - Mehrere Spieler-Heatmaps gleichzeitig darstellbar
+- **Territory-Overlay mit Dominanz-Anzeige**: 
+  - Hex-Tiles zeigen die Farbe des dominierenden Spielers pro Bereich
+  - Automatische Berechnung der Dominanz basierend auf Claim-Punkten
+- **Spot-Dominanz-Markierung**:
+  - Spots zeigen farbigen Ring des dominierenden Spielers
+  - Cooldown-Status bleibt als Spot-Farbe sichtbar (grün/gelb/rot)
+  - Kombinierte Anzeige: Cooldown + Dominanz gleichzeitig erkennbar
 
 #### Tracking
 - Live-Tracking ein-/ausschaltbar

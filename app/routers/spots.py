@@ -1,7 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, select
 from geoalchemy2.functions import ST_X, ST_Y, ST_DistanceSphere, ST_MakePoint, ST_SetSRID, ST_GeomFromWKB
 from app.database import get_db
 from app.schemas import SpotCreate, SpotResponse
@@ -56,6 +56,37 @@ async def get_nearby_spots(
     """Get spots within radius of a location"""
     spots_with_distance = spot_service.get_spots_in_radius(db, latitude, longitude, radius)
     
+    # Fetch dominant player colors for all spots in one query to avoid N+1 problem
+    spot_ids = [spot.id for spot, _ in spots_with_distance if not spot.is_loot]
+    dominant_colors = {}
+    if spot_ids:
+        # Use window function to get top claim for each spot
+        # Subquery to rank claims by value per spot
+        ranked_claims = (
+            select(
+                Claim.spot_id,
+                User.heatmap_color,
+                func.row_number().over(
+                    partition_by=Claim.spot_id,
+                    order_by=Claim.claim_value.desc()
+                ).label('rank')
+            )
+            .select_from(Claim)
+            .join(User, Claim.user_id == User.id)
+            .where(
+                Claim.spot_id.in_(spot_ids),
+                Claim.claim_value > 0
+            )
+        ).subquery()
+        
+        # Get only rank 1 (top claim) for each spot
+        top_claims = db.execute(
+            select(ranked_claims.c.spot_id, ranked_claims.c.heatmap_color)
+            .where(ranked_claims.c.rank == 1)
+        ).all()
+        
+        dominant_colors = {spot_id: color for spot_id, color in top_claims}
+    
     result = []
     for spot, distance in spots_with_distance:
         from sqlalchemy import text
@@ -75,6 +106,9 @@ async def get_nearby_spots(
             else:
                 cooldown_status = "cooldown"
         
+        # Get dominant player color from pre-fetched data
+        dominant_player_color = dominant_colors.get(spot.id)
+        
         result.append(SpotResponse(
             id=spot.id,
             name=spot.name,
@@ -87,7 +121,8 @@ async def get_nearby_spots(
             creator_id=spot.creator_id,
             loot_expires_at=spot.loot_expires_at,
             loot_xp=spot.loot_xp,
-            cooldown_status=cooldown_status
+            cooldown_status=cooldown_status,
+            dominant_player_color=dominant_player_color
         ))
     
     return result
