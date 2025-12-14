@@ -48,6 +48,9 @@ class EnergyMonitor {
             console.warn('⚠️ Battery API not supported in this browser (this is normal on iOS/iPhone)');
         }
         
+        // Update battery UI (will show "N/A" if battery API not available)
+        this.updateBatteryUI();
+        
         // Load energy settings from backend
         await this.loadEnergySettings();
         
@@ -59,6 +62,13 @@ class EnergyMonitor {
         
         // Check if we should auto-enable energy saving
         this.checkAutoEnableEnergySaving();
+        
+        // If energy tab is already open, load stats immediately
+        const energyTab = document.getElementById('energy-tab');
+        if (energyTab && energyTab.style.display !== 'none' && !energyTab.classList.contains('hidden')) {
+            console.log('📊 Energy tab is already open, loading stats...');
+            this.updateEnergyStats();
+        }
     }
 
     setupBatteryListeners() {
