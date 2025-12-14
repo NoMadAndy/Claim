@@ -65,7 +65,7 @@ class EnergyMonitor {
         
         // If energy tab is already open, load stats immediately
         const energyTab = document.getElementById('energy-tab');
-        if (energyTab && energyTab.style.display !== 'none' && !energyTab.classList.contains('hidden')) {
+        if (this._isElementVisible(energyTab)) {
             console.log('📊 Energy tab is already open, loading stats...');
             this.updateEnergyStats();
         }
@@ -392,10 +392,10 @@ class EnergyMonitor {
                 const consumersDiv = document.getElementById('energy-consumers');
                 const suggestionsDiv = document.getElementById('optimization-suggestions');
                 if (consumersDiv) {
-                    consumersDiv.innerHTML = '<p style="text-align: center; color: #f59e0b; font-size: 13px; padding: 8px 0;">⚠️ Unable to load energy data. Please try again later.</p>';
+                    consumersDiv.innerHTML = this._createErrorMessage('⚠️ Unable to load energy data. Please try again later.');
                 }
                 if (suggestionsDiv) {
-                    suggestionsDiv.innerHTML = '<p style="text-align: center; color: #f59e0b; font-size: 13px; padding: 8px 0;">⚠️ Unable to load optimization tips. Please try again later.</p>';
+                    suggestionsDiv.innerHTML = this._createErrorMessage('⚠️ Unable to load optimization tips. Please try again later.');
                 }
             }
         } catch (error) {
@@ -404,12 +404,23 @@ class EnergyMonitor {
             const consumersDiv = document.getElementById('energy-consumers');
             const suggestionsDiv = document.getElementById('optimization-suggestions');
             if (consumersDiv) {
-                consumersDiv.innerHTML = '<p style="text-align: center; color: #f59e0b; font-size: 13px; padding: 8px 0;">⚠️ Unable to load energy data. Please check your connection.</p>';
+                consumersDiv.innerHTML = this._createErrorMessage('⚠️ Unable to load energy data. Please check your connection.');
             }
             if (suggestionsDiv) {
-                suggestionsDiv.innerHTML = '<p style="text-align: center; color: #f59e0b; font-size: 13px; padding: 8px 0;">⚠️ Unable to load optimization tips. Please check your connection.</p>';
+                suggestionsDiv.innerHTML = this._createErrorMessage('⚠️ Unable to load optimization tips. Please check your connection.');
             }
         }
+    }
+
+    // Helper method to create error message HTML
+    _createErrorMessage(message) {
+        return `<p style="text-align: center; color: #f59e0b; font-size: 13px; padding: 8px 0;">${message}</p>`;
+    }
+    
+    // Helper method to check if element is visible
+    _isElementVisible(element) {
+        if (!element) return false;
+        return element.style.display !== 'none' && !element.classList.contains('hidden');
     }
 
     displayEnergyStats(stats) {
@@ -557,7 +568,7 @@ class EnergyMonitor {
         // Update stats at configured interval
         this.statsUpdateInterval = setInterval(() => {
             const energyTab = document.getElementById('energy-tab');
-            if (energyTab && !energyTab.classList.contains('hidden') && energyTab.style.display !== 'none') {
+            if (this._isElementVisible(energyTab)) {
                 this.updateEnergyStats();
             }
         }, EnergyMonitor.STATS_UPDATE_INTERVAL);
