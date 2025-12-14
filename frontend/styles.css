@@ -957,3 +957,51 @@ body {
         transform: scale(1.05);
     }
 }
+
+/* Audio Unlock Button */
+.audio-unlock-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+    color: #333;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.audio-unlock-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+}
+
+.audio-unlock-btn:active {
+    transform: scale(0.95);
+}
+
+.audio-unlock-btn.pulse {
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.audio-unlock-btn.unlocked {
+    background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+    color: white;
+}
+
+.audio-unlock-btn.unlocked:hover {
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.audio-unlock-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#audio-unlock-icon {
+    font-size: 18px;
+}

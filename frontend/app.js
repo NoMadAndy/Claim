@@ -1523,6 +1523,7 @@ function setupEventListeners() {
     document.getElementById('btn-close-settings')?.addEventListener('click', closeSettings);
     document.getElementById('setting-sound-toggle')?.addEventListener('change', toggleSound);
     document.getElementById('setting-volume-slider')?.addEventListener('input', changeVolume);
+    document.getElementById('btn-audio-unlock')?.addEventListener('click', handleAudioUnlock);
     
     // Settings tabs
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -4517,6 +4518,9 @@ function showSettings() {
     if (volumeSlider) volumeSlider.value = soundManager.volume * 100;
     if (volumeValue) volumeValue.textContent = Math.round(soundManager.volume * 100) + '%';
     
+    // Update audio unlock button state
+    updateAudioUnlockButton();
+    
     // Show settings tab by default
     switchSettingsTab('settings');
     
@@ -4963,6 +4967,90 @@ function changeVolume() {
     volumeValue.textContent = slider.value + '%';
     // Save volume setting
     saveUserSettings({ sound_volume: volume });
+}
+
+function isAudioReady() {
+    return soundManager.audioInitialized && soundManager.unlocked;
+}
+
+function handleAudioUnlock() {
+    const AUDIO_UNLOCK_DELAY = 500; // Delay to show feedback before updating UI
+    const btn = document.getElementById('btn-audio-unlock');
+    const icon = document.getElementById('audio-unlock-icon');
+    const text = document.getElementById('audio-unlock-text');
+    
+    if (!btn || !icon || !text) return;
+    
+    // Disable button temporarily
+    btn.disabled = true;
+    icon.textContent = '⏳';
+    text.textContent = 'Wird freigeschaltet...';
+    
+    try {
+        // Perform the unlock
+        soundManager.performUnlock();
+        
+        // Update button to show success
+        setTimeout(() => {
+            btn.classList.remove('pulse');
+            btn.classList.add('unlocked');
+            icon.textContent = '✅';
+            text.textContent = 'Audio freigeschaltet!';
+            btn.disabled = false;
+            
+            // Play a confirmation sound if audio is ready and sounds are enabled
+            // Using 'log' sound as it's a pleasant confirmation tone
+            if (isAudioReady() && soundManager.soundsEnabled) {
+                soundManager.playSound('log');
+            }
+            
+            showNotification('Audio', '🔊 Audio erfolgreich freigeschaltet!', 'success');
+        }, AUDIO_UNLOCK_DELAY);
+    } catch (error) {
+        console.error('Audio unlock failed:', error);
+        setTimeout(() => {
+            icon.textContent = '❌';
+            text.textContent = 'Fehler - Erneut versuchen';
+            btn.disabled = false;
+            showNotification('Audio', '❌ Audio-Freischaltung fehlgeschlagen', 'error');
+        }, AUDIO_UNLOCK_DELAY);
+    }
+}
+
+function updateAudioUnlockButton() {
+    const btn = document.getElementById('btn-audio-unlock');
+    const icon = document.getElementById('audio-unlock-icon');
+    const text = document.getElementById('audio-unlock-text');
+    const hint = document.getElementById('audio-unlock-hint');
+    
+    if (!btn || !icon || !text || !hint) return;
+    
+    // Use feature detection for mobile/touch devices
+    const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    
+    // Show hint on touch-enabled devices (mobile/tablet)
+    if (isTouchDevice) {
+        hint.style.display = 'block';
+    } else {
+        hint.style.display = 'none';
+    }
+    
+    // Update button state based on audio context
+    if (isAudioReady()) {
+        btn.classList.remove('pulse');
+        btn.classList.add('unlocked');
+        icon.textContent = '✅';
+        text.textContent = 'Audio freigeschaltet!';
+    } else if (isTouchDevice) {
+        btn.classList.add('pulse');
+        btn.classList.remove('unlocked');
+        icon.textContent = '🔓';
+        text.textContent = 'Audio freischalten';
+    } else {
+        btn.classList.remove('pulse', 'unlocked');
+        icon.textContent = '🔓';
+        text.textContent = 'Audio freischalten';
+    }
 }
 
 // Show all logs for a spot with photos

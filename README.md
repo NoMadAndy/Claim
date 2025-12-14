@@ -62,7 +62,7 @@ Ein ortsbasiertes Echtzeit-GPS-Spiel mit FastAPI, WebSockets, PostGIS und Leafle
 #### iPhone/iOS Audio Support
 Claim implementiert umfangreiche Optimierungen für zuverlässige Soundausgabe auf iPhones:
 
-- **Audio-Unlock-Button**: Prominenter Button zum Aktivieren von Sound (iOS-Anforderung)
+- **Audio-Unlock-Button**: Button in den Einstellungen zum Aktivieren von Sound (iOS-Anforderung)
 - **Automatische Context-Wiederherstellung**: Audio wird nach App-Wechsel/Bildschirmsperre automatisch wiederhergestellt
 - **Eager Sound-Preloading**: Alle Sounds werden beim ersten Unlock vorgeladen
 - **State Monitoring**: Kontinuierliche Überwachung des AudioContext-Status
@@ -70,11 +70,11 @@ Claim implementiert umfangreiche Optimierungen für zuverlässige Soundausgabe a
 - **Visibility-Handler**: Reaktivierung von Audio wenn App wieder im Vordergrund ist
 
 **Wichtige Hinweise für iPhone-Nutzer:**
-- Beim ersten Start der App erscheint ein gelber "🔊 Sound" Button - diesen einmal antippen!
+- Öffne die Einstellungen (⚙️) und tippe auf den "Audio freischalten" Button um Sound zu aktivieren!
 - Der Ring/Silent-Schalter am iPhone beeinflusst die Web Audio API nicht
 - Sound funktioniert auch im Silent-Modus (nur Klingeltöne sind stumm)
 - Nach längerer Inaktivität oder App-Wechsel einmal auf die Karte tippen um Audio zu reaktivieren
-- Falls kein Sound zu hören ist: Lautstärke prüfen und ggf. den Sound-Button erneut drücken
+- Falls kein Sound zu hören ist: Lautstärke prüfen und ggf. den Audio-Freischalten-Button in den Einstellungen erneut drücken
 
 ## 🚀 Setup & Installation
 
