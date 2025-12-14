@@ -1,7 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, select
 from geoalchemy2.functions import ST_X, ST_Y, ST_DistanceSphere, ST_MakePoint, ST_SetSRID, ST_GeomFromWKB
 from app.database import get_db
 from app.schemas import SpotCreate, SpotResponse
@@ -61,15 +61,12 @@ async def get_nearby_spots(
     dominant_colors = {}
     if spot_ids:
         # Use window function to get top claim for each spot
-        from sqlalchemy import func as sql_func
-        from sqlalchemy.sql import select
-        
         # Subquery to rank claims by value per spot
         ranked_claims = (
             select(
                 Claim.spot_id,
                 User.heatmap_color,
-                sql_func.row_number().over(
+                func.row_number().over(
                     partition_by=Claim.spot_id,
                     order_by=Claim.claim_value.desc()
                 ).label('rank')
