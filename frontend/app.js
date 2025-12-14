@@ -3039,9 +3039,10 @@ async function loadNearbySpots() {
                 popupAnchor: [0, -7]  // Position popup above the icon
             };
             
-            // Add HTML with dominant color if available
-            if (spot.dominant_player_color) {
-                iconOptions.html = `<div class="${markerClass}" data-dominant-color="${spot.dominant_player_color}" style="--dominant-color: ${spot.dominant_player_color};"></div>`;
+            // Add HTML with dominant color if available (validate hex color format for security)
+            if (spot.dominant_player_color && /^#[0-9A-Fa-f]{6}$/.test(spot.dominant_player_color)) {
+                const sanitizedColor = spot.dominant_player_color.toLowerCase();
+                iconOptions.html = `<div class="${markerClass}" data-dominant-color="${sanitizedColor}" style="--dominant-color: ${sanitizedColor};"></div>`;
             }
             
             const marker = L.marker([spot.latitude, spot.longitude], {
@@ -4807,7 +4808,9 @@ async function loadUserSettings() {
         if (window.debugLog) window.debugLog('✅ Settings applied:', settings);
     } catch (error) {
         console.error('Failed to load user settings:', error);
-        if (window.debugLog) window.debugLog('❌ Settings load error: ' + error.message);
+        // Log sanitized error info (avoid exposing sensitive details)
+        const errorMsg = error && error.status ? `Status ${error.status}` : 'Unknown error';
+        if (window.debugLog) window.debugLog('❌ Settings load error: ' + errorMsg);
         // Use defaults on error
     }
 }

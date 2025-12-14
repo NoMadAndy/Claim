@@ -60,18 +60,32 @@ async def get_nearby_spots(
     spot_ids = [spot.id for spot, _ in spots_with_distance if not spot.is_loot]
     dominant_colors = {}
     if spot_ids:
-        # Get top claim for each spot with user's color
-        top_claims = db.query(
-            Claim.spot_id,
-            User.heatmap_color
-        ).join(
-            User, Claim.user_id == User.id
-        ).filter(
-            Claim.spot_id.in_(spot_ids),
-            Claim.claim_value > 0
-        ).distinct(Claim.spot_id).order_by(
-            Claim.spot_id,
-            Claim.claim_value.desc()
+        # Use window function to get top claim for each spot
+        from sqlalchemy import func as sql_func
+        from sqlalchemy.sql import select
+        
+        # Subquery to rank claims by value per spot
+        ranked_claims = (
+            select(
+                Claim.spot_id,
+                User.heatmap_color,
+                sql_func.row_number().over(
+                    partition_by=Claim.spot_id,
+                    order_by=Claim.claim_value.desc()
+                ).label('rank')
+            )
+            .select_from(Claim)
+            .join(User, Claim.user_id == User.id)
+            .where(
+                Claim.spot_id.in_(spot_ids),
+                Claim.claim_value > 0
+            )
+        ).subquery()
+        
+        # Get only rank 1 (top claim) for each spot
+        top_claims = db.execute(
+            select(ranked_claims.c.spot_id, ranked_claims.c.heatmap_color)
+            .where(ranked_claims.c.rank == 1)
         ).all()
         
         dominant_colors = {spot_id: color for spot_id, color in top_claims}
