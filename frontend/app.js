@@ -1818,6 +1818,13 @@ async function initializeApp() {
         startHealthCheck();
         if (window.debugLog) window.debugLog('🏥 Health check started (30s interval)');
         
+        // Initialize Energy Monitor
+        if (window.EnergyMonitor) {
+            window.energyMonitor = new window.EnergyMonitor();
+            await window.energyMonitor.init();
+            if (window.debugLog) window.debugLog('🔋 Energy monitor initialized');
+        }
+        
         // AGGRESSIVE: Periodically try to unlock audio on iOS (every 3 seconds for first 30 seconds)
         let unlockAttempts = 0;
         const unlockInterval = setInterval(() => {
@@ -2304,6 +2311,11 @@ function startGPSTracking() {
             // Update last GPS update timestamp
             lastGPSUpdateTime = Date.now();
             
+            // Track GPS update for energy monitoring
+            if (window.energyMonitor) {
+                window.energyMonitor.trackGPSUpdate();
+            }
+            
             updatePlayerPosition();
 
             // Ensure territory overlay refreshes once we have a real GPS position
@@ -2604,6 +2616,12 @@ function connectWebSocket() {
     
     ws.onmessage = (event) => {
         lastSuccessfulWSMessage = Date.now();
+        
+        // Track WebSocket message for energy monitoring
+        if (window.energyMonitor) {
+            window.energyMonitor.trackWebSocketMessage();
+        }
+        
         try {
             const message = JSON.parse(event.data);
             handleWebSocketMessage(message);
@@ -2791,6 +2809,11 @@ async function apiRequest(endpoint, options = {}) {
         const duration = Date.now() - startTime;
         if (window.debugLog && duration > 1000) {
             window.debugLog(`📡 API [${duration}ms] ${endpoint}`);
+        }
+        
+        // Track network request for energy monitoring
+        if (window.energyMonitor) {
+            window.energyMonitor.trackNetworkRequest();
         }
         
         return response.json();
@@ -3760,6 +3783,7 @@ async function startTrack(retryCount = 0) {
         
         activeTrackId = track.id;
         activeTrackPoints = []; // Reset live track points
+        window.trackingStartTime = Date.now(); // Track start time for energy monitoring
         showNotification('Tracking', 'Started tracking your route', 'success');
     } catch (error) {
         console.error('Failed to start track:', error);
@@ -3803,6 +3827,12 @@ async function endTrack() {
         
         showNotification('Tracking', 'Track saved', 'success');
         
+        // Track energy consumption for tracking activity
+        if (window.energyMonitor && window.trackingStartTime) {
+            const durationSeconds = (Date.now() - window.trackingStartTime) / 1000;
+            window.energyMonitor.trackTrackingActivity(durationSeconds);
+        }
+        
         // Clear active track visualization
         if (trackLayers.has('active')) {
             trackingLayer.removeLayer(trackLayers.get('active'));
@@ -3810,6 +3840,7 @@ async function endTrack() {
         }
         activeTrackPoints = [];
         activeTrackId = null;
+        window.trackingStartTime = null;
     } catch (error) {
         console.error('Failed to end track:', error);
     }
@@ -4601,6 +4632,7 @@ function switchSettingsTab(tabName) {
     
     // Update tab content
     const settingsTab = document.getElementById('settings-tab');
+    const energyTab = document.getElementById('energy-tab');
     const changelogTab = document.getElementById('changelog-tab');
     const serverLogsTab = document.getElementById('server-logs-tab');
     
@@ -4608,6 +4640,10 @@ function switchSettingsTab(tabName) {
     if (settingsTab) {
         settingsTab.classList.remove('active');
         settingsTab.style.display = 'none';
+    }
+    if (energyTab) {
+        energyTab.classList.remove('active');
+        energyTab.style.display = 'none';
     }
     if (changelogTab) {
         changelogTab.classList.remove('active');
@@ -4623,6 +4659,15 @@ function switchSettingsTab(tabName) {
         if (settingsTab) {
             settingsTab.classList.add('active');
             settingsTab.style.display = 'block';
+        }
+    } else if (tabName === 'energy') {
+        if (energyTab) {
+            energyTab.classList.add('active');
+            energyTab.style.display = 'block';
+        }
+        // Update energy stats when tab is opened
+        if (window.energyMonitor) {
+            window.energyMonitor.updateEnergyStats();
         }
     } else if (tabName === 'changelog') {
         if (changelogTab) {

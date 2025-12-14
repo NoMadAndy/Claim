@@ -313,3 +313,91 @@ class UserStats(BaseModel):
     total_spots_claimed: int
     active_tracks: int
     inventory_count: int
+
+
+# Energy Monitoring Schemas
+class EnergyConsumptionType(str, Enum):
+    GPS = "gps"
+    NETWORK = "network"
+    WEBSOCKET = "websocket"
+    TRACKING = "tracking"
+    SENSORS = "sensors"
+    UI = "ui"
+    OTHER = "other"
+
+
+class EnergyMetricCreate(BaseModel):
+    consumption_type: EnergyConsumptionType
+    battery_level: Optional[float] = None
+    is_charging: bool = False
+    activity_duration_seconds: Optional[float] = None
+    gps_updates_count: int = 0
+    network_requests_count: int = 0
+    websocket_messages_count: int = 0
+    estimated_battery_drain: Optional[float] = None
+
+
+class EnergyMetricResponse(BaseModel):
+    id: int
+    user_id: int
+    consumption_type: EnergyConsumptionType
+    battery_level: Optional[float]
+    is_charging: bool
+    activity_duration_seconds: Optional[float]
+    gps_updates_count: int
+    network_requests_count: int
+    websocket_messages_count: int
+    estimated_battery_drain: Optional[float]
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class EnergySettingsUpdate(BaseModel):
+    energy_saving_enabled: Optional[bool] = None
+    auto_enable_at_battery: Optional[float] = None
+    gps_update_interval_normal: Optional[int] = None
+    gps_update_interval_saving: Optional[int] = None
+    batch_network_requests: Optional[bool] = None
+    reduce_heatmap_updates: Optional[bool] = None
+    reduce_tracking_accuracy: Optional[bool] = None
+    notify_battery_level: Optional[bool] = None
+    notify_optimization_tips: Optional[bool] = None
+
+
+class EnergySettingsResponse(BaseModel):
+    id: int
+    user_id: int
+    energy_saving_enabled: bool
+    auto_enable_at_battery: float
+    gps_update_interval_normal: int
+    gps_update_interval_saving: int
+    batch_network_requests: bool
+    reduce_heatmap_updates: bool
+    reduce_tracking_accuracy: bool
+    notify_battery_level: bool
+    notify_optimization_tips: bool
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class EnergyStatsResponse(BaseModel):
+    """Energy statistics and analysis"""
+    current_battery_level: Optional[float] = None
+    is_charging: bool = False
+    estimated_time_remaining_hours: Optional[float] = None
+    average_battery_drain_per_hour: Optional[float] = None
+    top_consumers: List[dict]  # List of {type, percentage, count}
+    optimization_suggestions: List[str]
+    energy_saving_enabled: bool
+
+
+class BatteryStatusResponse(BaseModel):
+    """Current battery status from device"""
+    level: Optional[float] = None  # 0-100
+    charging: bool = False
+    discharge_time: Optional[float] = None  # seconds
+    charge_time: Optional[float] = None  # seconds

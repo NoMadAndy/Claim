@@ -298,6 +298,76 @@ class GameSetting(Base):
     # loot_spawn_radius_max: 150
 
 
+class EnergyConsumptionType(str, enum.Enum):
+    """Types of energy consumption activities"""
+    GPS = "gps"
+    NETWORK = "network"
+    WEBSOCKET = "websocket"
+    TRACKING = "tracking"
+    SENSORS = "sensors"
+    UI = "ui"
+    OTHER = "other"
+
+
+class EnergyMetric(Base):
+    """Energy consumption metrics logged by the application"""
+    __tablename__ = "energy_metrics"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    
+    # Energy data
+    consumption_type = Column(SQLEnum(EnergyConsumptionType), nullable=False, index=True)
+    battery_level = Column(Float, nullable=True)  # Battery level at time of measurement (0-100)
+    is_charging = Column(Boolean, default=False)  # Whether device was charging
+    
+    # Activity metrics
+    activity_duration_seconds = Column(Float, nullable=True)  # Duration of the activity
+    gps_updates_count = Column(Integer, default=0)  # Number of GPS updates
+    network_requests_count = Column(Integer, default=0)  # Number of network requests
+    websocket_messages_count = Column(Integer, default=0)  # Number of websocket messages
+    
+    # Estimated energy impact (relative scale)
+    estimated_battery_drain = Column(Float, nullable=True)  # Estimated drain in percentage
+    
+    timestamp = Column(DateTime, default=get_cet_now, index=True)
+    
+    # Relationship
+    user = relationship("User")
+
+
+class EnergySettings(Base):
+    """User-specific energy optimization settings"""
+    __tablename__ = "energy_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    
+    # Energy saving mode
+    energy_saving_enabled = Column(Boolean, default=False)
+    auto_enable_at_battery = Column(Float, default=20.0)  # Auto-enable at 20% battery
+    
+    # GPS optimization
+    gps_update_interval_normal = Column(Integer, default=1000)  # milliseconds
+    gps_update_interval_saving = Column(Integer, default=5000)  # milliseconds
+    
+    # Network optimization
+    batch_network_requests = Column(Boolean, default=False)  # Batch requests in low battery
+    reduce_heatmap_updates = Column(Boolean, default=True)  # Reduce heatmap refresh rate
+    
+    # Tracking optimization
+    reduce_tracking_accuracy = Column(Boolean, default=True)  # Lower accuracy when battery low
+    
+    # Notifications
+    notify_battery_level = Column(Boolean, default=True)  # Notify user about battery status
+    notify_optimization_tips = Column(Boolean, default=True)  # Show optimization suggestions
+    
+    updated_at = Column(DateTime, default=get_cet_now, onupdate=get_cet_now)
+    
+    # Relationship
+    user = relationship("User")
+
+
 # Create tables function
 def init_db():
     """Initialize database with PostGIS/SpatiaLite extension and create all tables"""
