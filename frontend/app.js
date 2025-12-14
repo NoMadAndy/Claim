@@ -902,7 +902,7 @@ const PLAYER_MOVEMENT_DURATION = 800; // 800ms for smooth transition
 let territoryVisible = true;
 let territoryLayer = null;
 let territoryUpdateTimeout = null;
-let cachedTerritoryHeatmap = null; // { user_id, username, color, points: [{latitude, longitude, intensity}] }
+let cachedTerritoryHeatmaps = []; // Array of all heatmaps: [{ user_id, username, color, points: [{latitude, longitude, intensity}] }]
 let territoryActivity = null; // { x, y, untilMs }
 
 function markTerritoryActivity(lat, lng) {
@@ -1937,7 +1937,7 @@ function initMap() {
 function scheduleTerritoryUpdate() {
     if (!territoryLayer || !map) return;
     if (!territoryVisible) return;
-    if (!cachedTerritoryHeatmap || !cachedTerritoryHeatmap.points || cachedTerritoryHeatmap.points.length === 0) return;
+    if (!cachedTerritoryHeatmaps || cachedTerritoryHeatmaps.length === 0) return;
 
     if (territoryUpdateTimeout) clearTimeout(territoryUpdateTimeout);
     territoryUpdateTimeout = setTimeout(() => {
@@ -2025,8 +2025,7 @@ function updateTerritoryOverlay() {
 
     if (!map.hasLayer(territoryLayer)) territoryLayer.addTo(map);
 
-    const heat = cachedTerritoryHeatmap;
-    if (!heat || !heat.points || heat.points.length === 0) {
+    if (!cachedTerritoryHeatmaps || cachedTerritoryHeatmaps.length === 0) {
         territoryLayer.clearLayers();
         return;
     }
@@ -2041,33 +2040,79 @@ function updateTerritoryOverlay() {
     const minY = Math.min(sw.y, ne.y) - pad;
     const maxY = Math.max(sw.y, ne.y) + pad;
 
-    const bins = new Map(); // key -> {q,r,value}
-    let maxValue = 0;
-
-    for (const p of heat.points) {
-        const m = latLngToMercatorMeters(p.latitude, p.longitude);
-        if (m.x < minX || m.x > maxX || m.y < minY || m.y > maxY) continue;
-        const axial = pointToHexAxial(m.x, m.y, size);
-        const key = `${axial.q},${axial.r}`;
-        const prev = bins.get(key);
-        const inc = Number(p.intensity || 0) || 0;
-        const next = (prev ? prev.value : 0) + inc;
-        bins.set(key, { q: axial.q, r: axial.r, value: next });
-        if (next > maxValue) maxValue = next;
+    // Bins per player: Map<playerId, Map<hexKey, value>>
+    const playerBins = new Map();
+    
+    // Process all heatmaps to calculate dominance per hex
+    for (const heat of cachedTerritoryHeatmaps) {
+        if (!heat || !heat.points || heat.points.length === 0) continue;
+        
+        const bins = new Map();
+        for (const p of heat.points) {
+            const m = latLngToMercatorMeters(p.latitude, p.longitude);
+            if (m.x < minX || m.x > maxX || m.y < minY || m.y > maxY) continue;
+            const axial = pointToHexAxial(m.x, m.y, size);
+            const key = `${axial.q},${axial.r}`;
+            const prev = bins.get(key);
+            const inc = Number(p.intensity || 0) || 0;
+            const next = (prev ? prev.value : 0) + inc;
+            bins.set(key, { q: axial.q, r: axial.r, value: next });
+        }
+        
+        playerBins.set(heat.user_id, {
+            bins: bins,
+            color: heat.color || '#22c55e',
+            username: heat.username
+        });
     }
 
-    territoryLayer.clearLayers();
-    if (bins.size === 0) return;
+    // Calculate dominant player per hex
+    const allHexKeys = new Set();
+    playerBins.forEach(playerData => {
+        playerData.bins.forEach((cell, key) => {
+            allHexKeys.add(key);
+        });
+    });
 
-    const baseColor = heat.color || '#22c55e';
-    const borderColor = lightenHexColor(baseColor, 0.15);
+    const hexCells = new Map(); // key -> { q, r, dominantPlayer, value, maxValue }
+    let globalMaxValue = 0;
+
+    allHexKeys.forEach(key => {
+        let dominantPlayerId = null;
+        let maxValue = 0;
+        let q = null, r = null;
+        
+        playerBins.forEach((playerData, playerId) => {
+            const cell = playerData.bins.get(key);
+            if (cell && cell.value > maxValue) {
+                maxValue = cell.value;
+                dominantPlayerId = playerId;
+                q = cell.q;
+                r = cell.r;
+            }
+        });
+        
+        if (dominantPlayerId !== null && q !== null && r !== null) {
+            hexCells.set(key, {
+                q: q,
+                r: r,
+                dominantPlayer: dominantPlayerId,
+                value: maxValue,
+                playerData: playerBins.get(dominantPlayerId)
+            });
+            if (maxValue > globalMaxValue) globalMaxValue = maxValue;
+        }
+    });
+
+    territoryLayer.clearLayers();
+    if (hexCells.size === 0) return;
 
     const activity = territoryActivity;
     const nowMs = Date.now();
     const activityActive = !!(activity && nowMs < activity.untilMs);
     const activityRadiusM = Math.max(900, size * 2.2);
 
-    const allCells = Array.from(bins.values());
+    const allCells = Array.from(hexCells.values());
     const activeKeys = new Set();
     if (activityActive) {
         for (const cell of allCells) {
@@ -2088,7 +2133,11 @@ function updateTerritoryOverlay() {
 
     const finalCells = activeCells.concat(sortedRest).slice(0, maxCellsToRender);
     for (const cell of finalCells) {
-        const ratio = maxValue > 0 ? Math.min(1, Math.sqrt(cell.value / maxValue)) : 0;
+        // Use dominant player's color for this hex
+        const baseColor = cell.playerData.color;
+        const borderColor = lightenHexColor(baseColor, 0.15);
+        
+        const ratio = globalMaxValue > 0 ? Math.min(1, Math.sqrt(cell.value / globalMaxValue)) : 0;
         const fillOpacity = 0.06 + 0.20 * ratio;
         const fillColor = lightenHexColor(baseColor, 0.35 - 0.20 * ratio);
 
@@ -2982,9 +3031,15 @@ async function loadNearbySpots() {
                 markerClass = `spot-marker spot-marker-${spot.cooldown_status}`;
             }
             
+            // Create div icon with dominant player color if available
+            const iconHtml = spot.dominant_player_color 
+                ? `<div class="${markerClass}" data-dominant-color="${spot.dominant_player_color}" style="--dominant-color: ${spot.dominant_player_color};"></div>`
+                : '';
+            
             const marker = L.marker([spot.latitude, spot.longitude], {
                 icon: L.divIcon({
                     className: markerClass,
+                    html: iconHtml,
                     iconSize: [15, 15],
                     iconAnchor: [7, 7],  // Center the icon on the coordinate (half of iconSize)
                     popupAnchor: [0, -7]  // Position popup above the icon
@@ -3972,15 +4027,8 @@ async function loadHeatmap() {
         heatmapLayers.clear();
         
         if (heatmaps && heatmaps.length > 0) {
-            // Cache "my" heatmap for territory overlay (fallback: first available)
-            let myHeatmap = null;
-            if (currentUser && currentUser.id) {
-                myHeatmap = heatmaps.find(h => Number(h.user_id) === Number(currentUser.id)) || null;
-            }
-            if (!myHeatmap) {
-                myHeatmap = heatmaps.find(h => h.points && h.points.length > 0) || null;
-            }
-            cachedTerritoryHeatmap = myHeatmap;
+            // Cache all heatmaps for territory overlay to show dominant player per hex
+            cachedTerritoryHeatmaps = heatmaps.filter(h => h.points && h.points.length > 0);
 
             heatmaps.forEach((heatmap, index) => {
                 if (heatmap.points && heatmap.points.length > 0) {
@@ -4721,16 +4769,21 @@ async function loadUserSettings() {
     try {
         const settings = await apiRequest('/settings/');
         
+        if (!settings) {
+            console.warn('No settings returned from API');
+            return;
+        }
+        
         // Apply loaded settings
         if (settings.selected_map_layer && currentLayer !== settings.selected_map_layer) {
             switchLayer(settings.selected_map_layer);
         }
         
-        if (settings.sounds_enabled !== undefined) {
+        if (settings.sounds_enabled !== undefined && soundManager) {
             soundManager.soundsEnabled = settings.sounds_enabled;
         }
         
-        if (settings.sound_volume !== undefined) {
+        if (settings.sound_volume !== undefined && soundManager && soundManager.setVolume) {
             soundManager.setVolume(settings.sound_volume);
         }
         
@@ -4752,6 +4805,7 @@ async function loadUserSettings() {
         if (window.debugLog) window.debugLog('✅ Settings applied:', settings);
     } catch (error) {
         console.error('Failed to load user settings:', error);
+        if (window.debugLog) window.debugLog('❌ Settings load error: ' + error.message);
         // Use defaults on error
     }
 }

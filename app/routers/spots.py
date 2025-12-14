@@ -75,6 +75,20 @@ async def get_nearby_spots(
             else:
                 cooldown_status = "cooldown"
         
+        # Get dominant player color for non-loot spots
+        dominant_player_color = None
+        if not spot.is_loot:
+            top_claim = db.query(Claim, User).join(
+                User, Claim.user_id == User.id
+            ).filter(
+                Claim.spot_id == spot.id,
+                Claim.claim_value > 0
+            ).order_by(Claim.claim_value.desc()).first()
+            
+            if top_claim:
+                _, top_user = top_claim
+                dominant_player_color = top_user.heatmap_color
+        
         result.append(SpotResponse(
             id=spot.id,
             name=spot.name,
@@ -87,7 +101,8 @@ async def get_nearby_spots(
             creator_id=spot.creator_id,
             loot_expires_at=spot.loot_expires_at,
             loot_xp=spot.loot_xp,
-            cooldown_status=cooldown_status
+            cooldown_status=cooldown_status,
+            dominant_player_color=dominant_player_color
         ))
     
     return result
