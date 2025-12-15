@@ -9,9 +9,19 @@ class EnergyMonitor {
     static BATTERY_UPDATE_INTERVAL = 30000; // Battery UI update interval (30 seconds)
     static STATS_UPDATE_INTERVAL = 300000; // Energy stats update interval (5 minutes)
     
+    // Detect if running on iPhone/iOS
+    static isIPhone() {
+        // Check for iPhone/iPad/iPod
+        const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
+                      // Check for iPad on iOS 13+ which reports as Mac
+                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        return isIOS;
+    }
+    
     constructor() {
         this.battery = null;
         this.batterySupported = 'getBattery' in navigator;
+        this.isIPhone = EnergyMonitor.isIPhone();
         this.energySettings = null;
         this.metricsQueue = [];
         this.lastMetricTime = {};
@@ -33,6 +43,10 @@ class EnergyMonitor {
 
     async init() {
         console.log('🔋 Initializing Energy Monitor...');
+        
+        if (this.isIPhone) {
+            console.log('📱 Running on iPhone/iOS - Battery API not available due to platform limitations');
+        }
         
         // Initialize Battery Status API
         if (this.batterySupported) {
@@ -97,10 +111,14 @@ class EnergyMonitor {
 
     updateBatteryUI() {
         if (!this.battery) {
-            // Show "not available" state
+            // Show "not available" state with iPhone-specific message
             document.getElementById('battery-level').textContent = 'N/A';
             document.getElementById('battery-fill').style.width = '0%';
-            document.getElementById('charging-status').textContent = 'Battery info not available';
+            const statusMsg = this.isIPhone 
+                ? 'Not available on iPhone/iOS' 
+                : 'Battery info not available';
+            document.getElementById('charging-status').textContent = statusMsg;
+            document.getElementById('time-remaining').textContent = '';
             return;
         }
         
@@ -196,6 +214,25 @@ class EnergyMonitor {
     }
 
     setupUI() {
+        // Hide Battery Status section on iPhone (Battery API not available)
+        if (this.isIPhone || !this.batterySupported) {
+            const batteryStatus = document.getElementById('battery-status');
+            if (batteryStatus) {
+                // Add a notice instead of hiding completely
+                const notice = document.createElement('div');
+                notice.style.cssText = 'margin: 15px 0; padding: 12px; background: rgba(251, 191, 36, 0.1); border-left: 3px solid #fbbf24; border-radius: 4px; font-size: 12px; color: #fbbf24;';
+                notice.innerHTML = '📱 <strong>iPhone/iOS Note:</strong> Battery Status API is not available on iOS devices due to platform restrictions. Basic energy optimization features are still available below.';
+                batteryStatus.parentNode.insertBefore(notice, batteryStatus);
+                batteryStatus.style.display = 'none';
+            }
+            
+            // Hide auto-enable battery level setting (requires Battery API)
+            const autoEnableContainer = document.getElementById('auto-enable-battery')?.parentElement;
+            if (autoEnableContainer) {
+                autoEnableContainer.style.display = 'none';
+            }
+        }
+        
         // Energy saving toggle
         document.getElementById('energy-saving-toggle')?.addEventListener('change', (e) => {
             this.toggleEnergySaving(e.target.checked);
