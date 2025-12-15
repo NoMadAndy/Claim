@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Spot Marker Color Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            background: #f0f0f0;
+        }
+        h1 {
+            color: #333;
+        }
+        .demo-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .marker-row {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+        .marker-demo {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            border: 2px solid white;
+            margin-right: 20px;
+            transition: background 0.3s ease, box-shadow 0.3s ease;
+        }
+        .spot-marker {
+            background: #888; /* Neutral gray fallback when no dominant player */
+            box-shadow: 0 0 12px rgba(136, 136, 136, 0.6), 0 0 6px rgba(136, 136, 136, 0.8);
+        }
+        .spot-marker[data-dominant-color] {
+            background: var(--dominant-color, #888);
+            box-shadow: 0 0 15px var(--dominant-color, rgba(255, 255, 255, 0.4)),
+                        0 0 8px var(--dominant-color, rgba(255, 255, 255, 0.6));
+        }
+        .marker-label {
+            flex: 1;
+        }
+        .marker-label strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .marker-label small {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1>✅ Spot Marker Color Fix - Visual Demonstration</h1>
+        <p><strong>Problem:</strong> Spot markers were always green, regardless of dominant player.</p>
+        <p><strong>Solution:</strong> Markers now use the dominant player's color from <code>dominant_player_color</code>.</p>
+        
+        <h2>Examples:</h2>
+        
+        <div class="marker-row">
+            <div class="marker-demo spot-marker"></div>
+            <div class="marker-label">
+                <strong>No Dominant Player</strong>
+                <small>Uses neutral gray (#888) as fallback</small>
+            </div>
+        </div>
+        
+        <div class="marker-row">
+            <div class="marker-demo spot-marker" data-dominant-color="#FCBAD3" style="--dominant-color: #FCBAD3;"></div>
+            <div class="marker-label">
+                <strong>Player 1 Dominant</strong>
+                <small>Color: #FCBAD3 (Pink) - player1's color</small>
+            </div>
+        </div>
+        
+        <div class="marker-row">
+            <div class="marker-demo spot-marker" data-dominant-color="#FF8B94" style="--dominant-color: #FF8B94;"></div>
+            <div class="marker-label">
+                <strong>Player 2 Dominant</strong>
+                <small>Color: #FF8B94 (Coral) - player2's color</small>
+            </div>
+        </div>
+        
+        <div class="marker-row">
+            <div class="marker-demo spot-marker" data-dominant-color="#4CAF50" style="--dominant-color: #4CAF50;"></div>
+            <div class="marker-label">
+                <strong>Player 3 Dominant</strong>
+                <small>Color: #4CAF50 (Green) - example player color</small>
+            </div>
+        </div>
+        
+        <div class="marker-row">
+            <div class="marker-demo spot-marker" data-dominant-color="#2196F3" style="--dominant-color: #2196F3;"></div>
+            <div class="marker-label">
+                <strong>Player 4 Dominant</strong>
+                <small>Color: #2196F3 (Blue) - example player color</small>
+            </div>
+        </div>
+        
+        <div class="marker-row">
+            <div class="marker-demo spot-marker" data-dominant-color="#FF9800" style="--dominant-color: #FF9800;"></div>
+            <div class="marker-label">
+                <strong>Player 5 Dominant</strong>
+                <small>Color: #FF9800 (Orange) - example player color</small>
+            </div>
+        </div>
+        
+        <h2>Technical Details:</h2>
+        <ul>
+            <li>✅ Background color uses <code>var(--dominant-color)</code> instead of hardcoded green</li>
+            <li>✅ White 2px border maintained for visibility</li>
+            <li>✅ Glow effect uses dominant player color</li>
+            <li>✅ Fallback to neutral gray (#888) when no dominant player exists</li>
+            <li>✅ Cooldown state styles (ready/partial/cooldown) also use dominant color</li>
+        </ul>
+    </div>
+</body>
+</html>

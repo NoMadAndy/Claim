@@ -404,13 +404,13 @@ body {
 }
 
 .spot-marker {
-    background: #22c55e;
+    background: #888; /* Neutral gray fallback when no dominant player */
     border: 2px solid white;
     border-radius: 50%;
     width: 15px;
     height: 15px;
     transition: background 0.3s ease, box-shadow 0.3s ease;
-    box-shadow: 0 0 12px rgba(34, 197, 94, 0.6), 0 0 6px rgba(34, 197, 94, 0.8);
+    box-shadow: 0 0 12px rgba(136, 136, 136, 0.6), 0 0 6px rgba(136, 136, 136, 0.8);
 }
 
 /* Cooldown-based spot colors */
@@ -434,29 +434,30 @@ body {
 
 /* Spot marker with dominant player indicator */
 .spot-marker[data-dominant-color] {
-    /* Create a ring around the spot using box-shadow */
-    box-shadow: 0 0 0 3px var(--dominant-color, white), 
-                0 0 15px rgba(255, 255, 255, 0.4),
-                0 0 8px rgba(255, 255, 255, 0.6);
+    /* Use dominant player color as background */
+    background: var(--dominant-color, #888);
+    /* Keep white border and add glow in the dominant color */
+    box-shadow: 0 0 15px var(--dominant-color, #888),
+                0 0 8px var(--dominant-color, #888);
 }
 
-/* Keep the cooldown pulse animations, but enhance with dominant color */
+/* Cooldown states with dominant color - use dominant color as background */
 .spot-marker-ready[data-dominant-color] {
-    box-shadow: 0 0 0 3px var(--dominant-color, white),
-                0 0 15px rgba(34, 197, 94, 0.7), 
-                0 0 8px rgba(34, 197, 94, 0.9);
+    background: var(--dominant-color, #22c55e);
+    box-shadow: 0 0 15px var(--dominant-color, #22c55e), 
+                0 0 8px var(--dominant-color, #22c55e);
 }
 
 .spot-marker-partial[data-dominant-color] {
-    box-shadow: 0 0 0 3px var(--dominant-color, white),
-                0 0 15px rgba(245, 158, 11, 0.7), 
-                0 0 8px rgba(245, 158, 11, 0.9);
+    background: var(--dominant-color, #f59e0b);
+    box-shadow: 0 0 15px var(--dominant-color, #f59e0b), 
+                0 0 8px var(--dominant-color, #f59e0b);
 }
 
 .spot-marker-cooldown[data-dominant-color] {
-    box-shadow: 0 0 0 3px var(--dominant-color, white),
-                0 0 15px rgba(239, 68, 68, 0.6), 
-                0 0 8px rgba(239, 68, 68, 0.8);
+    background: var(--dominant-color, #ef4444);
+    box-shadow: 0 0 15px var(--dominant-color, #ef4444), 
+                0 0 8px var(--dominant-color, #ef4444);
 }
 
 .loot-marker {
