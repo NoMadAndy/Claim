@@ -558,6 +558,15 @@ alembic upgrade head
 psql -U claim_user -d claim_db -c "CREATE EXTENSION IF NOT EXISTS postgis;"
 ```
 
+**Postgres Healthcheck Fehler "database does not exist":**
+- Wenn in den Docker-Logs Fehler wie `FATAL: database "claim_user" does not exist` erscheinen, obwohl die Datenbank `claim_db` existiert, liegt das am Healthcheck.
+- Der `pg_isready` Befehl prüft standardmäßig eine Datenbank mit dem gleichen Namen wie der Benutzer.
+- **Lösung**: Der Healthcheck in `docker-compose.yml` muss explizit die konfigurierte Datenbank mit `-d` angeben:
+  ```yaml
+  test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-claim_user} -d ${DB_NAME:-claim_db}"]
+  ```
+- Dies verhindert die irreführenden Log-Meldungen und stellt sicher, dass die richtige Datenbank geprüft wird.
+
 ### WebSocket Verbindungsfehler
 - Token überprüfen (JWT gültig?)
 - CORS-Einstellungen prüfen
