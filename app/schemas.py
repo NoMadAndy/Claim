@@ -108,6 +108,7 @@ class SpotResponse(SpotBase):
     loot_xp: Optional[int] = None
     cooldown_status: Optional[str] = None  # "ready", "partial", "cooldown" for non-loot spots
     dominant_player_color: Optional[str] = None  # Hex color of the player with most dominance
+    dominant_player_name: Optional[str] = None  # Username of the player with most dominance
     
     class Config:
         from_attributes = True

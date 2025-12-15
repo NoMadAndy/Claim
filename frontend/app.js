@@ -153,6 +153,21 @@ let autoLogCooldownUntil = 0;
 const spotsBeingLogged = new Set();
 // Track last auto-log time per spot to prevent rapid re-triggering
 const lastAutoLogTime = new Map();
+// Track retry attempts for autolog reliability
+const autoLogRetryCount = new Map();
+const AUTO_LOG_MAX_RETRIES = 2;
+const AUTO_LOG_RETRY_DELAY_MS = 2000;
+const AUTO_LOG_MAX_DELAY_MS = 10000; // Cap maximum retry delay
+
+// Player trail configuration constants
+const TRAIL_DOT_RADIUS_FAST = 14;
+const TRAIL_DOT_RADIUS_NORMAL = 11;
+const TRAIL_DOT_WEIGHT_FAST = 4;
+const TRAIL_DOT_WEIGHT_NORMAL = 4;
+const TRAIL_DOT_OPACITY_FAST = 1;
+const TRAIL_DOT_OPACITY_NORMAL = 1;
+const TRAIL_DOT_FILL_OPACITY_FAST = 0.7;
+const TRAIL_DOT_FILL_OPACITY_NORMAL = 0.6;
 
 // Sound Manager
 class SoundManager {
@@ -2568,12 +2583,12 @@ function dropPlayerTrailDot(lat, lng, speed) {
 
     const fast = (speed != null && speed >= 2.2);
     const dot = L.circleMarker([lat, lng], {
-        radius: fast ? 10 : 8,
+        radius: fast ? TRAIL_DOT_RADIUS_FAST : TRAIL_DOT_RADIUS_NORMAL,
         color: '#667eea',
-        weight: 3,
-        opacity: 0.9,
+        weight: fast ? TRAIL_DOT_WEIGHT_FAST : TRAIL_DOT_WEIGHT_NORMAL,
+        opacity: fast ? TRAIL_DOT_OPACITY_FAST : TRAIL_DOT_OPACITY_NORMAL,
         fillColor: '#667eea',
-        fillOpacity: fast ? 0.5 : 0.4,
+        fillOpacity: fast ? TRAIL_DOT_FILL_OPACITY_FAST : TRAIL_DOT_FILL_OPACITY_NORMAL,
         interactive: false,
         className: fast ? 'player-trail-dot player-trail-dot-fast' : 'player-trail-dot'
     });
@@ -2914,10 +2929,20 @@ function createSpotPopupContent(spot) {
     }
     
     // Normal spot popup
+    // Show owner info if available
+    let ownerHtml = '';
+    if (spot.dominant_player_name) {
+        const ownerColor = spot.dominant_player_color || '#888';
+        ownerHtml = `<div style="font-size: 11px; margin: 3px 0; color: ${ownerColor}; font-weight: bold;">
+            👑 Besitzer: ${spot.dominant_player_name}
+        </div>`;
+    }
+    
     container.innerHTML = `
         <div style="padding: 5px;">
             <b style="font-size: 14px;">${spot.name}</b><br>
             ${spot.description ? `<small>${spot.description}</small><br>` : ''}
+            ${ownerHtml}
             <div id="spot-details-${spot.id}" style="font-size: 11px; margin: 5px 0;">Lädt...</div>
             <div style="margin-top: 5px; display: flex; gap: 5px;">
                 <button onclick="logSpot(${spot.id})" style="flex: 1; padding: 5px 10px; font-size: 12px;">Log Spot</button>
@@ -3136,13 +3161,33 @@ async function loadNearbySpots() {
     }
 }
 
-// Auto-logging
+// Auto-logging with improved reliability
 async function updateAutoLog() {
-    if (!currentPosition) return;
+    // Validate prerequisites
+    if (!currentPosition) {
+        if (window.debugLog) window.debugLog('⏸️ AutoLog: No current position available');
+        return;
+    }
+    
+    if (!map) {
+        if (window.debugLog) window.debugLog('⏸️ AutoLog: Map not initialized');
+        return;
+    }
+    
+    // Skip if GPS accuracy is too poor
+    if (currentPosition.accuracy && currentPosition.accuracy > 50) {
+        if (window.debugLog) window.debugLog(`⏸️ AutoLog: GPS accuracy too low (${currentPosition.accuracy.toFixed(0)}m)`);
+        return;
+    }
     
     const now = Date.now();
     
     spotMarkers.forEach((marker, spotId) => {
+        // Skip loot spots for autolog
+        if (lootSpotIds.has(spotId)) {
+            return;
+        }
+        
         // Skip if already logging this spot
         if (spotsBeingLogged.has(spotId)) {
             return;
@@ -3162,7 +3207,7 @@ async function updateAutoLog() {
         
         // Auto-log at 20m
         if (distance <= 20) {
-            if (window.debugLog) window.debugLog(`🎯 AutoLog triggered for spot ${spotId}: ${distance.toFixed(1)}m`);
+            if (window.debugLog) window.debugLog(`🎯 AutoLog triggered for spot ${spotId}: ${distance.toFixed(1)}m (accuracy: ${currentPosition.accuracy?.toFixed(0) || 'N/A'}m)`);
             performAutoLog(spotId);
         }
     });
@@ -3202,7 +3247,7 @@ async function apiRequestSilent429(endpoint, options = {}) {
     return response.json();
 }
 
-async function performAutoLog(spotId) {
+async function performAutoLog(spotId, retryAttempt = 0) {
     // Mark spot as being logged
     spotsBeingLogged.add(spotId);
     
@@ -3215,7 +3260,16 @@ async function performAutoLog(spotId) {
             return;
         }
         
-        if (window.debugLog) window.debugLog(`📤 AutoLog POST: spot ${spotId}`);
+        // Validate current position is still available
+        if (!currentPosition || !currentPosition.lat || !currentPosition.lng) {
+            if (window.debugLog) window.debugLog(`❌ AutoLog aborted: Invalid position data`);
+            return;
+        }
+        
+        if (window.debugLog) {
+            const retryMsg = retryAttempt > 0 ? ` (retry ${retryAttempt}/${AUTO_LOG_MAX_RETRIES})` : '';
+            window.debugLog(`📤 AutoLog POST: spot ${spotId}${retryMsg}`);
+        }
         
         const response = await apiRequestSilent429('/logs/', {
             method: 'POST',
@@ -3233,17 +3287,44 @@ async function performAutoLog(spotId) {
             autoLogCooldownUntil = now + (5 * 60 * 1000);
             if (window.debugLog) window.debugLog(`⚠️ Rate limited (429) - cooldown 5m`);
             soundManager.playSound('error');
+            autoLogRetryCount.delete(spotId); // Clear retry count
             return;
+        }
+        
+        // Check for transient errors that may benefit from retry
+        if (response.status && response.status >= 500 && response.status < 600) {
+            // Server error - retry if we haven't exceeded max retries
+            if (retryAttempt < AUTO_LOG_MAX_RETRIES) {
+                const delay = Math.min(AUTO_LOG_MAX_DELAY_MS, AUTO_LOG_RETRY_DELAY_MS * Math.pow(2, retryAttempt)); // Exponential backoff with cap
+                if (window.debugLog) window.debugLog(`⚠️ AutoLog server error ${response.status} - retrying in ${delay}ms`);
+                
+                spotsBeingLogged.delete(spotId); // Release lock for retry
+                autoLogRetryCount.set(spotId, retryAttempt + 1);
+                
+                setTimeout(() => {
+                    performAutoLog(spotId, retryAttempt + 1);
+                }, delay);
+                return;
+            } else {
+                if (window.debugLog) window.debugLog(`❌ AutoLog failed after ${AUTO_LOG_MAX_RETRIES} retries`);
+                soundManager.playSound('error');
+                autoLogRetryCount.delete(spotId);
+                return;
+            }
         }
         
         // Check for other errors
         if (response.status && response.status >= 400) {
             if (window.debugLog) window.debugLog(`❌ AutoLog failed with status ${response.status}`);
             soundManager.playSound('error');
+            autoLogRetryCount.delete(spotId);
             return;
         }
         
         if (window.debugLog) window.debugLog(`✅ AutoLog success: +${response.xp_gained}XP, +${response.claim_points}Claims`);
+        
+        // Clear retry count on success
+        autoLogRetryCount.delete(spotId);
         
         // Record successful log time
         lastAutoLogTime.set(spotId, now);
@@ -3277,12 +3358,27 @@ async function performAutoLog(spotId) {
         // Update heatmap after autolog
         updateClaimHeatmap();
     } catch (error) {
-        // Handle unexpected errors
-        if (window.debugLog) window.debugLog(`❌ AutoLog error: ${error.message}`);
-        soundManager.playSound('error');
+        // Handle unexpected errors with retry logic
+        if (retryAttempt < AUTO_LOG_MAX_RETRIES) {
+            const delay = Math.min(AUTO_LOG_MAX_DELAY_MS, AUTO_LOG_RETRY_DELAY_MS * Math.pow(2, retryAttempt));
+            if (window.debugLog) window.debugLog(`❌ AutoLog error: ${error.message} - retrying in ${delay}ms`);
+            
+            spotsBeingLogged.delete(spotId); // Release lock for retry
+            autoLogRetryCount.set(spotId, retryAttempt + 1);
+            
+            setTimeout(() => {
+                performAutoLog(spotId, retryAttempt + 1);
+            }, delay);
+        } else {
+            if (window.debugLog) window.debugLog(`❌ AutoLog error after ${AUTO_LOG_MAX_RETRIES} retries: ${error.message}`);
+            soundManager.playSound('error');
+            autoLogRetryCount.delete(spotId);
+        }
     } finally {
-        // Always remove from being logged set
-        spotsBeingLogged.delete(spotId);
+        // Always remove from being logged set (unless retrying)
+        if (retryAttempt >= AUTO_LOG_MAX_RETRIES || !autoLogRetryCount.has(spotId)) {
+            spotsBeingLogged.delete(spotId);
+        }
     }
 }
 

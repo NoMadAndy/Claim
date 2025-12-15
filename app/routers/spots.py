@@ -56,9 +56,10 @@ async def get_nearby_spots(
     """Get spots within radius of a location"""
     spots_with_distance = spot_service.get_spots_in_radius(db, latitude, longitude, radius)
     
-    # Fetch dominant player colors for all spots in one query to avoid N+1 problem
+    # Fetch dominant player colors and usernames for all spots in one query to avoid N+1 problem
     spot_ids = [spot.id for spot, _ in spots_with_distance if not spot.is_loot]
     dominant_colors = {}
+    dominant_players = {}
     if spot_ids:
         # Use window function to get top claim for each spot
         # Subquery to rank claims by value per spot
@@ -66,6 +67,7 @@ async def get_nearby_spots(
             select(
                 Claim.spot_id,
                 User.heatmap_color,
+                User.username,
                 func.row_number().over(
                     partition_by=Claim.spot_id,
                     order_by=Claim.claim_value.desc()
@@ -81,11 +83,12 @@ async def get_nearby_spots(
         
         # Get only rank 1 (top claim) for each spot
         top_claims = db.execute(
-            select(ranked_claims.c.spot_id, ranked_claims.c.heatmap_color)
+            select(ranked_claims.c.spot_id, ranked_claims.c.heatmap_color, ranked_claims.c.username)
             .where(ranked_claims.c.rank == 1)
         ).all()
         
-        dominant_colors = {spot_id: color for spot_id, color in top_claims}
+        dominant_colors = {spot_id: color for spot_id, color, username in top_claims}
+        dominant_players = {spot_id: username for spot_id, color, username in top_claims}
     
     result = []
     for spot, distance in spots_with_distance:
@@ -97,17 +100,26 @@ async def get_nearby_spots(
         cooldown_status = None
         if not spot.is_loot:
             log_status = spot_service.get_log_status(db, current_user.id, spot.id)
-            # Determine status based on cooldowns
+            # Determine status based on BOTH auto and manual cooldowns
+            # Show cooldown if EITHER log type is on cooldown
             PARTIAL_COOLDOWN_THRESHOLD_SECONDS = 150  # 2.5 minutes
-            if log_status["can_manual_log"]:
+            
+            # Use the maximum of auto and manual cooldowns for visual indicator
+            max_cooldown = max(
+                log_status["auto_cooldown_remaining"],
+                log_status["manual_cooldown_remaining"]
+            )
+            
+            if max_cooldown == 0:
                 cooldown_status = "ready"
-            elif log_status["manual_cooldown_remaining"] < PARTIAL_COOLDOWN_THRESHOLD_SECONDS:
+            elif max_cooldown < PARTIAL_COOLDOWN_THRESHOLD_SECONDS:
                 cooldown_status = "partial"
             else:
                 cooldown_status = "cooldown"
         
-        # Get dominant player color from pre-fetched data
+        # Get dominant player color and username from pre-fetched data
         dominant_player_color = dominant_colors.get(spot.id)
+        dominant_player_name = dominant_players.get(spot.id)
         
         result.append(SpotResponse(
             id=spot.id,
@@ -122,7 +134,8 @@ async def get_nearby_spots(
             loot_expires_at=spot.loot_expires_at,
             loot_xp=spot.loot_xp,
             cooldown_status=cooldown_status,
-            dominant_player_color=dominant_player_color
+            dominant_player_color=dominant_player_color,
+            dominant_player_name=dominant_player_name
         ))
     
     return result
