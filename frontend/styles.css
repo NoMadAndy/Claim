@@ -446,18 +446,21 @@ body {
     background: var(--dominant-color, #22c55e);
     box-shadow: 0 0 15px var(--dominant-color, #22c55e), 
                 0 0 8px var(--dominant-color, #22c55e);
+    animation: none; /* Disable pulse animation to show solid player color */
 }
 
 .spot-marker-partial[data-dominant-color] {
     background: var(--dominant-color, #f59e0b);
     box-shadow: 0 0 15px var(--dominant-color, #f59e0b), 
                 0 0 8px var(--dominant-color, #f59e0b);
+    animation: none; /* Disable pulse animation to show solid player color */
 }
 
 .spot-marker-cooldown[data-dominant-color] {
     background: var(--dominant-color, #ef4444);
     box-shadow: 0 0 15px var(--dominant-color, #ef4444), 
                 0 0 8px var(--dominant-color, #ef4444);
+    animation: none; /* Disable pulse animation to show solid player color */
 }
 
 .loot-marker {
