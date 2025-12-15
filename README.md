@@ -2,7 +2,7 @@
 
 Ein ortsbasiertes Echtzeit-GPS-Spiel mit FastAPI, WebSockets, PostGIS und Leaflet.
 
-**Aktuelle Version:** v1.2.1
+**Aktuelle Version:** v1.2.2
 
 ## 🎮 Spielprinzip
 
@@ -55,8 +55,9 @@ Ein ortsbasiertes Echtzeit-GPS-Spiel mit FastAPI, WebSockets, PostGIS und Leafle
 - Historische Tracks anzeigen
 - Statistiken: Distanz, Dauer
 - **Smooth Player Movement**: Flüssige Spielerbewegung mit Interpolation
-- **Verbesserte Trail-Effekte für maximale Sichtbarkeit**:
-  - Größere Trail-Punkte (11-14px Radius) mit deutlich stärkeren Multi-Layer-Glow-Effekten
+- **Verbesserte Trail-Effekte in Spielerfarbe**:
+  - Trail verwendet individuelle Spielerfarbe (aus Heatmap-Farbe)
+  - Größere Trail-Punkte (11-14px Radius) mit dynamischen Glow-Effekten in Spielerfarbe
   - Weißer Stroke-Outline für optimalen Kontrast auf allen Kartenhintergründen (OSM, Satellite, Topo)
   - Erhöhte Opazität für bessere Sichtbarkeit bei direktem Sonnenlicht
   - Schnelle Bewegungen erzeugen noch hellere Trail-Punkte mit stärkeren Effekten
@@ -85,9 +86,12 @@ Ein ortsbasiertes Echtzeit-GPS-Spiel mit FastAPI, WebSockets, PostGIS und Leafle
 Claim bietet umfassende Funktionen zur Überwachung und Optimierung des Energieverbrauchs:
 
 - **Batterie-Status-Anzeige**: Echtzeit-Überwachung des Batterielevels und Ladestatus
+  - ⚠️ **iPhone/iOS Hinweis**: Battery Status API ist auf iOS-Geräten nicht verfügbar (Apple-Plattformbeschränkung)
+  - Auf iPhone/iPad werden alternative Optimierungsoptionen angeboten
 - **Verbrauchsanalyse**: Identifikation der energieintensivsten Prozesse (GPS, Netzwerk, Tracking, etc.)
 - **Restlaufzeit-Schätzung**: Berechnung der geschätzten verbleibenden Akkulaufzeit basierend auf aktuellem Verbrauchsmuster
 - **Energiesparmodus**: Manuell aktivierbar oder automatisch bei niedrigem Akkustand
+  - Auf iPhone/iPad: Manuelle Aktivierung verfügbar (automatische Aktivierung nicht möglich ohne Battery API)
 - **Intelligente Optimierungen**:
   - Reduzierte GPS-Update-Frequenz im Energiesparmodus
   - Verringerte WebSocket-Update-Rate
@@ -95,9 +99,17 @@ Claim bietet umfassende Funktionen zur Überwachung und Optimierung des Energiev
   - Batch-Verarbeitung von Netzwerk-Anfragen
 - **Optimierungsvorschläge**: Personalisierte Tipps basierend auf Nutzungsmustern
 - **Konfigurierbare Schwellwerte**: Anpassbare Einstellungen für automatische Aktivierung
+  - Auf iPhone/iPad: Auto-Enable-Einstellung nicht verfügbar
 - **Metriken-Tracking**: Automatische Aufzeichnung des Energieverbrauchs für Analysen
 
 **Zugriff**: Öffne die Einstellungen (⚙️) → Tab "🔋 Energy" für alle Energie-Features
+
+**iPhone/iOS Unterstützung**: 
+- ✅ Energiesparmodus (manuell)
+- ✅ Verbrauchsanalyse & Optimierungsvorschläge
+- ✅ Alle GPS/Netzwerk-Optimierungen
+- ❌ Battery Status API (nicht verfügbar auf iOS)
+- ❌ Automatische Aktivierung bei niedrigem Akkustand
 
 #### iPhone/iOS Audio Support
 Claim implementiert umfangreiche Optimierungen für zuverlässige Soundausgabe auf iPhones:
@@ -369,11 +381,19 @@ Kurze, präzise Beschreibung der Änderung (1 Zeile)
 #### Stats Bar (oben)
 - Level, XP-Balken, Claim-Punkte
 - Ausklappbare Details (Logs, Spots, Tracks, Inventar)
+- **Spieler-Farben-Anzeige**: 
+  - Verbesserte Darstellung mit größeren Farbboxen (36x36px)
+  - Weiße Rahmen und Schatteneffekte für bessere Sichtbarkeit
+  - Sekundärer Farbindikator mit Glow-Effekt
+  - Optimierter Kontrast für Hell- und Dunkelmodus
 
 #### Karte
 - OpenStreetMap, Satellite, Topo-Layer
-- Spot-Marker (permanent & Loot)
-- Spieler-Marker mit Heading
+- **Spot-Marker** (permanent & Loot):
+  - Automatisch verborgen bei Zoom-Level < 13 für bessere Übersicht
+  - Nur Hex-Tiles bleiben bei niedrigem Zoom sichtbar
+- **Spieler-Marker** mit Heading und farbigem Trail
+  - Trail in individueller Spielerfarbe mit dynamischen Glow-Effekten
 - Heatmap-Layer für Claims
 - Track-Darstellung
 

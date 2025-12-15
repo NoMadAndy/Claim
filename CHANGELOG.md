@@ -1,5 +1,43 @@
 # Changelog
 
+## Version 1.2.2 - 2025-12-15
+**UI/UX Improvements & iPhone Compatibility**
+
+### Neue Features
+- **Changelog immer aktuell**: Settings-Changelog wird jetzt bei jedem Öffnen neu geladen statt gecacht
+  - Zeigt immer die neuesten Änderungen
+  - Entfernt changelogLoaded-Flag, das Updates verhinderte
+- **iPhone/iOS Energy Settings Unterstützung**: 
+  - Automatische Erkennung von iPhone/iPad-Geräten
+  - Hinweis über Battery API-Einschränkungen auf iOS
+  - Ausblenden nicht unterstützter Funktionen (Battery Status, Auto-Enable-Level)
+  - Energie-Optimierungen bleiben verfügbar
+- **Verbesserte Player-Farben in Stats-Anzeige**:
+  - Größere Farbboxen (36x36px statt 30x30px) mit weißen Rahmen
+  - Schatteneffekte für bessere Sichtbarkeit
+  - Sekundärer Farbindikator mit Glow-Effekt
+  - Besserer Kontrast durch Hintergrund-Highlights
+- **Player-Trail in Spielerfarbe**: 
+  - Trail-Dots verwenden jetzt die individuelle Spielerfarbe
+  - Dynamische Glow-Effekte basierend auf Spielerfarbe
+  - Weiße Stroke-Outline für Kontrast auf allen Hintergründen
+- **Zoom-basierte Spot-Sichtbarkeit**:
+  - Spots werden automatisch unter Zoom-Level 13 ausgeblendet
+  - Nur Hex-Tiles bleiben bei niedrigem Zoom sichtbar
+  - Konfigurierbarer Schwellenwert (SPOT_MIN_ZOOM_LEVEL)
+  - Bessere Performance und Übersichtlichkeit bei großer Kartenansicht
+
+### Technische Details
+- iPhone-Erkennung via UserAgent und maxTouchPoints (iPad auf iOS 13+)
+- CSS currentColor für dynamische Trail-Farben
+- updateSpotVisibility() Funktion für Zoom-basierte Marker-Kontrolle
+- Entfernt: changelogLoaded-Flag und unnötige Initialisierungs-Aufrufe
+
+### Wichtige Dateien
+- `frontend/app.js` - Changelog-Fix, Trail-Farben, Spot-Zoom, Player-Colors-UI
+- `frontend/energy-monitor.js` - iPhone-Erkennung, UI-Anpassungen
+- `frontend/styles.css` - Trail-CSS mit dynamischen Farben
+
 ## Version 1.2.1 - 2025-12-14
 **Dominance Display & Player Recognition Enhancements**
 

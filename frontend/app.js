@@ -169,6 +169,9 @@ const TRAIL_DOT_OPACITY_NORMAL = 1;
 const TRAIL_DOT_FILL_OPACITY_FAST = 0.7;
 const TRAIL_DOT_FILL_OPACITY_NORMAL = 0.6;
 
+// Map spot visibility configuration
+const SPOT_MIN_ZOOM_LEVEL = 13; // Hide spots below this zoom level (only show hex tiles)
+
 // Sound Manager
 class SoundManager {
     constructor() {
@@ -1955,6 +1958,9 @@ function initMap() {
     });
     
     map.on('zoomend', () => {
+        // Update spot visibility based on zoom level
+        updateSpotVisibility();
+        
         if (spotReloadTimeout) clearTimeout(spotReloadTimeout);
         spotReloadTimeout = setTimeout(() => {
             if (window.debugLog) window.debugLog('🔍 Zoom changed - reloading spots');
@@ -2581,13 +2587,16 @@ function dropPlayerTrailDot(lat, lng, speed) {
         playerTrailLayer = L.layerGroup().addTo(map);
     }
 
+    // Use current player's color for trail, fallback to default
+    const playerColor = currentUser?.heatmap_color ?? '#667eea';
+    
     const fast = (speed != null && speed >= 2.2);
     const dot = L.circleMarker([lat, lng], {
         radius: fast ? TRAIL_DOT_RADIUS_FAST : TRAIL_DOT_RADIUS_NORMAL,
-        color: '#667eea',
+        color: playerColor,
         weight: fast ? TRAIL_DOT_WEIGHT_FAST : TRAIL_DOT_WEIGHT_NORMAL,
         opacity: fast ? TRAIL_DOT_OPACITY_FAST : TRAIL_DOT_OPACITY_NORMAL,
-        fillColor: '#667eea',
+        fillColor: playerColor,
         fillOpacity: fast ? TRAIL_DOT_FILL_OPACITY_FAST : TRAIL_DOT_FILL_OPACITY_NORMAL,
         interactive: false,
         className: fast ? 'player-trail-dot player-trail-dot-fast' : 'player-trail-dot'
@@ -3155,9 +3164,35 @@ async function loadNearbySpots() {
                 window.debugLog('⚠️ No spots in range (5000m radius)');
             }
         }
+        
+        // Update spot visibility based on current zoom level
+        updateSpotVisibility();
     } catch (error) {
         if (window.debugLog) window.debugLog(`❌ Failed to load spots: ${error.message}`);
         console.error('Failed to load spots:', error);
+    }
+}
+
+// Update spot visibility based on zoom level
+function updateSpotVisibility() {
+    if (!map) return;
+    
+    const currentZoom = map.getZoom();
+    const shouldShowSpots = currentZoom >= SPOT_MIN_ZOOM_LEVEL;
+    
+    // Use CSS class for better performance with many markers
+    // Add or remove class to leaflet pane containing all markers
+    const overlayPane = document.querySelector('.leaflet-overlay-pane');
+    if (overlayPane) {
+        if (shouldShowSpots) {
+            overlayPane.classList.remove('hide-spots');
+        } else {
+            overlayPane.classList.add('hide-spots');
+        }
+    }
+    
+    if (window.debugLog && currentZoom < SPOT_MIN_ZOOM_LEVEL) {
+        window.debugLog(`🔍 Zoom ${currentZoom} < ${SPOT_MIN_ZOOM_LEVEL}: Hiding spots (hex tiles only)`);
     }
 }
 
@@ -4704,9 +4739,6 @@ function showSettings() {
     
     // Show settings tab by default
     switchSettingsTab('settings');
-    
-    // Load changelog if not already loaded
-    loadChangelog();
 }
 
 function closeSettings() {
@@ -4770,6 +4802,8 @@ function switchSettingsTab(tabName) {
             changelogTab.classList.add('active');
             changelogTab.style.display = 'block';
         }
+        // Load changelog when tab is opened (always reload for latest changes)
+        loadChangelog();
     } else if (tabName === 'server-logs') {
         if (serverLogsTab) {
             serverLogsTab.classList.add('active');
@@ -4781,8 +4815,6 @@ function switchSettingsTab(tabName) {
 }
 
 // Changelog Loading
-let changelogLoaded = false;
-
 // Helper function to escape HTML to prevent XSS
 function escapeHtml(text) {
     const div = document.createElement('div');
@@ -4791,7 +4823,7 @@ function escapeHtml(text) {
 }
 
 async function loadChangelog() {
-    if (changelogLoaded) return;
+    // Always reload changelog to get latest changes (removed changelogLoaded check)
     
     const changelogContent = document.getElementById('changelog-content');
     if (!changelogContent) return;
@@ -4808,7 +4840,6 @@ async function loadChangelog() {
         
         if (!entries || entries.length === 0) {
             changelogContent.innerHTML = '<p style="text-align: center; color: #666;">No changelog entries available.</p>';
-            changelogLoaded = true;
             return;
         }
         
@@ -4860,7 +4891,6 @@ async function loadChangelog() {
         });
         
         changelogContent.innerHTML = html;
-        changelogLoaded = true;
         
     } catch (error) {
         console.error('Error loading changelog:', error);
@@ -4995,13 +5025,14 @@ async function loadPlayerColors() {
         
         playerColorsList.innerHTML = response.players.map(player => {
             const colorInput = isAdmin 
-                ? `<input type="color" value="${player.color}" data-user-id="${player.id}" data-username="${player.username}" class="player-color-picker" style="width: 30px; height: 30px; border: none; cursor: pointer; border-radius: 4px;">` 
-                : `<div style="width: 30px; height: 30px; background: ${player.color}; border-radius: 4px; border: 2px solid rgba(255,255,255,0.3);"></div>`;
+                ? `<input type="color" value="${player.color}" data-user-id="${player.id}" data-username="${player.username}" class="player-color-picker" style="width: 36px; height: 36px; border: 2px solid white; cursor: pointer; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">` 
+                : `<div style="width: 36px; height: 36px; background: ${player.color}; border-radius: 6px; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>`;
             
             return `
-                <div style="display: flex; align-items: center; gap: 10px; padding: 4px;">
+                <div style="display: flex; align-items: center; gap: 12px; padding: 6px; background: rgba(255,255,255,0.05); border-radius: 6px;">
                     ${colorInput}
-                    <span style="flex: 1; font-size: 14px;">${player.username}</span>
+                    <span style="flex: 1; font-size: 14px; font-weight: 500; color: white;">${player.username}</span>
+                    <div style="width: 12px; height: 12px; background: ${player.color}; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 8px ${player.color};"></div>
                 </div>
             `;
         }).join('');
