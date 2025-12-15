@@ -17,12 +17,19 @@ Ein ortsbasiertes Echtzeit-GPS-Spiel mit FastAPI, WebSockets, PostGIS und Leafle
 
 #### Auto-Logging & Manual-Logging
 - **Auto-Log**: Automatisch bei ≤20m Entfernung
+  - Kontinuierliche Überprüfung jede Sekunde
+  - Automatische Retry-Logik bei Netzwerkfehlern (bis zu 2 Wiederholungen mit exponentieller Verzögerung)
+  - GPS-Genauigkeitsfilter: Nur bei Genauigkeit ≤50m
+  - Verhindert doppelte Logs durch intelligente Deduplizierung
 - **Manual-Log**: Manuell bei ≤100m Entfernung
 - **Cooldown**: 5 Minuten pro Spot
+  - Auto-Logs werden durch Auto- UND Manual-Logs blockiert
+  - Manual-Logs werden nur durch andere Manual-Logs blockiert
 - **Visuelle Cooldown-Anzeige**: Spots werden farbig markiert mit pulsierenden Glow-Effekten
-  - 🟢 Grün mit Glow: Bereit zum Loggen
-  - 🟡 Gelb/Orange mit Glow: Teilweise Abklingzeit (< 2.5 Min)
-  - 🔴 Rot mit Glow: Volle Abklingzeit
+  - 🟢 Grün mit Glow: Bereit zum Loggen (beide Log-Typen verfügbar)
+  - 🟡 Gelb/Orange mit Glow: Teilweise Abklingzeit (< 2.5 Min auf irgendeinem Log-Typ)
+  - 🔴 Rot mit Glow: Volle Abklingzeit (mindestens ein Log-Typ auf Cooldown)
+  - **Funktioniert für Auto- UND Manual-Logs identisch** - zeigt immer den längeren der beiden Cooldowns
   - Automatische Aktualisierung alle 15 Sekunden und direkt nach jedem Log
 - Belohnungen: XP, Claim-Punkte, optional Items
 
@@ -34,10 +41,13 @@ Ein ortsbasiertes Echtzeit-GPS-Spiel mit FastAPI, WebSockets, PostGIS und Leafle
 - **Territory-Overlay mit Dominanz-Anzeige**: 
   - Hex-Tiles zeigen die Farbe des dominierenden Spielers pro Bereich
   - Automatische Berechnung der Dominanz basierend auf Claim-Punkten
-- **Spot-Dominanz-Markierung**:
-  - Spots zeigen farbigen Ring des dominierenden Spielers
+- **Spot-Besitzer-Anzeige**:
+  - Jeder Spot zeigt den aktuellen Besitzer (Spieler mit den meisten Claim-Punkten)
+  - 👑 Crown-Icon im Popup mit Spielername in der Spielerfarbe
+  - Farbiger Ring um den Spot in der Farbe des dominierenden Spielers
+  - Top 3 Claimer im Detail-Bereich des Popups
   - Cooldown-Status bleibt als Spot-Farbe sichtbar (grün/gelb/rot)
-  - Kombinierte Anzeige: Cooldown + Dominanz gleichzeitig erkennbar
+  - Kombinierte Anzeige: Cooldown + Dominanz + Besitzer gleichzeitig erkennbar
 
 #### Tracking
 - Live-Tracking ein-/ausschaltbar
@@ -45,7 +55,12 @@ Ein ortsbasiertes Echtzeit-GPS-Spiel mit FastAPI, WebSockets, PostGIS und Leafle
 - Historische Tracks anzeigen
 - Statistiken: Distanz, Dauer
 - **Smooth Player Movement**: Flüssige Spielerbewegung mit Interpolation
-- **Deutlich sichtbare Trail-Effekte**: Größere Trail-Punkte mit stärkeren Glow-Effekten beim Bewegen
+- **Verbesserte Trail-Effekte für maximale Sichtbarkeit**:
+  - Größere Trail-Punkte (11-14px Radius) mit deutlich stärkeren Multi-Layer-Glow-Effekten
+  - Weißer Stroke-Outline für optimalen Kontrast auf allen Kartenhintergründen (OSM, Satellite, Topo)
+  - Erhöhte Opazität für bessere Sichtbarkeit bei direktem Sonnenlicht
+  - Schnelle Bewegungen erzeugen noch hellere Trail-Punkte mit stärkeren Effekten
+  - Automatische GPS-Genauigkeitsfilterung (nur bei ≤45m Genauigkeit)
 - **Optimierte Kartenfolge**: Schnellere und flüssigere Kartenanpassung im Follow-Modus
 
 #### Kompass & Heading
@@ -552,6 +567,51 @@ psql -U claim_user -d claim_db -c "CREATE EXTENSION IF NOT EXISTS postgis;"
 - HTTPS erforderlich (außer localhost)
 - Browser-Berechtigungen prüfen
 - Mobile: Standortdienste aktiviert?
+
+### Auto-Log funktioniert nicht oder ist unzuverlässig
+
+#### Häufige Ursachen und Lösungen:
+
+1. **GPS-Genauigkeit zu niedrig**
+   - Auto-Log benötigt GPS-Genauigkeit ≤50m
+   - Bei schlechter GPS-Qualität wird Auto-Log automatisch pausiert
+   - **Lösung**: Freie Sicht zum Himmel, GPS-Kalibrierung auf dem Gerät
+
+2. **Cooldown noch aktiv**
+   - Nach Manual-Log: 5 Min Cooldown für Auto- UND Manual-Log
+   - Nach Auto-Log: 5 Min Cooldown nur für Auto-Log
+   - **Prüfen**: Spot-Farbe (rot/gelb = Cooldown aktiv)
+
+3. **Zu weit vom Spot entfernt**
+   - Auto-Log aktiviert sich erst bei ≤20m Entfernung
+   - **Prüfen**: Debug-Logs zeigen tatsächliche Entfernung
+   - **Tipp**: Manual-Log funktioniert bis 100m
+
+4. **Netzwerkprobleme**
+   - Auto-Log verwendet automatische Retry-Logik (bis 2x)
+   - Bei wiederholten Fehlern wird 5-Min-Cooldown gesetzt
+   - **Debug aktivieren**: Browser-Konsole zeigt detaillierte Auto-Log-Meldungen
+   - **Lösung**: Stabile Internetverbindung prüfen
+
+5. **Debug-Modus aktivieren**
+   ```javascript
+   // In Browser-Konsole eingeben für detaillierte Auto-Log-Logs:
+   window.debugLog = console.log.bind(console, '[DEBUG]');
+   ```
+   Zeigt: Trigger-Distanzen, GPS-Genauigkeit, Retry-Versuche, Cooldown-Status
+
+#### Konfiguration (app/config.py):
+```python
+AUTO_LOG_DISTANCE = 20.0  # Meter - Radius für Auto-Log
+LOG_COOLDOWN = 300  # Sekunden (5 Minuten)
+```
+
+#### Performance-Tuning (frontend/app.js):
+```javascript
+AUTO_LOG_MAX_RETRIES = 2  // Anzahl Wiederholungen bei Fehlern
+AUTO_LOG_RETRY_DELAY_MS = 2000  // Basisverzögerung in ms (exponentiell)
+// Check-Intervall: 1 Sekunde (setInterval in initApp)
+```
 
 ## 📄 Lizenz
 
