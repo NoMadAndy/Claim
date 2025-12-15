@@ -157,6 +157,17 @@ const lastAutoLogTime = new Map();
 const autoLogRetryCount = new Map();
 const AUTO_LOG_MAX_RETRIES = 2;
 const AUTO_LOG_RETRY_DELAY_MS = 2000;
+const AUTO_LOG_MAX_DELAY_MS = 10000; // Cap maximum retry delay
+
+// Player trail configuration constants
+const TRAIL_DOT_RADIUS_FAST = 14;
+const TRAIL_DOT_RADIUS_NORMAL = 11;
+const TRAIL_DOT_WEIGHT_FAST = 4;
+const TRAIL_DOT_WEIGHT_NORMAL = 4;
+const TRAIL_DOT_OPACITY_FAST = 1;
+const TRAIL_DOT_OPACITY_NORMAL = 1;
+const TRAIL_DOT_FILL_OPACITY_FAST = 0.7;
+const TRAIL_DOT_FILL_OPACITY_NORMAL = 0.6;
 
 // Sound Manager
 class SoundManager {
@@ -2572,12 +2583,12 @@ function dropPlayerTrailDot(lat, lng, speed) {
 
     const fast = (speed != null && speed >= 2.2);
     const dot = L.circleMarker([lat, lng], {
-        radius: fast ? 14 : 11,  // Increased from 10/8 to 14/11 for better visibility
+        radius: fast ? TRAIL_DOT_RADIUS_FAST : TRAIL_DOT_RADIUS_NORMAL,
         color: '#667eea',
-        weight: 4,  // Increased from 3 to 4 for thicker border
-        opacity: 1,  // Increased from 0.9 to 1 for maximum visibility
+        weight: fast ? TRAIL_DOT_WEIGHT_FAST : TRAIL_DOT_WEIGHT_NORMAL,
+        opacity: fast ? TRAIL_DOT_OPACITY_FAST : TRAIL_DOT_OPACITY_NORMAL,
         fillColor: '#667eea',
-        fillOpacity: fast ? 0.7 : 0.6,  // Increased from 0.5/0.4 to 0.7/0.6
+        fillOpacity: fast ? TRAIL_DOT_FILL_OPACITY_FAST : TRAIL_DOT_FILL_OPACITY_NORMAL,
         interactive: false,
         className: fast ? 'player-trail-dot player-trail-dot-fast' : 'player-trail-dot'
     });
@@ -3284,7 +3295,7 @@ async function performAutoLog(spotId, retryAttempt = 0) {
         if (response.status && response.status >= 500 && response.status < 600) {
             // Server error - retry if we haven't exceeded max retries
             if (retryAttempt < AUTO_LOG_MAX_RETRIES) {
-                const delay = AUTO_LOG_RETRY_DELAY_MS * Math.pow(2, retryAttempt); // Exponential backoff
+                const delay = Math.min(AUTO_LOG_MAX_DELAY_MS, AUTO_LOG_RETRY_DELAY_MS * Math.pow(2, retryAttempt)); // Exponential backoff with cap
                 if (window.debugLog) window.debugLog(`⚠️ AutoLog server error ${response.status} - retrying in ${delay}ms`);
                 
                 spotsBeingLogged.delete(spotId); // Release lock for retry
@@ -3349,7 +3360,7 @@ async function performAutoLog(spotId, retryAttempt = 0) {
     } catch (error) {
         // Handle unexpected errors with retry logic
         if (retryAttempt < AUTO_LOG_MAX_RETRIES) {
-            const delay = AUTO_LOG_RETRY_DELAY_MS * Math.pow(2, retryAttempt);
+            const delay = Math.min(AUTO_LOG_MAX_DELAY_MS, AUTO_LOG_RETRY_DELAY_MS * Math.pow(2, retryAttempt));
             if (window.debugLog) window.debugLog(`❌ AutoLog error: ${error.message} - retrying in ${delay}ms`);
             
             spotsBeingLogged.delete(spotId); // Release lock for retry

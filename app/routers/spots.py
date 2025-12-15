@@ -87,8 +87,8 @@ async def get_nearby_spots(
             .where(ranked_claims.c.rank == 1)
         ).all()
         
-        dominant_colors = {spot_id: color for spot_id, color, _ in top_claims}
-        dominant_players = {spot_id: username for spot_id, _, username in top_claims}
+        dominant_colors = {spot_id: color for spot_id, color, username in top_claims}
+        dominant_players = {spot_id: username for spot_id, color, username in top_claims}
     
     result = []
     for spot, distance in spots_with_distance:

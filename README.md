@@ -602,14 +602,19 @@ psql -U claim_user -d claim_db -c "CREATE EXTENSION IF NOT EXISTS postgis;"
 
 #### Konfiguration (app/config.py):
 ```python
-AUTO_LOG_DISTANCE = 20.0  # Meter - Radius für Auto-Log
-LOG_COOLDOWN = 300  # Sekunden (5 Minuten)
+# Game Settings mit Pydantic Field defaults
+AUTO_LOG_DISTANCE: float = Field(default=20.0)  # Meter - Radius für Auto-Log
+MANUAL_LOG_DISTANCE: float = Field(default=100.0)  # Meter - Radius für Manual-Log
+LOG_COOLDOWN: int = Field(default=300)  # Sekunden (5 Minuten)
 ```
 
 #### Performance-Tuning (frontend/app.js):
 ```javascript
-AUTO_LOG_MAX_RETRIES = 2  // Anzahl Wiederholungen bei Fehlern
-AUTO_LOG_RETRY_DELAY_MS = 2000  // Basisverzögerung in ms (exponentiell)
+// Autolog retry configuration constants
+const AUTO_LOG_MAX_RETRIES = 2;  // Anzahl Wiederholungen bei Fehlern
+const AUTO_LOG_RETRY_DELAY_MS = 2000;  // Basisverzögerung in ms (exponentiell)
+const AUTO_LOG_MAX_DELAY_MS = 10000;  // Maximale Verzögerung (Cap)
+
 // Check-Intervall: 1 Sekunde (setInterval in initApp)
 ```
 
