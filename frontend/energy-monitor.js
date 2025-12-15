@@ -11,6 +11,13 @@ class EnergyMonitor {
     
     // Detect if running on iPhone/iOS
     static isIPhone() {
+        // Modern detection using userAgentData when available
+        if (navigator.userAgentData) {
+            return navigator.userAgentData.mobile || 
+                   navigator.userAgentData.platform === 'iOS';
+        }
+        
+        // Fallback to userAgent check (works but can be spoofed)
         // Check for iPhone/iPad/iPod
         const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
                       // Check for iPad on iOS 13+ which reports as Mac
@@ -220,7 +227,7 @@ class EnergyMonitor {
             if (batteryStatus) {
                 // Add a notice instead of hiding completely
                 const notice = document.createElement('div');
-                notice.style.cssText = 'margin: 15px 0; padding: 12px; background: rgba(251, 191, 36, 0.1); border-left: 3px solid #fbbf24; border-radius: 4px; font-size: 12px; color: #fbbf24;';
+                notice.className = 'ios-notice';
                 notice.innerHTML = '📱 <strong>iPhone/iOS Note:</strong> Battery Status API is not available on iOS devices due to platform restrictions. Basic energy optimization features are still available below.';
                 batteryStatus.parentNode.insertBefore(notice, batteryStatus);
                 batteryStatus.style.display = 'none';

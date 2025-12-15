@@ -2,7 +2,7 @@
 
 Ein ortsbasiertes Echtzeit-GPS-Spiel mit FastAPI, WebSockets, PostGIS und Leaflet.
 
-**Aktuelle Version:** v1.2.1
+**Aktuelle Version:** v1.2.2
 
 ## 🎮 Spielprinzip
 

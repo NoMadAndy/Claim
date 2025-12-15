@@ -2588,7 +2588,7 @@ function dropPlayerTrailDot(lat, lng, speed) {
     }
 
     // Use current player's color for trail, fallback to default
-    const playerColor = (currentUser && currentUser.heatmap_color) ? currentUser.heatmap_color : '#667eea';
+    const playerColor = currentUser?.heatmap_color ?? '#667eea';
     
     const fast = (speed != null && speed >= 2.2);
     const dot = L.circleMarker([lat, lng], {
@@ -3180,17 +3180,16 @@ function updateSpotVisibility() {
     const currentZoom = map.getZoom();
     const shouldShowSpots = currentZoom >= SPOT_MIN_ZOOM_LEVEL;
     
-    // Show or hide all spot markers based on zoom level
-    spotMarkers.forEach((marker, spotId) => {
-        const markerElement = marker.getElement();
-        if (markerElement) {
-            if (shouldShowSpots) {
-                markerElement.style.display = '';
-            } else {
-                markerElement.style.display = 'none';
-            }
+    // Use CSS class for better performance with many markers
+    // Add or remove class to leaflet pane containing all markers
+    const overlayPane = document.querySelector('.leaflet-overlay-pane');
+    if (overlayPane) {
+        if (shouldShowSpots) {
+            overlayPane.classList.remove('hide-spots');
+        } else {
+            overlayPane.classList.add('hide-spots');
         }
-    });
+    }
     
     if (window.debugLog && currentZoom < SPOT_MIN_ZOOM_LEVEL) {
         window.debugLog(`🔍 Zoom ${currentZoom} < ${SPOT_MIN_ZOOM_LEVEL}: Hiding spots (hex tiles only)`);

@@ -241,6 +241,18 @@ body {
     display: none;
 }
 
+/* iOS/iPhone notice for unavailable features */
+.ios-notice {
+    margin: 15px 0;
+    padding: 12px;
+    background: rgba(251, 191, 36, 0.1);
+    border-left: 3px solid #fbbf24;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #fbbf24;
+    line-height: 1.4;
+}
+
 .modal-content {
     background: white;
     border-radius: 20px;
@@ -411,6 +423,15 @@ body {
     height: 15px;
     transition: background 0.3s ease, box-shadow 0.3s ease;
     box-shadow: 0 0 12px rgba(136, 136, 136, 0.6), 0 0 6px rgba(136, 136, 136, 0.8);
+}
+
+/* Hide spots at low zoom levels (controlled by JS) */
+.leaflet-overlay-pane.hide-spots .spot-marker,
+.leaflet-overlay-pane.hide-spots .spot-marker-ready,
+.leaflet-overlay-pane.hide-spots .spot-marker-partial,
+.leaflet-overlay-pane.hide-spots .spot-marker-cooldown,
+.leaflet-overlay-pane.hide-spots .loot-marker {
+    display: none !important;
 }
 
 /* Cooldown-based spot colors */
