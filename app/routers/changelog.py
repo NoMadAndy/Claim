@@ -112,7 +112,8 @@ def parse_changelog(content: str) -> List[Dict[str, Any]]:
             # For new version format, first bold text is the subtitle
             # Excluded section headers that shouldn't be treated as subtitles
             excluded_headers = ("**Highlights:", "**Modified:", "**Wichtige Dateien:", 
-                              "**Files:", "**Technische Details", "###")
+                              "**Files:", "**Technische Details:**", "**Technische Details**", 
+                              "**API-Änderungen", "**Zusammenfassung", "###")
             if (not subtitle_found and line.startswith("**") and line.endswith("**") 
                 and not any(line.startswith(prefix) for prefix in excluded_headers)):
                 subtitle = line.strip("*").strip()
@@ -139,8 +140,8 @@ def parse_changelog(content: str) -> List[Dict[str, Any]]:
                 # Parse file count info
                 description_parts.append(line.replace("**Files:**", "").strip())
                 continue
-            elif line.startswith("**Technische Details**"):
-                # Technical details section - treat as description
+            elif line.startswith("**Technische Details"):
+                # Technical details section (with or without colon) - treat as description
                 in_highlights = False
                 in_files = False
                 continue
