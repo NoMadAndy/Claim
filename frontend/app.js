@@ -1957,15 +1957,58 @@ function initMap() {
         }, 500); // Wait 500ms after movement stops
     });
     
+    // Handle zoom events: immediate updates during zoom for smooth scaling
+    map.on('zoom', () => {
+        // Update territory overlay immediately during zoom for smooth scaling
+        if (territoryVisible) {
+            updateTerritoryOverlay();
+        }
+        
+        // Force heatmap layers to redraw immediately during zoom
+        if (heatmapVisible && heatmapLayers.size > 0) {
+            heatmapLayers.forEach((layerGroup, userId) => {
+                layerGroup.eachLayer((layer) => {
+                    // Force redraw of heat layer if it has the method
+                    if (layer && typeof layer.redraw === 'function') {
+                        layer.redraw();
+                    }
+                    // Alternative: trigger internal update via _reset if available
+                    if (layer && typeof layer._reset === 'function') {
+                        layer._reset();
+                    }
+                });
+            });
+        }
+    });
+    
     map.on('zoomend', () => {
         // Update spot visibility based on zoom level
         updateSpotVisibility();
         
+        // Immediately update territory and heatmap on zoom end (no debounce)
+        if (territoryVisible) {
+            updateTerritoryOverlay();
+        }
+        
+        // Force immediate heatmap redraw on zoom end
+        if (heatmapVisible && heatmapLayers.size > 0) {
+            heatmapLayers.forEach((layerGroup, userId) => {
+                layerGroup.eachLayer((layer) => {
+                    if (layer && typeof layer.redraw === 'function') {
+                        layer.redraw();
+                    }
+                    if (layer && typeof layer._reset === 'function') {
+                        layer._reset();
+                    }
+                });
+            });
+        }
+        
+        // Reload spots with debounce to avoid excessive API calls
         if (spotReloadTimeout) clearTimeout(spotReloadTimeout);
         spotReloadTimeout = setTimeout(() => {
             if (window.debugLog) window.debugLog('🔍 Zoom changed - reloading spots');
             loadNearbySpots();
-            if (territoryVisible) scheduleTerritoryUpdate();
         }, 500); // Wait 500ms after zoom stops
     });
 }
@@ -4221,11 +4264,14 @@ async function loadHeatmap() {
                     }
                     
                     // Create heatmap with specific color gradient
-                    // Note: maxZoom removed to prevent zoom-based intensity scaling (keeps heatmap stable during zoom)
+                    // Use max parameter to prevent intensity from scaling with zoom
+                    // Set maxZoom to current map maxZoom to ensure consistent rendering
                     const heat = L.heatLayer(points, {
                         radius: 25,
                         blur: 35,
                         minOpacity: 0.4,
+                        max: 1.0,  // Fixed maximum intensity (prevents auto-scaling)
+                        maxZoom: map.getMaxZoom(),  // Lock to map's maxZoom for stable scaling
                         gradient: colorConfig.gradient
                     });
 
@@ -4245,11 +4291,13 @@ async function loadHeatmap() {
                         1.0: String(edgeColor || 'white')
                     };
 
-                    // Note: maxZoom removed to prevent zoom-based intensity scaling (keeps heatmap stable during zoom)
+                    // Edge heat layer with same max/maxZoom for consistent zoom behavior
                     const edgeHeat = L.heatLayer(points, {
                         radius: 32,
                         blur: 22,
                         minOpacity: 0.08,
+                        max: 1.0,  // Fixed maximum intensity
+                        maxZoom: map.getMaxZoom(),  // Lock to map's maxZoom for stable scaling
                         gradient: edgeGradient
                     });
 
