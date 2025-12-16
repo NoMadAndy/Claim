@@ -76,20 +76,31 @@ def parse_changelog(content: str) -> List[Dict[str, Any]]:
         
         # Parse date and title from header
         # Supported formats:
+        #   - "Version 1.2.3 - 2025-12-16"
         #   - "2025-12-10 22:22:32"
         #   - "2025-12-09 Feature Release: Loot Spots & Logging"
-        date_match = re.match(r'^(\d{4}-\d{2}-\d{2}(?:\s+\d{2}:\d{2}:\d{2})?)\s*(.*)', header)
-        if date_match:
-            entry["date"] = date_match.group(1).strip()
-            title_part = date_match.group(2).strip()
-            entry["title"] = title_part if title_part else "Update"
+        
+        # Try new version-based format first: "Version X.Y.Z - YYYY-MM-DD"
+        version_match = re.match(r'^Version\s+([\d.]+)\s+-\s+(\d{4}-\d{2}-\d{2}(?:\s+\d{2}:\d{2}:\d{2})?)', header)
+        if version_match:
+            version = version_match.group(1).strip()
+            entry["date"] = version_match.group(2).strip()
+            entry["title"] = f"Version {version}"
         else:
-            entry["title"] = header
+            # Try old format: date at the beginning
+            date_match = re.match(r'^(\d{4}-\d{2}-\d{2}(?:\s+\d{2}:\d{2}:\d{2})?)\s*(.*)', header)
+            if date_match:
+                entry["date"] = date_match.group(1).strip()
+                title_part = date_match.group(2).strip()
+                entry["title"] = title_part if title_part else "Update"
+            else:
+                entry["title"] = header
         
         # Parse content
         in_highlights = False
         in_files = False
         description_parts = []
+        subtitle_found = False
         
         for line in lines[1:]:
             line = line.strip()
@@ -98,7 +109,26 @@ def parse_changelog(content: str) -> List[Dict[str, Any]]:
             if any(marker in line for marker in ['<<<<<<<', '=======', '>>>>>>>']):
                 continue
             
-            if line.startswith("**Highlights:**"):
+            # For new version format, first bold text is the subtitle
+            # Excluded section headers that shouldn't be treated as subtitles
+            excluded_headers = ("**Highlights:", "**Modified:", "**Wichtige Dateien:", 
+                              "**Files:", "**Technische Details:**", "**Technische Details**", 
+                              "**API-Änderungen", "**Zusammenfassung", "###")
+            if (not subtitle_found and line.startswith("**") and line.endswith("**") 
+                and not any(line.startswith(prefix) for prefix in excluded_headers)):
+                subtitle = line.strip("*").strip()
+                if subtitle and entry["title"].startswith("Version "):
+                    entry["title"] = f"{entry['title']}: {subtitle}"
+                    subtitle_found = True
+                    continue
+            
+            # Handle section headers (### Neue Features, ### Fehlerbehebungen, etc.)
+            if line.startswith("###"):
+                # Section headers indicate start of highlights section
+                in_highlights = True
+                in_files = False
+                continue
+            elif line.startswith("**Highlights:**"):
                 in_highlights = True
                 in_files = False
                 continue
@@ -109,6 +139,11 @@ def parse_changelog(content: str) -> List[Dict[str, Any]]:
             elif line.startswith("**Files:**"):
                 # Parse file count info
                 description_parts.append(line.replace("**Files:**", "").strip())
+                continue
+            elif line.startswith("**Technische Details"):
+                # Technical details section (with or without colon) - treat as description
+                in_highlights = False
+                in_files = False
                 continue
             elif line.startswith("**"):
                 in_highlights = False
