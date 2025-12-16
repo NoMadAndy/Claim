@@ -1,5 +1,20 @@
 # Changelog
 
+## Version 1.2.3 - 2025-12-16
+**Heatmap Zoom-Stabilität**
+
+### Fehlerbehebungen
+- **Heatmap bleibt bei Zoom stabil**: 
+  - Behebt Problem, bei dem Heatmap beim Zoomen "nachgezogen" wurde
+  - Entfernt `maxZoom` Option aus Heatmap-Layern (verhindert zoom-basierte Intensitätsskalierung)
+  - Heatmap-Darstellung bleibt jetzt während Zoom-Operationen visuell stabil
+  - Player marker und Spots waren bereits korrekt konfiguriert
+
+### Technische Details
+- Entfernt `maxZoom: 17` aus primärem Heatmap-Layer
+- Entfernt `maxZoom: 17` aus Edge-Glow Heatmap-Layer
+- Leaflet.heat verwendet jetzt automatisch die maximale Zoom-Stufe der Karte
+
 ## Version 1.2.2 - 2025-12-15
 **UI/UX Improvements & iPhone Compatibility**
 

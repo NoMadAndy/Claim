@@ -4221,10 +4221,10 @@ async function loadHeatmap() {
                     }
                     
                     // Create heatmap with specific color gradient
+                    // Note: maxZoom removed to prevent zoom-based intensity scaling (keeps heatmap stable during zoom)
                     const heat = L.heatLayer(points, {
                         radius: 25,
                         blur: 35,
-                        maxZoom: 17,
                         minOpacity: 0.4,
                         gradient: colorConfig.gradient
                     });
@@ -4245,10 +4245,10 @@ async function loadHeatmap() {
                         1.0: String(edgeColor || 'white')
                     };
 
+                    // Note: maxZoom removed to prevent zoom-based intensity scaling (keeps heatmap stable during zoom)
                     const edgeHeat = L.heatLayer(points, {
                         radius: 32,
                         blur: 22,
-                        maxZoom: 17,
                         minOpacity: 0.08,
                         gradient: edgeGradient
                     });
