@@ -3,6 +3,27 @@
 const API_BASE = window.location.origin + '/api';
 const WS_BASE = (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + window.location.host + '/ws';
 
+// Spot type icon mapping (Unicode/Emoji)
+const SPOT_TYPE_ICONS = {
+    'standard': '📍',
+    'church': '⛪',
+    'sight': '🏛️',
+    'sports_facility': '🏃',
+    'playground': '🎮',
+    'monument': '🗿',
+    'museum': '🏛️',
+    'castle': '🏰',
+    'park': '🌳',
+    'viewpoint': '🔭',
+    'historic': '📜',
+    'cultural': '🎭',
+    'religious': '🕌',
+    'townhall': '🏛️',
+    'market': '🏪',
+    'fountain': '⛲',
+    'statue': '🗽'
+};
+
 // Utility function: Device detection
 function isIOSDevice() {
     return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
@@ -2981,6 +3002,25 @@ function createSpotPopupContent(spot) {
     }
     
     // Normal spot popup
+    // Show spot type info if not standard
+    let spotTypeHtml = '';
+    if (spot.spot_type && spot.spot_type !== 'standard') {
+        const spotIcon = SPOT_TYPE_ICONS[spot.spot_type] || '📍';
+        const xpMultiplier = spot.xp_multiplier || 1.0;
+        const claimMultiplier = spot.claim_multiplier || 1.0;
+        let bonusText = '';
+        if (xpMultiplier > 1.0 || claimMultiplier > 1.0) {
+            bonusText = `<div style="font-size: 10px; color: #22c55e; margin-top: 2px;">
+                ${xpMultiplier > 1.0 ? `+${Math.round((xpMultiplier - 1) * 100)}% XP` : ''}
+                ${xpMultiplier > 1.0 && claimMultiplier > 1.0 ? ' • ' : ''}
+                ${claimMultiplier > 1.0 ? `+${Math.round((claimMultiplier - 1) * 100)}% Claims` : ''}
+            </div>`;
+        }
+        spotTypeHtml = `<div style="font-size: 11px; margin: 3px 0; padding: 3px 6px; background: rgba(0,0,0,0.1); border-radius: 3px; display: inline-block;">
+            ${spotIcon} ${spot.spot_type.replace(/_/g, ' ')}${bonusText}
+        </div>`;
+    }
+    
     // Show owner info if available
     let ownerHtml = '';
     if (spot.dominant_player_name) {
@@ -2994,6 +3034,7 @@ function createSpotPopupContent(spot) {
         <div style="padding: 5px;">
             <b style="font-size: 14px;">${spot.name}</b><br>
             ${spot.description ? `<small>${spot.description}</small><br>` : ''}
+            ${spotTypeHtml}
             ${ownerHtml}
             <div id="spot-details-${spot.id}" style="font-size: 11px; margin: 5px 0;">Lädt...</div>
             <div style="margin-top: 5px; display: flex; gap: 5px;">
@@ -3139,12 +3180,25 @@ async function loadNearbySpots() {
                 markerClass = `spot-marker spot-marker-${spot.cooldown_status}`;
             }
             
-            // Create div icon
+            // Add icon class if spot has an icon
+            const spotIcon = spot.icon_name || spot.spot_type;
+            const iconEmoji = SPOT_TYPE_ICONS[spotIcon] || SPOT_TYPE_ICONS['standard'];
+            if (spotIcon && spotIcon !== 'standard') {
+                markerClass += ' has-icon';
+            }
+            
+            // Create div icon HTML with icon support
+            let iconHtml = '';
+            if (spotIcon && spotIcon !== 'standard') {
+                iconHtml = `<div style="font-size: 14px; line-height: 1;">${iconEmoji}</div>`;
+            }
+            
             const iconOptions = {
                 className: markerClass,
-                iconSize: [15, 15],
-                iconAnchor: [7, 7],  // Center the icon on the coordinate (half of iconSize)
-                popupAnchor: [0, -7]  // Position popup above the icon
+                html: iconHtml,
+                iconSize: iconHtml ? [24, 24] : [15, 15],
+                iconAnchor: iconHtml ? [12, 12] : [7, 7],  // Center the icon on the coordinate
+                popupAnchor: iconHtml ? [0, -12] : [0, -7]  // Position popup above the icon
             };
             
             const marker = L.marker([spot.latitude, spot.longitude], {
