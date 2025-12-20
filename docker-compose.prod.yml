@@ -33,6 +33,10 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${DB_USER:-claim_user}:${DB_PASSWORD:-claim_password}@db:5432/${DB_NAME:-claim_db}
+      DB_HOST: db
+      DB_USER: ${DB_USER:-claim_user}
+      DB_PASSWORD: ${DB_PASSWORD:-claim_password}
+      DB_NAME: ${DB_NAME:-claim_db}
       CORS_ORIGINS: "${CORS_ORIGINS:-*}"
       API_PORT: 8000
       TZ: UTC

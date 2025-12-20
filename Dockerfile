@@ -17,6 +17,8 @@ COPY app/ ./app/
 COPY *.sql ./
 COPY *.py ./
 COPY CHANGELOG.md ./
+COPY entrypoint.sh ./
+RUN chmod +x entrypoint.sh
 
 # Create non-root user
 RUN useradd -m -u 1000 claim && chown -R claim:claim /app
@@ -28,4 +30,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["./entrypoint.sh"]
