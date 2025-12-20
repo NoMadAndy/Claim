@@ -1,7 +1,6 @@
 from typing import List
 from sqlalchemy.orm import Session
-from sqlalchemy import func
-from geoalchemy2.functions import ST_X, ST_Y
+from sqlalchemy import func, text
 from app.models import Claim, User, Spot
 from app.schemas import HeatmapData, HeatmapPoint
 
@@ -25,15 +24,18 @@ def get_user_heatmap(db: Session, user_id: int) -> HeatmapData:
     
     points = []
     for claim, spot in claims:
-        # Extract coordinates from PostGIS geometry
-        lat = db.execute(func.ST_Y(spot.location)).scalar()
-        lon = db.execute(func.ST_X(spot.location)).scalar()
-        
-        points.append(HeatmapPoint(
-            latitude=lat,
-            longitude=lon,
-            intensity=claim.claim_value
-        ))
+        # Extract coordinates from PostGIS geometry (cast Geography to Geometry)
+        coords = db.execute(
+            text("SELECT ST_X(location::geometry), ST_Y(location::geometry) FROM spots WHERE id = :id"), 
+            {"id": spot.id}
+        ).fetchone()
+        if coords:
+            lon, lat = coords
+            points.append(HeatmapPoint(
+                latitude=lat,
+                longitude=lon,
+                intensity=claim.claim_value
+            ))
     
     return HeatmapData(
         user_id=user.id,

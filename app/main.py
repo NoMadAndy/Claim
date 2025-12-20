@@ -340,17 +340,26 @@ async def serve_css():
             return response
     return Response(content="/* CSS not found */", media_type="text/css", status_code=404)
 
-@app.get("/app.js")
-async def serve_js():
-    """Serve JavaScript file"""
-    js_path = os.path.join(frontend_path, "app.js")
+# Helper function to serve JavaScript files
+def serve_javascript_file(filename: str):
+    """Helper to serve JavaScript files with proper caching"""
+    js_path = os.path.join(frontend_path, filename)
     if os.path.exists(js_path):
         with open(js_path, "r", encoding="utf-8") as f:
-            # JS can be cached longer since we use cache busters
             response = Response(content=f.read(), media_type="application/javascript")
             response.headers["Cache-Control"] = "public, max-age=3600"
             return response
     return Response(content="/* JS not found */", media_type="application/javascript", status_code=404)
+
+@app.get("/app.js")
+async def serve_js():
+    """Serve JavaScript file"""
+    return serve_javascript_file("app.js")
+
+@app.get("/energy-monitor.js")
+async def serve_energy_monitor():
+    """Serve energy monitor JavaScript file"""
+    return serve_javascript_file("energy-monitor.js")
 
 @app.get("/admin.html")
 async def serve_admin():
