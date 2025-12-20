@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, text
 from geoalchemy2.functions import ST_MakeLine, ST_SetSRID, ST_MakePoint, ST_Length
 from geoalchemy2.elements import WKTElement
 from geoalchemy2.types import Geography
@@ -85,9 +85,12 @@ def update_track_stats(db: Session, track: Track):
     if len(points) < 2:
         return
     
-    # Build LineString from points
-    coords = [f'{db.execute(func.ST_X(p.location)).scalar()} {db.execute(func.ST_Y(p.location)).scalar()}' 
-              for p in points]
+    # Build LineString from points (cast Geography to Geometry)
+    coords = []
+    for p in points:
+        lon = db.execute(text("SELECT ST_X(location::geometry) FROM track_points WHERE id = :id"), {"id": p.id}).scalar()
+        lat = db.execute(text("SELECT ST_Y(location::geometry) FROM track_points WHERE id = :id"), {"id": p.id}).scalar()
+        coords.append(f'{lon} {lat}')
     linestring_wkt = f'LINESTRING({", ".join(coords)})'
     
     track.path = WKTElement(linestring_wkt, srid=4326)
