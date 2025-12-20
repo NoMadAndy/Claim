@@ -2,6 +2,27 @@
 
 This document describes the new spot type system and how to import Points of Interest (POIs) from OpenStreetMap for Bavaria, Germany.
 
+## Automatic Import with Docker
+
+**NEW**: When running the application with Docker Compose, the Bavaria POI import happens automatically on first startup!
+
+The Docker container will:
+1. Wait for the database to be ready
+2. Run the spot types migration
+3. Check if POIs already exist (count > 100)
+4. If no POIs exist, automatically import ~10,000-15,000 POIs from OpenStreetMap
+5. Start the FastAPI application
+
+To use automatic import:
+
+```bash
+docker-compose down -v  # Remove volumes to start fresh (optional)
+docker-compose build
+docker-compose up
+```
+
+The import process takes 5-10 minutes on first startup. Watch the logs to see progress. On subsequent restarts, the import is skipped if POIs already exist.
+
 ## Features
 
 ### Spot Type System
@@ -27,7 +48,7 @@ The application now supports different types of spots with unique characteristic
 
 ## Database Migration
 
-Before importing POIs, run the database migration to add the required columns:
+The database migration runs automatically when using Docker. For manual setup, run:
 
 ```bash
 python migrate_spot_types.py
@@ -43,15 +64,29 @@ The migration supports both PostgreSQL and SQLite databases.
 
 ## Importing Bavaria POIs
 
-### Prerequisites
+### Automatic Import (Docker - Recommended)
 
-Install required dependencies:
+The easiest way to import POIs is using Docker Compose. The import happens automatically on first startup:
+
+```bash
+docker-compose up
+```
+
+See the "Automatic Import with Docker" section above for details.
+
+### Manual Import
+
+For manual setup or custom imports:
+
+#### Prerequisites
+
+Install required dependencies (already included in Docker):
 
 ```bash
 pip install httpx
 ```
 
-### Basic Import
+#### Basic Import
 
 Import all POI types for Bavaria:
 
