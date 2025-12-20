@@ -33,14 +33,28 @@ log_msg "INFO" "Log: $LOG_FILE"
 
 # Track last known commit
 LAST_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "")
-log_msg "INFO" "Initial commit: ${LAST_COMMIT:0:8}"
+if [[ -z "$LAST_COMMIT" ]]; then
+  log_msg "WARN" "Could not determine initial commit (detached HEAD or git error)"
+else
+  log_msg "INFO" "Initial commit: ${LAST_COMMIT:0:8}"
+fi
 
 while true; do
   sleep "$INTERVAL"
   
-  # Fetch latest from remote
-  if ! git fetch origin "$BRANCH" 2>/dev/null; then
-    log_msg "WARN" "Failed to fetch from remote"
+  # Fetch latest from remote (capture error output for debugging)
+  FETCH_OUTPUT=$(git fetch origin "$BRANCH" 2>&1)
+  FETCH_EXIT=$?
+  
+  if [[ $FETCH_EXIT -ne 0 ]]; then
+    log_msg "WARN" "Failed to fetch from remote (exit code: $FETCH_EXIT)"
+    log_msg "DEBUG" "Git fetch error: $FETCH_OUTPUT"
+    
+    # Additional diagnostics
+    if ! git remote get-url origin >/dev/null 2>&1; then
+      log_msg "ERROR" "Git remote 'origin' not configured"
+    fi
+    
     continue
   fi
   
