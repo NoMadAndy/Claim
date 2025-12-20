@@ -88,9 +88,13 @@ def update_track_stats(db: Session, track: Track):
     # Build LineString from points (cast Geography to Geometry)
     coords = []
     for p in points:
-        lon = db.execute(text("SELECT ST_X(location::geometry) FROM track_points WHERE id = :id"), {"id": p.id}).scalar()
-        lat = db.execute(text("SELECT ST_Y(location::geometry) FROM track_points WHERE id = :id"), {"id": p.id}).scalar()
-        coords.append(f'{lon} {lat}')
+        coord = db.execute(
+            text("SELECT ST_X(location::geometry), ST_Y(location::geometry) FROM track_points WHERE id = :id"), 
+            {"id": p.id}
+        ).fetchone()
+        if coord:
+            lon, lat = coord
+            coords.append(f'{lon} {lat}')
     linestring_wkt = f'LINESTRING({", ".join(coords)})'
     
     track.path = WKTElement(linestring_wkt, srid=4326)

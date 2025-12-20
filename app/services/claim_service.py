@@ -25,14 +25,17 @@ def get_user_heatmap(db: Session, user_id: int) -> HeatmapData:
     points = []
     for claim, spot in claims:
         # Extract coordinates from PostGIS geometry (cast Geography to Geometry)
-        lat = db.execute(text("SELECT ST_Y(location::geometry) FROM spots WHERE id = :id"), {"id": spot.id}).scalar()
-        lon = db.execute(text("SELECT ST_X(location::geometry) FROM spots WHERE id = :id"), {"id": spot.id}).scalar()
-        
-        points.append(HeatmapPoint(
-            latitude=lat,
-            longitude=lon,
-            intensity=claim.claim_value
-        ))
+        coords = db.execute(
+            text("SELECT ST_X(location::geometry), ST_Y(location::geometry) FROM spots WHERE id = :id"), 
+            {"id": spot.id}
+        ).fetchone()
+        if coords:
+            lon, lat = coords
+            points.append(HeatmapPoint(
+                latitude=lat,
+                longitude=lon,
+                intensity=claim.claim_value
+            ))
     
     return HeatmapData(
         user_id=user.id,
