@@ -41,7 +41,11 @@ async def create_spot(
         is_permanent=spot.is_permanent,
         is_loot=spot.is_loot,
         created_at=spot.created_at,
-        creator_id=spot.creator_id
+        creator_id=spot.creator_id,
+        spot_type=spot.spot_type,
+        xp_multiplier=spot.xp_multiplier,
+        claim_multiplier=spot.claim_multiplier,
+        icon_name=spot.icon_name
     )
 
 
@@ -135,7 +139,11 @@ async def get_nearby_spots(
             loot_xp=spot.loot_xp,
             cooldown_status=cooldown_status,
             dominant_player_color=dominant_player_color,
-            dominant_player_name=dominant_player_name
+            dominant_player_name=dominant_player_name,
+            spot_type=spot.spot_type,
+            xp_multiplier=spot.xp_multiplier,
+            claim_multiplier=spot.claim_multiplier,
+            icon_name=spot.icon_name
         ))
     
     return result
@@ -249,7 +257,11 @@ async def get_spot(
         created_at=spot.created_at,
         creator_id=spot.creator_id,
         loot_expires_at=spot.loot_expires_at,
-        loot_xp=spot.loot_xp
+        loot_xp=spot.loot_xp,
+        spot_type=spot.spot_type,
+        xp_multiplier=spot.xp_multiplier,
+        claim_multiplier=spot.claim_multiplier,
+        icon_name=spot.icon_name
     )
 
 

@@ -5,7 +5,7 @@ from sqlalchemy import func, and_
 from geoalchemy2.functions import ST_Distance, ST_DWithin, ST_MakePoint, ST_SetSRID
 from geoalchemy2.elements import WKTElement
 from geoalchemy2.types import Geography
-from app.models import Spot, User, Log, Claim
+from app.models import Spot, User, Log, Claim, SpotType
 from app.schemas import SpotCreate
 from app.config import settings
 import pytz
@@ -20,7 +20,18 @@ def get_current_cet():
 
 def create_spot(db: Session, spot_data: SpotCreate, creator: User) -> Spot:
     """Create a new permanent spot"""
+    from app.spot_types_config import get_spot_config
+    
     point = f'POINT({spot_data.longitude} {spot_data.latitude})'
+    
+    # Get configuration for spot type if provided
+    spot_type = spot_data.spot_type or SpotType.STANDARD
+    config = get_spot_config(spot_type)
+    
+    # Use provided multipliers or defaults from config
+    xp_multiplier = spot_data.xp_multiplier if spot_data.xp_multiplier is not None else config["xp_multiplier"]
+    claim_multiplier = spot_data.claim_multiplier if spot_data.claim_multiplier is not None else config["claim_multiplier"]
+    icon_name = spot_data.icon_name or config["icon"]
     
     spot = Spot(
         name=spot_data.name,
@@ -28,7 +39,11 @@ def create_spot(db: Session, spot_data: SpotCreate, creator: User) -> Spot:
         location=WKTElement(point, srid=4326),
         is_permanent=True,
         is_loot=False,
-        creator_id=creator.id
+        creator_id=creator.id,
+        spot_type=spot_type,
+        xp_multiplier=xp_multiplier,
+        claim_multiplier=claim_multiplier,
+        icon_name=icon_name
     )
     db.add(spot)
     db.commit()
