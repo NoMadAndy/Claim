@@ -10,23 +10,24 @@ echo "Database is ready!"
 
 # Run migrations
 echo "Running spot types migration..."
-python3 migrate_spot_types.py || echo "Migration may have already been run"
+if ! python3 migrate_spot_types.py 2>&1 | tee -a /tmp/migration.log; then
+    echo "Warning: Migration command returned non-zero exit code. This may be expected if migration was already applied."
+    echo "Check /tmp/migration.log for details."
+fi
 
 # Check if POIs already exist
 echo "Checking for existing POIs..."
-POI_COUNT=$(python3 -c "
-from app.database import SessionLocal
-from app.models import Spot
-db = SessionLocal()
-count = db.query(Spot).count()
-db.close()
-print(count)
-" 2>/dev/null || echo "0")
+POI_COUNT=$(python3 count_pois.py 2>&1)
 
 if [ "$POI_COUNT" -lt 100 ]; then
     echo "No POIs found (count: $POI_COUNT). Starting automatic import..."
-    echo "This may take 5-10 minutes..."
-    python3 import_bavaria_pois.py || echo "POI import failed, continuing..."
+    echo "This may take 5-10 minutes. Please be patient..."
+    if ! python3 import_bavaria_pois.py 2>&1 | tee -a /tmp/poi_import.log; then
+        echo "Error: POI import failed. Check /tmp/poi_import.log for details."
+        echo "The application will start anyway. You can run the import manually later."
+    else
+        echo "POI import completed successfully!"
+    fi
 else
     echo "POIs already exist (count: $POI_COUNT). Skipping import."
 fi
