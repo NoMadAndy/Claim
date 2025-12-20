@@ -1,7 +1,9 @@
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, ConfigDict
 
 class Settings(BaseSettings):
+    model_config = ConfigDict(extra='ignore', env_file=".env", case_sensitive=True)
+    
     DATABASE_URL: str = Field(default="postgresql://claim_user:claim_password@localhost:5432/claim_db")
     SECRET_KEY: str = Field(default="your-secret-key-change-in-production")
     ALGORITHM: str = Field(default="HS256")
@@ -18,10 +20,6 @@ class Settings(BaseSettings):
     
     # Testing/Development Settings
     TESTING: bool = Field(default=False)  # Set to True to disable spatial features for testing
-    
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
     
     def is_sqlite(self) -> bool:
         """Check if the configured database is SQLite"""
