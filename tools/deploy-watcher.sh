@@ -48,7 +48,9 @@ while true; do
   
   if [[ $FETCH_EXIT -ne 0 ]]; then
     log_msg "WARN" "Failed to fetch from remote (exit code: $FETCH_EXIT)"
-    log_msg "DEBUG" "Git fetch error: $FETCH_OUTPUT"
+    # Sanitize multi-line error messages for clean logging
+    FETCH_ERROR_CLEAN=$(echo "$FETCH_OUTPUT" | tr '\n' ' ' | head -c 200)
+    log_msg "DEBUG" "Git fetch error: $FETCH_ERROR_CLEAN"
     
     # Additional diagnostics
     if ! git remote get-url origin >/dev/null 2>&1; then
