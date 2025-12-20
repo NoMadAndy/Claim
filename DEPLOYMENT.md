@@ -51,6 +51,7 @@ sudo bash -c "curl https://raw.githubusercontent.com/NoMadAndy/Claim/main/tools/
    - PostgreSQL/PostGIS Datenbank
    - FastAPI Backend
    - Automatisches Health-Check & Restart
+   - **Automatischer Bavaria POI Import** beim ersten Start (~10,000-15,000 Spots)
 
 ### Konfiguration
 
@@ -64,6 +65,22 @@ Wichtige Variablen:
 - `DB_PASSWORD`: Sicheres Datenbank-Passwort
 - `CORS_ORIGINS`: Erlaubte Frontend-Domains
 - `DOMAIN`: Deine Domäne (z.B. claim.example.com)
+
+### Erster Start & POI Import
+
+Beim ersten Start des Docker Containers:
+
+1. Die Datenbank-Migration wird automatisch ausgeführt
+2. Falls noch keine POIs existieren, werden automatisch ~10,000-15,000 Spots aus OpenStreetMap importiert
+3. Der Import dauert ca. 5-10 Minuten
+4. Bei späteren Neustarts wird der Import übersprungen (POI count > 100)
+
+Überwache den ersten Start mit:
+```bash
+docker-compose -f /opt/claim/docker-compose.prod.yml logs -f api
+```
+
+Für mehr Details siehe [BAVARIA_POI_IMPORT.md](BAVARIA_POI_IMPORT.md).
 
 ---
 
