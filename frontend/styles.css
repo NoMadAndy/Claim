@@ -423,6 +423,30 @@ body {
     height: 15px;
     transition: background 0.3s ease, box-shadow 0.3s ease;
     box-shadow: 0 0 12px rgba(136, 136, 136, 0.6), 0 0 6px rgba(136, 136, 136, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    position: relative;
+}
+
+/* Icon-based spot markers */
+.spot-marker.has-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    font-size: 14px;
+}
+
+/* Spot type icon content (Unicode/Emoji) */
+.spot-marker::before {
+    content: attr(data-icon);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: inherit;
+    line-height: 1;
 }
 
 /* Hide spots at low zoom levels (controlled by JS) */

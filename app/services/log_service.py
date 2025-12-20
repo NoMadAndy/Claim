@@ -177,6 +177,16 @@ def create_log(
     except Exception:
         pass
     
+    # Apply spot type multipliers (after buff multipliers)
+    try:
+        xp_gained = int(round(float(xp_gained) * float(spot.xp_multiplier)))
+    except Exception:
+        pass
+    try:
+        claim_points = int(round(float(claim_points) * float(spot.claim_multiplier)))
+    except Exception:
+        pass
+    
     # Create log
     log_point = f'POINT({log_data.longitude} {log_data.latitude})'
     

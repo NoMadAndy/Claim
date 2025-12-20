@@ -11,6 +11,27 @@ class UserRole(str, Enum):
     ADMIN = "admin"
 
 
+class SpotType(str, Enum):
+    """Types of spots with different XP and claim conditions"""
+    STANDARD = "standard"
+    CHURCH = "church"
+    SIGHT = "sight"
+    SPORTS_FACILITY = "sports_facility"
+    PLAYGROUND = "playground"
+    MONUMENT = "monument"
+    MUSEUM = "museum"
+    CASTLE = "castle"
+    PARK = "park"
+    VIEWPOINT = "viewpoint"
+    HISTORIC = "historic"
+    CULTURAL = "cultural"
+    RELIGIOUS = "religious"
+    TOWNHALL = "townhall"
+    MARKET = "market"
+    FOUNTAIN = "fountain"
+    STATUE = "statue"
+
+
 class ItemType(str, Enum):
     CONSUMABLE = "consumable"
     TOOL = "tool"
@@ -94,6 +115,10 @@ class SpotBase(BaseModel):
 class SpotCreate(SpotBase):
     latitude: float = Field(..., ge=-90, le=90)
     longitude: float = Field(..., ge=-180, le=180)
+    spot_type: Optional[SpotType] = SpotType.STANDARD
+    xp_multiplier: Optional[float] = 1.0
+    claim_multiplier: Optional[float] = 1.0
+    icon_name: Optional[str] = None
 
 
 class SpotResponse(SpotBase):
@@ -109,6 +134,10 @@ class SpotResponse(SpotBase):
     cooldown_status: Optional[str] = None  # "ready", "partial", "cooldown" for non-loot spots
     dominant_player_color: Optional[str] = None  # Hex color of the player with most dominance
     dominant_player_name: Optional[str] = None  # Username of the player with most dominance
+    spot_type: Optional[SpotType] = SpotType.STANDARD
+    xp_multiplier: Optional[float] = 1.0
+    claim_multiplier: Optional[float] = 1.0
+    icon_name: Optional[str] = None
     
     class Config:
         from_attributes = True

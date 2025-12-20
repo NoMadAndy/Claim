@@ -13,6 +13,24 @@ Ein ortsbasiertes Echtzeit-GPS-Spiel mit FastAPI, WebSockets, PostGIS und Leafle
 - Ihre Routen tracken
 - In Echtzeit mit anderen Spielern interagieren
 
+### Neue Features: Spot-Typen & Bayern-POIs 🏰⛪
+
+Das Spiel unterstützt jetzt verschiedene Arten von Spots mit unterschiedlichen XP- und Claim-Boni:
+
+- **⛪ Kirchen**: +50% XP, +30% Claims
+- **🏰 Schlösser**: +150% XP, +100% Claims
+- **🏛️ Sehenswürdigkeiten**: +100% XP, +50% Claims
+- **🏃 Sportstätten**: +30% XP, +20% Claims
+- **🎮 Spielplätze**: +20% XP, +10% Claims
+- **🗿 Monumente**: +80% XP, +40% Claims
+- **🏛️ Museen**: +120% XP, +60% Claims
+- **🌳 Parks**: +20% XP, +10% Claims
+- **🔭 Aussichtspunkte**: +70% XP, +30% Claims
+- **📜 Historische Orte**: +90% XP, +50% Claims
+- und weitere...
+
+**Siehe [BAVARIA_POI_IMPORT.md](BAVARIA_POI_IMPORT.md)** für Details zum Import von ~10.000-15.000 POIs aus OpenStreetMap für ganz Bayern.
+
 ### Features
 
 #### Auto-Logging & Manual-Logging
@@ -299,6 +317,28 @@ MANUAL_LOG_DISTANCE = 100.0  # Meter für Manual-Log
 LOG_COOLDOWN = 300  # Sekunden (5 Minuten)
 CLAIM_DECAY_RATE = 0.01  # Abfall pro Stunde
 ```
+
+### Spot-Typen & Multiplikatoren (app/spot_types_config.py)
+
+Das System unterstützt verschiedene Spot-Typen mit individuellen Belohnungen:
+
+```python
+SPOT_TYPE_CONFIG = {
+    SpotType.CHURCH: {
+        "xp_multiplier": 1.5,  # +50% XP
+        "claim_multiplier": 1.3,  # +30% Claims
+        "icon": "church"
+    },
+    SpotType.CASTLE: {
+        "xp_multiplier": 2.5,  # +150% XP
+        "claim_multiplier": 2.0,  # +100% Claims
+        "icon": "castle"
+    },
+    # ... weitere Typen
+}
+```
+
+**Import von POIs:** Siehe [BAVARIA_POI_IMPORT.md](BAVARIA_POI_IMPORT.md) für Details zum automatischen Import von Points of Interest aus OpenStreetMap.
 
 ## 📊 API Dokumentation
 

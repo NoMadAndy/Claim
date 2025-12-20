@@ -49,6 +49,27 @@ class UserRole(str, enum.Enum):
     ADMIN = "admin"
 
 
+class SpotType(str, enum.Enum):
+    """Types of spots with different XP and claim conditions"""
+    STANDARD = "standard"  # Default spot type
+    CHURCH = "church"  # Churches (Kirchen)
+    SIGHT = "sight"  # Tourist sights (Sehenswürdigkeiten)
+    SPORTS_FACILITY = "sports_facility"  # Sports facilities (Sportstätten)
+    PLAYGROUND = "playground"  # Playgrounds (Spielplätze)
+    MONUMENT = "monument"  # Monuments and memorials
+    MUSEUM = "museum"  # Museums
+    CASTLE = "castle"  # Castles and palaces (Schlösser)
+    PARK = "park"  # Parks and gardens
+    VIEWPOINT = "viewpoint"  # Scenic viewpoints
+    HISTORIC = "historic"  # Historic sites
+    CULTURAL = "cultural"  # Cultural centers
+    RELIGIOUS = "religious"  # Other religious sites
+    TOWNHALL = "townhall"  # Town halls (Rathäuser)
+    MARKET = "market"  # Markets (Märkte)
+    FOUNTAIN = "fountain"  # Fountains (Brunnen)
+    STATUE = "statue"  # Statues and sculptures
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -132,6 +153,16 @@ class Spot(Base):
     is_loot = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # For loot spots
+    
+    # Spot Category/Type (new)
+    spot_type = Column(SQLEnum(SpotType), default=SpotType.STANDARD, nullable=False, index=True)
+    
+    # Type-specific modifiers
+    xp_multiplier = Column(Float, default=1.0)  # XP multiplier for this spot type
+    claim_multiplier = Column(Float, default=1.0)  # Claim points multiplier
+    
+    # Icon for spot type
+    icon_name = Column(String(100), nullable=True)  # Icon identifier (e.g., 'church', 'castle')
     
     # Creator Info
     creator_id = Column(Integer, ForeignKey("users.id"), nullable=True)
