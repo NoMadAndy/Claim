@@ -1,7 +1,6 @@
 from typing import List
 from sqlalchemy.orm import Session
 from sqlalchemy import func, text
-from geoalchemy2.functions import ST_X, ST_Y
 from app.models import Claim, User, Spot
 from app.schemas import HeatmapData, HeatmapPoint
 
