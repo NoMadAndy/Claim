@@ -1,5 +1,21 @@
 # Changelog
 
+## Version 1.2.4 - 2025-12-20
+**Deployment & Operations Improvements**
+
+### Fehlerbehebungen
+- **Verbesserte Fehlerdiagnose im Auto-Deployment Watcher**: 
+  - Git fetch Fehler werden jetzt vollständig geloggt statt unterdrückt
+  - Exit-Codes werden angezeigt zur schnelleren Problemidentifikation
+  - Diagnostik für fehlende Remote-Konfiguration
+  - Bessere Behandlung von fehlenden initialen Commits
+  - Erleichtert Troubleshooting bei Deployment-Problemen erheblich
+
+### Technische Details
+- `tools/deploy-watcher.sh`: Entfernt `2>/dev/null` von git fetch, fügt detailliertes Error-Logging hinzu
+- Fehler werden jetzt mit Exit-Code, Fehlermeldung und Diagnose-Information geloggt
+- Hilft Administratoren, Netzwerk- und Git-Konfigurationsprobleme schneller zu identifizieren
+
 ## Version 1.2.3 - 2025-12-16
 **Heatmap Zoom-Stabilität**
 
