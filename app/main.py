@@ -352,6 +352,18 @@ async def serve_js():
             return response
     return Response(content="/* JS not found */", media_type="application/javascript", status_code=404)
 
+@app.get("/energy-monitor.js")
+async def serve_energy_monitor():
+    """Serve energy monitor JavaScript file"""
+    js_path = os.path.join(frontend_path, "energy-monitor.js")
+    if os.path.exists(js_path):
+        with open(js_path, "r", encoding="utf-8") as f:
+            # JS can be cached longer since we use cache busters
+            response = Response(content=f.read(), media_type="application/javascript")
+            response.headers["Cache-Control"] = "public, max-age=3600"
+            return response
+    return Response(content="/* JS not found */", media_type="application/javascript", status_code=404)
+
 @app.get("/admin.html")
 async def serve_admin():
     """Serve admin dashboard"""
