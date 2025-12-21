@@ -1,5 +1,45 @@
 # Changelog
 
+## Version 1.2.5 - 2025-12-20
+**Critical Bug Fix: SpotType Enum Compatibility**
+
+### 🐛 Fehlerbehebungen
+- **SpotType Enum Case Mismatch behoben**: 
+  - Behebt kritischen `LookupError: 'standard' is not among the defined enum values`
+  - Problem trat auf bei `/api/loot/cleanup` und `/api/claims/heatmap/all` Endpoints
+  - Ursache: Diskrepanz zwischen PostgreSQL enum (lowercase) und SQLAlchemy Erwartung (uppercase)
+  - PostgreSQL enum wurde von `'standard', 'church', ...` auf `'STANDARD', 'CHURCH', ...` aktualisiert
+  - Python enum behält lowercase values für API-Kompatibilität
+  - Vorhandene Daten werden automatisch konvertiert
+
+### 📋 Migration erforderlich
+Für bestehende Produktions-Datenbanken:
+```bash
+# Option 1: Python Script (empfohlen)
+python3 fix_spot_type_enum.py
+
+# Option 2: SQL Script
+docker exec -i claim-db psql -U claim_user -d claim_db < fix_spot_type_enum.sql
+```
+
+Siehe [APPLY_SPOTTYPE_FIX.md](APPLY_SPOTTYPE_FIX.md) für detaillierte Anweisungen.
+
+### 🆕 Neue Dateien
+- `fix_spot_type_enum.py` - Python Migration Script
+- `fix_spot_type_enum.sql` - SQL Migration Script
+- `rollback_spot_type_enum.sql` - Rollback Script (falls benötigt)
+- `verify_spot_type_fix.py` - Verifikations-Script
+- `SPOTTYPE_ENUM_FIX.md` - Technische Dokumentation
+- `APPLY_SPOTTYPE_FIX.md` - Anwendungsanleitung
+- `tests/test_spot_types.py` - Test Suite für SpotType
+
+### 🔧 Technische Details
+- SQLAlchemy 2.0 mit PostgreSQL native enums verwendet enum member **names** (UPPERCASE)
+- Python enum: `.name` = "STANDARD", `.value` = "standard"
+- Pydantic schema serialisiert zu lowercase für API-Kompatibilität
+- Keine Änderungen an API-Responses oder Frontend erforderlich
+- `migrate_spot_types.py` aktualisiert für zukünftige Installationen
+
 ## Version 1.2.4 - 2025-12-20
 **Deployment & Operations Improvements**
 

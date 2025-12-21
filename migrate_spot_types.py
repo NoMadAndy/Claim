@@ -30,10 +30,10 @@ def run_migration():
             try:
                 db.execute(text("""
                     CREATE TYPE spottype AS ENUM (
-                        'standard', 'church', 'sight', 'sports_facility', 'playground',
-                        'monument', 'museum', 'castle', 'park', 'viewpoint',
-                        'historic', 'cultural', 'religious', 'townhall', 'market',
-                        'fountain', 'statue'
+                        'STANDARD', 'CHURCH', 'SIGHT', 'SPORTS_FACILITY', 'PLAYGROUND',
+                        'MONUMENT', 'MUSEUM', 'CASTLE', 'PARK', 'VIEWPOINT',
+                        'HISTORIC', 'CULTURAL', 'RELIGIOUS', 'TOWNHALL', 'MARKET',
+                        'FOUNTAIN', 'STATUE'
                     );
                 """))
                 db.commit()
@@ -51,7 +51,7 @@ def run_migration():
                     SELECT 1 FROM information_schema.columns 
                     WHERE table_name = 'spots' AND column_name = 'spot_type'
                 ) THEN
-                    ALTER TABLE spots ADD COLUMN spot_type spottype DEFAULT 'standard' NOT NULL;
+                    ALTER TABLE spots ADD COLUMN spot_type spottype DEFAULT 'STANDARD' NOT NULL;
                     CREATE INDEX idx_spots_spot_type ON spots(spot_type);
                 END IF;
             END $$;
