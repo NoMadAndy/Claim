@@ -6,6 +6,10 @@ from app.models import Spot, SpotType, User, UserRole
 from app.services.auth_service import get_password_hash
 
 
+# Test data constants
+TEST_LOCATION = "POINT(13.4050 52.5200)"  # Berlin coordinates in WKT format
+
+
 def test_spot_type_enum_values():
     """Test that SpotType enum has correct values"""
     # Verify enum member names and values
@@ -55,7 +59,7 @@ def test_create_spot_with_different_types(test_db):
         spot = Spot(
             name=name,
             description=f"Test {name}",
-            location="POINT(13.4050 52.5200)",  # WKT format for SQLite
+            location=TEST_LOCATION,
             spot_type=spot_type,
             creator_id=user.id,
         )
@@ -99,7 +103,7 @@ def test_query_spots_by_type(test_db):
     for name, spot_type in spots_data:
         spot = Spot(
             name=name,
-            location="POINT(13.4050 52.5200)",
+            location=TEST_LOCATION,
             spot_type=spot_type,
             creator_id=user.id,
         )
@@ -135,7 +139,7 @@ def test_spot_type_default_value(test_db):
     # Create spot without specifying spot_type
     spot = Spot(
         name="Default Spot",
-        location="POINT(13.4050 52.5200)",
+        location=TEST_LOCATION,
         creator_id=user.id,
     )
     test_db.add(spot)
@@ -159,7 +163,7 @@ def test_spot_type_serialization(test_db):
     
     spot = Spot(
         name="Serialization Test",
-        location="POINT(13.4050 52.5200)",
+        location=TEST_LOCATION,
         spot_type=SpotType.CHURCH,
         creator_id=user.id,
     )

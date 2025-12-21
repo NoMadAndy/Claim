@@ -34,17 +34,7 @@ def run_migration():
     try:
         logger.info("Starting migration: Fixing SpotType enum case mismatch")
         
-        # Step 1: Update all existing spot_type values to uppercase
-        logger.info("Step 1: Converting existing spot_type values to uppercase...")
-        
-        update_values_sql = """
-        UPDATE spots 
-        SET spot_type = UPPER(spot_type::text)::spottype
-        WHERE spot_type IS NOT NULL;
-        """
-        
-        # We can't directly cast uppercase to the old enum, so we need to do this differently
-        # First, convert the column to TEXT temporarily
+        # Convert the column to TEXT temporarily
         logger.info("Converting spot_type column to TEXT...")
         db.execute(text("""
             ALTER TABLE spots 
@@ -52,7 +42,7 @@ def run_migration():
         """))
         db.commit()
         
-        # Step 2: Update all values to uppercase
+        # Update all values to uppercase
         logger.info("Updating all spot_type values to uppercase...")
         db.execute(text("""
             UPDATE spots 
@@ -61,12 +51,12 @@ def run_migration():
         """))
         db.commit()
         
-        # Step 3: Drop the old enum type
+        # Drop the old enum type
         logger.info("Dropping old spottype enum...")
         db.execute(text("DROP TYPE IF EXISTS spottype CASCADE;"))
         db.commit()
         
-        # Step 4: Create new enum with uppercase values
+        # Create new enum with uppercase values
         logger.info("Creating new spottype enum with uppercase values...")
         db.execute(text("""
             CREATE TYPE spottype AS ENUM (
@@ -78,7 +68,7 @@ def run_migration():
         """))
         db.commit()
         
-        # Step 5: Convert the column back to the enum type
+        # Convert the column back to the enum type
         logger.info("Converting spot_type column back to spottype enum...")
         db.execute(text("""
             ALTER TABLE spots 
@@ -86,7 +76,7 @@ def run_migration():
         """))
         db.commit()
         
-        # Step 6: Set the default value
+        # Set the default value
         logger.info("Setting default value...")
         db.execute(text("""
             ALTER TABLE spots 
@@ -94,7 +84,7 @@ def run_migration():
         """))
         db.commit()
         
-        # Step 7: Recreate the index
+        # Recreate the index
         logger.info("Recreating index on spot_type...")
         db.execute(text("""
             DROP INDEX IF EXISTS idx_spots_spot_type;

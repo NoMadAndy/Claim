@@ -47,8 +47,13 @@ def verify_python_enum():
 
 def verify_postgresql_enum():
     """Verify PostgreSQL enum values"""
-    if not settings.is_postgresql():
-        logger.info("⏭️  Skipping PostgreSQL enum check (not using PostgreSQL)")
+    try:
+        if not settings.is_postgresql():
+            logger.info("⏭️  Skipping PostgreSQL enum check (not using PostgreSQL)")
+            return True
+    except Exception as e:
+        logger.warning(f"⚠️  Could not determine database type: {e}")
+        logger.info("⏭️  Skipping PostgreSQL enum check")
         return True
     
     logger.info("Checking PostgreSQL spottype enum...")
